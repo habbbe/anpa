@@ -8,4 +8,5 @@ QMAKE_CXXFLAGS_RELEASE += -O3
 SOURCES += main.cpp
 
 HEADERS += \
-    parser.h
+    parser.h \
+    parser_combinators.h
