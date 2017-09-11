@@ -7,6 +7,52 @@
 
 namespace parse {
 
+template <typename T>
+struct parser {
+    auto operator()() {
+        T();
+    }
+    template <typename F>
+    auto operator>>=(F f) {
+        using return_type = std::decay_t<decltype(f(*this({}).second)({}))>;
+        return [=](std::string_view s) {
+            auto result = *this(s);
+            if (result.second) {
+                return f(*result.second)(result.first);
+            } else {
+                return return_type(result.first, {});
+            }
+        };
+    }
+
+    template <typename M>
+    auto operator>>(M m) {
+        using return_type = decltype(m({}));
+        return [=](std::string_view s) {
+            auto result = *this(s);
+            if (result.second) {
+                return p2(result.first);
+            } else {
+                return return_type(result.first, {});
+            }
+        };
+    }
+
+    template <typename V>
+    auto mreturn(V v) {
+        return [=](std::string_view s) {
+            return std::make_pair(s, std::make_optional(v));
+        };
+    }
+
+    template <typename V, typename... Args>
+    auto mreturn_emplace(Args&&... args) {
+        return [=](std::string_view s) {
+            return std::make_pair(s, std::make_optional<T>(args...));
+        };
+    }
+};
+
 /*
  * Parser for the empty string
  */
@@ -73,6 +119,16 @@ inline constexpr auto until_token(const char c) {
         } else {
             return std::make_pair(std::string_view{}, std::optional<default_result_type>{});
         }
+    };
+}
+
+
+/*
+ * Parser for the rest for the string
+ */
+inline constexpr auto rest() {
+    return [=](std::string_view s) {
+        return std::make_pair(s, std::make_optional(default_result_type{}));
     };
 }
 

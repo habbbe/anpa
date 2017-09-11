@@ -34,29 +34,23 @@ inline constexpr auto mreturn_emplace(Args&&... args) {
 /*
  * Combine two parsers, ignoring the result of the first one
  */
-template <typename Parser1, typename Parser2>
-inline constexpr auto operator>>(Parser1 p1, Parser2 p2) {
-    using return_type = decltype(p2({}));
-    return [=](std::string_view s) {
-        auto result = p1(s);
-        if (result.second) {
-            return p2(result.first);
-        } else {
-            return return_type(result.first, {});
-        }
+template <typename Monad1, typename Monad2>
+inline constexpr auto operator>>(Monad1 m1, Monad2 m2) {
+    return m1 >>= [=] ([[maybe_unused]] auto v) {
+        return m2;
     };
 }
 
 /*
  * Combine two parsers, ignoring the result of the second one
  */
-template <typename Parser1, typename Parser2>
-inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
-    using return_type = decltype(p1({}));
+template <typename Monad1, typename Monad2>
+inline constexpr auto operator<<(Monad1 m1, Monad2 m2) {
+    using return_type = decltype(m1({}));
     return [=](std::string_view s) {
-        auto result = p1(s);
+        auto result = m1(s);
         if (result.second) {
-            auto result2 = p2(result.first);
+            auto result2 = m2(result.first);
             if (result2.second) {
                 return std::make_pair(result2.first, result.second);
             }
@@ -70,9 +64,9 @@ inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
  */
 template <typename Parser, typename Fun>
 inline constexpr auto operator>>=(Parser p, Fun f) {
-    using return_type = decltype(f(*p({}).second)({}));
     return [=](std::string_view s) {
         auto result = p(s);
+        using return_type = std::decay_t<decltype(f(*result.second)(result.first))>;
         if (result.second) {
             return f(*result.second)(result.first);
         } else {
@@ -143,6 +137,9 @@ inline constexpr auto no_consume(Parser p) {
     };
 }
 
+/*
+ * Parser that always succeeds
+ */
 inline constexpr auto success() {
     return [=](std::string_view s) {
         return std::make_pair(s, std::optional(default_result_type{}));
@@ -150,13 +147,27 @@ inline constexpr auto success() {
 }
 
 /*
- * Convert a parser to a parser that always succeeds
+ * Transform a parser to a parser that fails on a successful, but empty result
+ */
+template <typename Parser>
+inline constexpr auto not_empty(Parser p) {
+    return [=](std::string_view s) {
+       if (auto result = p(s); result.second && !std::empty(*result.second)) {
+            return std::make_pair(result.first, std::optional(*result.second));
+       }
+       using return_type = std::decay_t<decltype(*p(std::string_view{}).second)>;
+       return std::make_pair(s, std::optional<return_type>{});
+    };
+}
+
+/*
+ * Transform a parser to a parser that always succeeds
  */
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
-    using return_type = decltype(*p(std::string_view{}).second);
     return [=](std::string_view s) {
         auto result = p(s);
+        using return_type = std::decay_t<decltype(*result.second)>;
         if (result.second) {
             return result;
         }
@@ -168,8 +179,8 @@ inline constexpr auto succeed(Parser p) {
  * Create a parser that applies a parser until it fails and returns
  * the results that satisfies the criteria to
  */
-template <typename Container, typename Parser, typename OutputIt, typename Predicate>
-inline constexpr auto many_if_value(Parser p, OutputIt it, Predicate pred) {
+template <typename Container, typename Parser, typename Predicate>
+inline constexpr auto many_if_value(Parser p, Predicate pred) {
     return [=](std::string_view s) {
         Container c;
         auto result = p(s);
@@ -211,8 +222,35 @@ inline constexpr auto many(Parser p, OutputIt it) {
  * the results to `it`
  */
 template <typename Container, typename Parser, typename OutputIt>
-inline constexpr auto many_if_value(Parser p, OutputIt it) {
-    return many_if_value<Container>(p, it, []([[maybe_unused]]auto a){return true;});
+inline constexpr auto many_value(Parser p) {
+    return many_if_value<Container>(p, []([[maybe_unused]]auto a){return true;});
+}
+
+template <typename T, typename Monad>
+inline constexpr auto lift(Monad m) {
+    return m >>= [] (auto &r) {
+        return mreturn_emplace<T>(r);
+    };
+}
+
+template <typename T, typename Monad1, typename Monad2>
+inline constexpr auto lift2(Monad1 m1, Monad2 m2) {
+    return m1 >>= [=] (auto &r1) {
+        return m2 >>= [=](auto &r2) {
+            return mreturn_emplace<T>(r1, r2);
+        };
+    };
+}
+
+template <typename T, typename Monad1, typename Monad2, typename Monad3>
+inline constexpr auto lift3(Monad1 m1, Monad2 m2, Monad3 m3) {
+    return m1 >>= [=] (auto &r1) {
+        return m2 >>= [=](auto &r2) {
+            return m3 >>= [=] (auto &r3) {
+                return mreturn_emplace<T>(r1, r2, r3);
+            };
+        };
+    };
 }
 
 }
