@@ -26,59 +26,71 @@ using command = std::pair<std::string, std::string>;
 struct action {
     command com;
     bool button;
-    action(std::string name, std::string command, bool button) : com{name, command}, button{button}{}
+    action(command com, bool button) : com{com}, button{button}{}
 };
 
 struct separator {};
 struct space {};
-struct parse_error {
-    std::string error;
-    parse_error(std::string s) : error{s}{}
+struct syntax_error {
+    syntax_error(std::string_view s) : description{s}{}
+    std::string description;
 };
 
 using item = std::variant<
 action,
 separator,
 space,
-parse_error
+syntax_error
 >;
 
 auto parse_name = parse::until_token('=');
 auto parse_cmd = parse::not_empty(parse::rest());
 auto parse_command = parse::lift2<command>(parse_name, parse_cmd);
-//auto parse_command = parse_name >>= [](auto name) {
-//    return parse_cmd >>= [=] (auto cmd) {
-//        return parse::mreturn_emplace<command>(name, cmd);
-//    };
-//};
-
-//auto parse_action = parse::string("Com:") >> parse_command >>=
+auto parse_action = parse::string("Com:") >> parse::lift<item>(parse::lift2<action>(parse_command, parse::mreturn(true)));
+auto parse_info = parse::string("Info:") >> parse::lift<item>(parse::lift2<action>(parse_command, parse::mreturn(false)));
+auto parse_separator = parse::string("Separator") >> parse::empty() >> parse::lift<item>(parse::mreturn(separator()));
+auto parse_space = parse::string("Space") >> parse::empty() >> parse::lift<item>(parse::mreturn(space()));
+auto parse_error = parse::lift<item>(parse::lift<syntax_error>(parse::rest()));
+auto parse_item = parse_action || parse_info || parse_separator || parse_space || parse_error;
 
 int main()
 {
-//    constexpr auto entry_parser = parse::string("Entry:") >> parse::until_token(':') >>=
-//            [=](auto firstName) {
-//        return parse::until_token(';') >>=
-//                [=](auto lastName) {
-//            return parse::succeed(parse::token('\n')) >>
-//                   parse::mreturn_emplace<row>(firstName, lastName);
-//        };
-//    };
-    constexpr auto entry_parser = (parse::string("Entry:") >>
-                   parse::lift2<row>(parse::until_token(':'), parse::until_token(';')));
-
-//    auto test = parser<decltype(entry_parser)>();
-
-    std::vector<row> r;
-    std::ifstream t("test");
+    std::vector<item> r;
+    std::ifstream t("/home/habbbe/.hub");
     std::string line;
     while (std::getline(t, line)) {
-        const auto &result = entry_parser(line);
+        const auto &result = parse_item(line);
         if (result.second) {
-            r.push_back(*result.second);
-//            r.push_back(*entry_parser(line).second);
+            auto &i = *result.second;
+            r.push_back(i);
         }
     }
+    for (auto &i : r) {
+        std::visit([](auto&& arg) {
+                    using T = std::decay_t<decltype(arg)>;
+                    if constexpr (std::is_same_v<T, action>) {
+                            if (arg.button)
+                                std::cout << "Action with name: " << arg.com.first << " command: " << arg.com.second << '\n';
+                            else
+                                std::cout << "Info with name: " << arg.com.first << " command: " << arg.com.second << '\n';
+                    } else if constexpr (std::is_same_v<T, space>)
+                        std::cout << "Space" << '\n';
+                    else if constexpr (std::is_same_v<T, separator>)
+                        std::cout << "Separator" << '\n';
+                    else if constexpr (std::is_same_v<T, syntax_error>)
+                        std::cout << "Syntax error: " << arg.description << '\n';
+                }, i);
+    }
+
+//    std::vector<row> r;
+//    std::ifstream t("test");
+//    std::string line;
+//    while (std::getline(t, line)) {
+//        const auto &result = entry_parser(line);
+//        if (result.second) {
+//            r.push_back(*result.second);
+//        }
+//    }
 
     cout << "Size: " << r.size() << endl;
     cout << "Died: " << died << endl;

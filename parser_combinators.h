@@ -7,6 +7,7 @@
 
 namespace parse {
 
+using default_string_type = std::string_view;
 using default_result_type = std::string_view;
 using default_result_pair = std::pair<std::string_view, std::optional<default_result_type>>;
 // COMBINATORS
@@ -93,35 +94,33 @@ inline constexpr auto operator+(Parser1 p1, Parser2 p2) {
     };
 }
 
-/*
- * Combine two parsers so that that both will be tried before failing
- */
-template <typename Parser>
-inline constexpr auto operator||(Parser p1, Parser p2) {
-    using return_type = decltype(p1(std::string_view{}));
-    return [=](std::string_view s) {
-        if (auto res1 = p1(s); res1.second) {
-            return res1;
-        } else if (auto res2 = p2(s); res2.second) {
-            return res2;
-        } else {
-            return return_type(s, {});
-        }
-    };
-}
 
 /*
- * Combine two parsers ignoring the result
+ * Combine two parsers so that the second will be tried before failing.
+ * If the two parsers return different types the return value will be ignored.
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
+    using return_type_1 = std::decay_t<decltype(*p1({}).second)>;
+    using return_type_2 = std::decay_t<decltype(*p2({}).second)>;
     return [=](std::string_view s) {
-        if (auto res1 = p1(s); res1.second) {
-            return std::make_pair(res1.first, std::optional(default_result_type{}));
-        } else if (auto res2 = p2(s); res2.second) {
-            return std::make_pair(res2.first, std::optional(default_result_type{}));
+        if constexpr (std::is_same_v<return_type_1, return_type_2>) {
+            if (auto res1 = p1(s); res1.second) {
+                return res1;
+            } else if (auto res2 = p2(s); res2.second) {
+                return res2;
+            } else {
+                using return_type = decltype(p1(std::string_view{}));
+                return return_type(s, {});
+            }
         } else {
-            return std::make_pair(s, std::optional<default_result_type>{});
+            if (auto res1 = p1(s); res1.second) {
+                return std::make_pair(res1.first, std::optional(default_result_type{}));
+            } else if (auto res2 = p2(s); res2.second) {
+                return std::make_pair(res2.first, std::optional(default_result_type{}));
+            } else {
+                return std::make_pair(s, std::optional<default_result_type>{});
+            }
         }
     };
 }
@@ -153,7 +152,7 @@ template <typename Parser>
 inline constexpr auto not_empty(Parser p) {
     return [=](std::string_view s) {
        if (auto result = p(s); result.second && !std::empty(*result.second)) {
-            return std::make_pair(result.first, std::optional(*result.second));
+            return std::make_pair(result.first, std::make_optional(*result.second));
        }
        using return_type = std::decay_t<decltype(*p(std::string_view{}).second)>;
        return std::make_pair(s, std::optional<return_type>{});
@@ -228,15 +227,15 @@ inline constexpr auto many_value(Parser p) {
 
 template <typename T, typename Monad>
 inline constexpr auto lift(Monad m) {
-    return m >>= [] (auto &r) {
+    return m >>= [] (auto &&r) {
         return mreturn_emplace<T>(r);
     };
 }
 
 template <typename T, typename Monad1, typename Monad2>
 inline constexpr auto lift2(Monad1 m1, Monad2 m2) {
-    return m1 >>= [=] (auto &r1) {
-        return m2 >>= [=](auto &r2) {
+    return m1 >>= [=] (auto &&r1) {
+        return m2 >>= [=](auto &&r2) {
             return mreturn_emplace<T>(r1, r2);
         };
     };
@@ -244,9 +243,9 @@ inline constexpr auto lift2(Monad1 m1, Monad2 m2) {
 
 template <typename T, typename Monad1, typename Monad2, typename Monad3>
 inline constexpr auto lift3(Monad1 m1, Monad2 m2, Monad3 m3) {
-    return m1 >>= [=] (auto &r1) {
-        return m2 >>= [=](auto &r2) {
-            return m3 >>= [=] (auto &r3) {
+    return m1 >>= [=] (auto &&r1) {
+        return m2 >>= [=](auto &&r2) {
+            return m3 >>= [=] (auto &&r3) {
                 return mreturn_emplace<T>(r1, r2, r3);
             };
         };

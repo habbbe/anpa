@@ -128,7 +128,7 @@ inline constexpr auto until_token(const char c) {
  */
 inline constexpr auto rest() {
     return [=](std::string_view s) {
-        return std::make_pair(s, std::make_optional(default_result_type{}));
+        return std::make_pair(std::string_view{}, std::make_optional<default_result_type>(s));
     };
 }
 
@@ -169,7 +169,7 @@ inline constexpr auto match(const char c) {
                 return std::make_pair(s, std::make_optional<default_result_type>(res));
             }
         }
-        return std::make_pair(s, std::optional<std::string_view>{});
+        return std::make_pair(s, std::optional<default_result_type>{});
     };
 }
 
