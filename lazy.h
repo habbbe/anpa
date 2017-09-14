@@ -16,10 +16,10 @@ constexpr auto modify(LazyValue v, F f) {
     });
 }
 
-template <typename F, typename LazyValue>
-constexpr auto apply(F f, LazyValue v) {
-    return value([=]() {
-        return f(v());
+template <typename LazyFun, typename... LazyVals>
+inline auto constexpr apply(LazyFun&& f, LazyVals&&... vals) {
+    return value([=] () {
+        return f()(vals()...);
     });
 }
 
@@ -35,6 +35,11 @@ struct value {
     template <typename LazyValue, typename F>
     static constexpr auto modify(LazyValue v, F f) {
         return lazy::modify(v, f);
+    }
+
+    template <typename LazyFun, typename... LazyVals>
+    inline auto constexpr apply(LazyFun&& f, LazyVals&&... vals) {
+        lazy::apply(f, vals...);
     }
 };
 
@@ -55,7 +60,7 @@ inline auto constexpr make_lazy_forward(F f, Args&&... args) {
 template <typename T, typename... Args>
 inline auto constexpr make_lazy_value_forward(Args&&... args) {
     return value([=] () {
-        return T(args...);
+        return T(args()...);
     });
 }
 
@@ -71,13 +76,6 @@ inline auto constexpr make_lazy_value_forward_fun() {
     return [=] (auto&&... args) {
         return make_lazy_value_forward<T>(args...);
     };
-}
-
-template <typename LazyVal, typename F>
-inline auto constexpr lazy_apply(LazyVal val, F f) {
-    return value([=] () {
-        return f(val());
-    });
 }
 
 }
