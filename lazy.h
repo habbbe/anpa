@@ -44,7 +44,7 @@ struct value {
 };
 
 template <typename T>
-inline auto constexpr make_lazy(T&& t) {
+inline auto constexpr make_lazy(T t) {
     return value([=]() {
         return t;
     });
@@ -59,6 +59,13 @@ inline auto constexpr make_lazy_forward(F f, Args&&... args) {
 
 template <typename T, typename... Args>
 inline auto constexpr make_lazy_value_forward(Args&&... args) {
+    return value([=] () {
+        return T(args()...);
+    });
+}
+
+template <typename T, typename... Args>
+inline auto constexpr make_lazy_value_forward_raw(Args&&... args) {
     return value([=] () {
         return T(args()...);
     });
