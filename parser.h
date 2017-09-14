@@ -7,7 +7,36 @@
 
 namespace parse {
 
-using default_result_type = std::string_view;
+// The source string type
+using source_string_type = std::string_view;
+
+// The result string type
+using result_string_type = std::string_view;
+
+using optional_result_type = std::optional<result_string_type>;
+
+auto empty_success = optional_result_type{result_string_type{}};
+
+using return_type = std::pair<source_string_type, optional_result_type>;
+
+template <typename Res = result_string_type>
+constexpr auto return_fail(auto s) {
+    return std::make_pair(s, std::optional<Res>{});
+}
+
+template <typename S, typename Res>
+constexpr auto return_success(S&& s, Res&& res) {
+    return std::make_pair(std::forward<S>(s), std::make_optional(std::forward<Res>(res)));
+}
+
+template <typename S, typename Res>
+constexpr auto return_success_string(S&& s, Res&& res) {
+    if constexpr (std::is_same_v<S, result_string_type>) {
+        return return_success(std::forward<S>(s), std::forward<Res>(res));
+    } else {
+        return return_success(std::forward<S>(s), result_string_type(std::forward<Res>(res)));
+    }
+}
 
 template <typename P>
 struct parser;
@@ -17,8 +46,9 @@ struct parser;
  */
 template <typename T, typename... Args>
 static constexpr auto mreturn_forward(Args&&... args) {
-    return parser([=](std::string_view s) {
-        return std::make_pair(s, std::make_optional<T>(args...));
+    return parser([=](source_string_type s) {
+        return return_success(s, T(args...));
+//        return return_type(s, lazy::make_lazy_forward<T>(args...));
     });
 }
 
@@ -27,8 +57,8 @@ static constexpr auto mreturn_forward(Args&&... args) {
  */
 template <typename T>
 static constexpr auto mreturn(T&& v) {
-    return parser([=](std::string_view s) {
-        return std::pair(s, std::optional(v));
+    return parser([=](source_string_type s) {
+        return return_success(s, v);
     });
 }
 
@@ -39,11 +69,11 @@ template <typename P>
 struct parser {
     P p;
 
-    using result_type = decltype(*p({}).second);
+//    using result_type = decltype(*p({}).second);
 
     constexpr parser(P&& p) : p{std::forward<P>(p)} {}
 
-    constexpr auto operator()(std::string_view s) const {
+    constexpr auto operator()(source_string_type s) const {
         return p(s);
     }
 
@@ -64,13 +94,13 @@ struct parser {
  */
 template <typename Parser, typename F>
 static constexpr auto operator>>=(Parser p, F f) {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         auto result = p(s);
-        using return_type = std::decay_t<decltype(f(*result.second)(result.first))>;
         if (result.second) {
             return f(*result.second)(result.first);
         } else {
-            return return_type(result.first, {});
+            using new_return_type = std::decay_t<decltype(f(*result.second)(s))>;
+            return new_return_type(result.first, {});
         }
     });
 }
@@ -82,14 +112,14 @@ static constexpr auto operator>>=(Parser p, F f) {
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator+(Parser1 p1, Parser2 p2) {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         if (auto result1 = p1(s); result1.second) {
             if (auto result2 = p2(result1.first); result2.second) {
-                auto res = std::string_view(s.data(), result1.second->length() + result2.second->length());
-                return std::make_pair(result2.first, std::optional(res));
+                auto res = source_string_type(s.data(), result1.second->length() + result2.second->length());
+                return return_success(result2.first, res);
             }
         }
-        return std::make_pair(s, std::optional<default_result_type>{});
+        return return_type(s, {});
     });
 }
 
@@ -101,23 +131,23 @@ template <typename Parser1, typename Parser2>
 inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
     using return_type_1 = std::decay_t<decltype(*p1({}).second)>;
     using return_type_2 = std::decay_t<decltype(*p2({}).second)>;
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         if constexpr (std::is_same_v<return_type_1, return_type_2>) {
             if (auto res1 = p1(s); res1.second) {
                 return res1;
             } else if (auto res2 = p2(s); res2.second) {
                 return res2;
             } else {
-                using return_type = decltype(p1(std::string_view{}));
+                using return_type = decltype(p1(source_string_type{}));
                 return return_type(s, {});
             }
         } else {
             if (auto res1 = p1(s); res1.second) {
-                return std::make_pair(res1.first, std::optional(default_result_type{}));
+                return return_success(res1.first, empty_success);
             } else if (auto res2 = p2(s); res2.second) {
-                return std::make_pair(res2.first, std::optional(default_result_type{}));
+                return return_success(res2.first, empty_success);
             } else {
-                return std::make_pair(s, std::optional<default_result_type>{});
+                return return_fail(s);
             }
         }
     });
@@ -128,9 +158,8 @@ inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
  */
 template <typename Parser>
 inline constexpr auto no_consume(Parser p) {
-    return parser([=](std::string_view s) {
-        auto result = p(s);
-        return std::make_pair(s, result.second);
+    return parser([=](source_string_type s) {
+        return std::make_pair(s, p(s).second);
     });
 }
 
@@ -138,8 +167,8 @@ inline constexpr auto no_consume(Parser p) {
  * Parser that always succeeds
  */
 inline constexpr auto success() {
-    return parser([=](std::string_view s) {
-        return std::make_pair(s, std::optional(default_result_type{}));
+    return parser([=](source_string_type s) {
+        return return_success_string(s, result_string_type{});
     });
 }
 
@@ -148,11 +177,11 @@ inline constexpr auto success() {
  */
 template <typename Parser>
 inline constexpr auto not_empty(Parser p) {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
        if (auto result = p(s); result.second && !std::empty(*result.second)) {
-            return std::make_pair(result.first, std::make_optional(*result.second));
+           return return_success(result.first, *result.second);
        }
-       using return_type = std::decay_t<decltype(*p(std::string_view{}).second)>;
+       using return_type = std::decay_t<decltype(*p(source_string_type{}).second)>;
        return std::make_pair(s, std::optional<return_type>{});
     });
 }
@@ -162,12 +191,12 @@ inline constexpr auto not_empty(Parser p) {
  */
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         auto result = p(s);
-        using return_type = std::decay_t<decltype(*result.second)>;
         if (result.second) {
             return result;
         }
+        using return_type = std::decay_t<decltype(*result.second)>;
         return std::make_pair(s, std::optional{return_type{}});
     });
 }
@@ -178,7 +207,7 @@ inline constexpr auto succeed(Parser p) {
  */
 template <typename Container, typename Parser, typename Predicate>
 inline constexpr auto many_if_value(Parser p, Predicate pred) {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         Container c;
         auto result = p(s);
         while (result.second && pred(*result.second)) {
@@ -195,7 +224,7 @@ inline constexpr auto many_if_value(Parser p, Predicate pred) {
  */
 template <typename Parser, typename OutputIt, typename Predicate>
 inline constexpr auto many_if(Parser p, OutputIt it, Predicate pred) {
-    return parser([=](std::string_view s) mutable {
+    return parser([=](source_string_type s) mutable {
         auto result = p(s);
         while (result.second && pred(*result.second)) {
             *it++ = *result.second;
@@ -226,10 +255,10 @@ inline constexpr auto many_value(Parser p) {
  * Parser for the empty string
  */
 inline constexpr auto empty() {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         if (s.empty())
-            return std::make_pair(s, std::optional{default_result_type{}});
-        return std::make_pair(s, std::make_optional<default_result_type>());
+            return return_success_string(s, s);
+        return return_fail(s);
     });
 }
 
@@ -237,12 +266,12 @@ inline constexpr auto empty() {
  * Parser for a single character
  */
 inline constexpr auto token(const char c) {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         if (s.empty() || s.front() != c)
-            return std::make_pair(s, std::optional<char>{});
+            return return_fail<char>(s);
         auto front = s.front();
         s.remove_prefix(1);
-        return std::make_pair(s, std::optional{front});
+        return return_success(s, front);
     });
 }
 
@@ -251,12 +280,12 @@ inline constexpr auto token(const char c) {
  */
 template <int N>
 inline constexpr auto string(const char (&str)[N]) {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         if (s.length() < N-1 || s.compare(0, N-1, str) != 0)
-            return std::make_pair(s, std::optional<default_result_type>{});
+            return return_fail(s);
         auto res = s.substr(0, N-1);
         s.remove_prefix(N-1);
-        return std::make_pair(s, std::make_optional<default_result_type>(res));
+        return return_success_string(s, res);
     });
 }
 
@@ -264,13 +293,12 @@ inline constexpr auto string(const char (&str)[N]) {
  * Parser for consuming n characters
  */
 inline constexpr auto consume(unsigned int n) {
-    return parser([=](std::string_view s) {
-        if (s.length() < n) {
-            return std::make_pair(s, std::optional<default_result_type>{});
-        }
+    return parser([=](source_string_type s) {
+        if (s.length() < n)
+            return return_fail(s);
         auto res = s.substr(0, n);
         s.remove_prefix(n);
-        return std::make_pair(s, std::make_optional<default_result_type>(res));
+        return return_success_string(s, res);
     });
 }
 
@@ -279,14 +307,14 @@ inline constexpr auto consume(unsigned int n) {
  */
 template <bool eat = true>
 inline constexpr auto until_token(const char c) {
-    return parser([=](std::string_view s) {
-        if (auto pos = s.find_first_of(c); pos != std::string_view::npos) {
+    return parser([=](source_string_type s) {
+        if (auto pos = s.find_first_of(c); pos != source_string_type::npos) {
             constexpr auto end = eat ? 0 : 1;
             auto res = s.substr(0, pos + end);
             s.remove_prefix(pos+1);
-            return std::make_pair(s, std::make_optional<default_result_type>(res));
+            return return_success_string(s, res);
         } else {
-            return std::make_pair(std::string_view{}, std::optional<default_result_type>{});
+            return return_fail(s);
         }
     });
 }
@@ -295,19 +323,19 @@ inline constexpr auto until_token(const char c) {
  * Parser for the rest for the string
  */
 inline constexpr auto rest() {
-    return parser([=](std::string_view s) {
-        return std::make_pair(std::string_view{}, std::make_optional<default_result_type>(s));
+    return parser([=](source_string_type s) {
+        return return_success_string(source_string_type{}, s);
     });
 }
 
 /**
  * Parser that consumes all characters in the given set
  */
-inline constexpr auto while_in(std::string_view set) {
-    return parser([=](std::string_view s) {
+inline constexpr auto while_in(source_string_type set) {
+    return parser([=](source_string_type s) {
         size_t found = 0;
         for (size_t i = 0; i < s.length(); ++i) {
-            if (auto pos = set.find_first_of(s[i]); pos != std::string_view::npos) {
+            if (auto pos = set.find_first_of(s[i]); pos != source_string_type::npos) {
                 ++found;
             } else {
                 break;
@@ -316,9 +344,9 @@ inline constexpr auto while_in(std::string_view set) {
         if (found > 0) {
             auto result = s.substr(0, found);
             s.remove_prefix(found);
-            return std::make_pair(s, std::make_optional<default_result_type>(result));
+            return return_success_string(s, result);
         }
-        return std::make_pair(s, std::optional<default_result_type>{});
+        return return_fail(s);
     });
 }
 
@@ -327,17 +355,17 @@ inline constexpr auto while_in(std::string_view set) {
  */
 template <bool eat = true>
 inline constexpr auto match(const char c) {
-    return parser([=](std::string_view s) {
+    return parser([=](source_string_type s) {
         if (!s.empty() && s.front() == c) {
-            if (auto pos = s.find_first_of(c, 1); pos != std::string_view::npos) {
+            if (auto pos = s.find_first_of(c, 1); pos != source_string_type::npos) {
                 constexpr size_t start = eat ? 1 : 0;
                 constexpr size_t end = eat ? -1 : 1;
                 auto res = s.substr(start, pos+end);
                 s.remove_prefix(pos + 1);
-                return std::make_pair(s, std::make_optional<default_result_type>(res));
+                return return_success_string(s, res);
             }
         }
-        return std::make_pair(s, std::optional<default_result_type>{});
+        return return_fail(s);
     });
 }
 
@@ -354,9 +382,9 @@ inline constexpr auto match_bracket() {
         else static_assert(c - c, "Matching not supported");
     }();
 
-    return parser([](std::string_view s) {
+    return parser([](source_string_type s) {
         if (s.empty() || s.front() != c)
-            return std::make_pair(s, std::optional<default_result_type>{});
+            return return_fail(s);
 
         auto len = s.length();
         size_t to_match = 0;
@@ -367,7 +395,7 @@ inline constexpr auto match_bracket() {
                     constexpr size_t end = eat ? -1 : 1;
                     auto res = s.substr(start, i+end);
                     s.remove_prefix(i + 1);
-                    return std::make_pair(s, std::make_optional<default_result_type>(res));
+                    return return_success_string(s, res);
                 } else {
                     --to_match;
                 }
@@ -375,7 +403,7 @@ inline constexpr auto match_bracket() {
                 ++to_match;
             }
         }
-        return std::make_pair(s, std::optional<default_result_type>{});
+        return return_fail(s);
     });
 }
 

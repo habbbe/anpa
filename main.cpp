@@ -64,43 +64,33 @@ constexpr auto parse_item = parse_action || parse_info || parse_separator || par
 
 int main()
 {
-//    constexpr auto entry_parser = parse::string("Entry:") >> parse::until_token(':') >>=
-//            [=](auto firstName) {
-//        return parse::until_token(';') >>=
-//                [=](auto lastName) {
-//            return parse::succeed(parse::token('\n')) >>
-//                   parse::mreturn_emplace<row>(firstName, lastName);
-//        };
-//    };
-
-    constexpr auto addToVector = [] (auto&& f, auto&& l) {
+    constexpr auto addToVector = [] (auto&&... args) {
         return [=] (auto&& v) {
-            v.emplace_back(f, l);
+            v.emplace_back(args...);
         };
     };
 
-   auto entry_parser = parse::string("Entry:") >> monad::lift(addToVector, parse::until_token(':'), parse::until_token(';'));
-//   constexpr auto entry_parser = monad::lift(addToVector, parse_item);
-//   constexpr auto entry_parser = parse_item;
+    constexpr auto entry_parser = parse::string("Entry:") >> monad::lift(addToVector, parse::until_token(':'), parse::until_token(';'));
+    //   constexpr auto entry_parser = monad::lift(addToVector, parse_item);
+    //   constexpr auto entry_parser = parse_item;
 
 
 
-   std::vector<row> r;
-//   std::vector<item> r;
-   std::ifstream t("test");
-//   std::ifstream t("hub");
-   std::string line;
-   while (std::getline(t, line)) {
-       auto result = entry_parser(line);
-       if (result.second) {
-           auto res = *result.second;
-           res(r);
-//           r.push_back(res);
-       }
-   }
+    std::vector<row> r;
+    //   std::vector<item> r;
+    std::ifstream t("test");
+    //   std::ifstream t("hub");
+    std::string line;
+    while (std::getline(t, line)) {
+        auto result = entry_parser(line);
+        if (result.second) {
+            auto res = *result.second;
+            res(r);
+        }
+    }
 
-   cout << "Size: " << r.size() << endl;
-   cout << "Died: " << died << endl;
+    cout << "Size: " << r.size() << endl;
+    cout << "Died: " << died << endl;
 
-   return 0;
+    return 0;
 }
