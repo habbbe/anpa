@@ -13,17 +13,9 @@ using source_string_type = std::string_view;
 // The result string type
 using result_string_type = std::string_view;
 
-// If set, all results are lazy
-constexpr bool is_lazy = true;
-
 template <typename Res = result_string_type, typename S>
 constexpr auto return_fail(S&& s) {
-    if constexpr (is_lazy) {
-        using lazy_type = decltype(lazy::make_lazy(Res{}));
-        return std::make_pair(std::forward<S>(s), std::optional<lazy_type>{});
-    } else {
-        return std::make_pair(std::forward<S>(s), std::optional<Res>{});
-    }
+    return std::make_pair(std::forward<S>(s), std::optional<Res>{});
 }
 
 template <typename S, typename Res>
@@ -32,20 +24,11 @@ constexpr auto return_success(S&& s, Res&& res) {
 }
 
 template <typename S, typename Res>
-constexpr auto return_success_internal(S&& s, Res&& res) {
-    if constexpr (is_lazy) {
-        return std::make_pair(std::forward<S>(s), std::make_optional(lazy::make_lazy(res)));
-    } else {
-        return std::make_pair(std::forward<S>(s), std::make_optional<Res>(std::forward<Res>(res)));
-    }
-}
-
-template <typename S, typename Res>
 constexpr auto return_success_string(S&& s, Res&& res) {
-    if constexpr (std::is_same_v<S, Res>) {
-        return return_success_internal(std::forward<S>(s), std::forward<Res>(res));
+    if constexpr (std::is_same_v<Res, result_string_type>) {
+        return return_success(std::forward<S>(s), std::forward<Res>(res));
     } else {
-        return return_success_internal(std::forward<S>(s), result_string_type(std::forward<Res>(res)));
+        return return_success(std::forward<S>(s), result_string_type(std::forward<Res>(res)));
     }
 }
 
@@ -58,12 +41,7 @@ struct parser;
 template <typename T, typename... Args>
 static constexpr auto mreturn_forward(Args&&... args) {
     return parser([=](source_string_type s) {
-        if constexpr (is_lazy) {
-//            return std::pair(s, std::optional(lazy::make_lazy_value_forward<T>(std::forward<Args>(args)...)));
-            return std::pair(s, std::optional(lazy::make_lazy_value_forward<T>(args...)));
-        } else {
-            return return_success(s, T(args...));
-        }
+        return return_success(s, T(args...));
     });
 }
 
@@ -73,11 +51,7 @@ static constexpr auto mreturn_forward(Args&&... args) {
 template <typename T>
 static constexpr auto mreturn(T&& v) {
     return parser([=](source_string_type s) {
-        if constexpr (is_lazy) {
-            return std::pair(s, std::optional(lazy::make_lazy(v)));
-        } else {
-            return return_success(s, v);
-        }
+        return return_success(s, v);
     });
 }
 
@@ -164,8 +138,14 @@ static constexpr auto remove_prefix(S &s, size_t size) {
 //    });
 //}
 
-template <typename R1, typename R2, typename Parser1, typename Parser2>
-inline constexpr auto inner_alternative(Parser1 p1, Parser2 p2) {
+/**
+ * Combine two parsers so that the second will be tried before failing.
+ * If the two parsers return different types the return value will be ignored.
+ */
+template <typename Parser1, typename Parser2>
+inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
+    using R1 = decltype(*p1({}).second);
+    using R2 = decltype(*p2({}).second);
     return parser([=](source_string_type s) {
         if constexpr (std::is_same_v<R1, R2>) {
             if (auto res1 = p1(s); res1.second) {
@@ -186,23 +166,6 @@ inline constexpr auto inner_alternative(Parser1 p1, Parser2 p2) {
             }
         }
     });
-}
-
-/**
- * Combine two parsers so that the second will be tried before failing.
- * If the two parsers return different types the return value will be ignored.
- */
-template <typename Parser1, typename Parser2>
-inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
-    if constexpr (is_lazy) {
-        using R1 = decltype((*p1({}).second)());
-        using R2 = decltype((*p2({}).second)());
-        return inner_alternative<R1, R2>(p1, p2);
-    } else {
-        using R1 = decltype(*p1({}).second);
-        using R2 = decltype(*p2({}).second);
-        return inner_alternative<R1, R2>(p1, p2);
-    }
 }
 
 /**
@@ -231,11 +194,7 @@ template <typename Parser>
 inline constexpr auto not_empty(Parser p) {
     return parser([=](source_string_type s) {
         constexpr auto empty = [](auto&& v) {
-            if constexpr (is_lazy) {
-                return std::empty(v());
-            } else {
-                return std::empty(v);
-            }
+            return std::empty(v);
         };
         if (auto result = p(s); result.second && !empty(*result.second)) {
             return return_success(result.first, *result.second);
@@ -254,9 +213,9 @@ inline constexpr auto succeed(Parser p) {
     return parser([=](source_string_type s) {
         auto result = p(s);
         if (result.second) {
-            return return_success_internal(result.first, true);
+            return return_success(result.first, true);
         }
-        return return_success_internal(result.first, false);
+        return return_success(result.first, false);
     });
 }
 
@@ -316,7 +275,7 @@ inline constexpr auto many_value(Parser p) {
 inline constexpr auto empty() {
     return parser([=](source_string_type s) {
         if (s.empty()) {
-            auto r = return_success_internal(s, true);
+            auto r = return_success(s, true);
             return r;
         }
 
@@ -334,7 +293,7 @@ inline constexpr auto token(const char c) {
             return return_fail<char>(s);
         auto front = s.front();
         remove_prefix(s, 1);
-        return return_success_internal(s, front);
+        return return_success(s, front);
     });
 }
 

@@ -67,7 +67,7 @@ inline auto constexpr make_lazy_value_forward(Args&&... args) {
 template <typename T, typename... Args>
 inline auto constexpr make_lazy_value_forward_raw(Args&&... args) {
     return value([=] () {
-        return T(args()...);
+        return T(args...);
     });
 }
 

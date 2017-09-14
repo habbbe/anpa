@@ -36,21 +36,12 @@ struct syntax_error {
     std::string description;
 };
 
-using item_variant = std::variant<
+using item = std::variant<
 action,
 separator,
 space,
 syntax_error
 >;
-
-struct item {
-    item_variant v;
-    template <typename T>
-    item(T t) : v{t} {}
-    ~item() {
-        ++died;
-    }
-};
 
 constexpr auto parse_name = parse::until_token('=');
 constexpr auto parse_cmd = parse::not_empty(parse::rest());
@@ -66,18 +57,18 @@ int main()
 {
     constexpr auto addToVector = [] (auto&&... args) {
         return [=] (auto&& v) {
-            v.push_back(args()...);
+            v.emplace_back(args...);
         };
     };
 
-//    constexpr auto entry_parser = parse::string("Entry:") >> monad::lift(addToVector, parse::until_token(':'), parse::until_token(';'));
+    constexpr auto entry_parser = parse::string("Entry:") >> monad::lift(addToVector, parse::until_token(':'), parse::until_token(';'));
 //    constexpr auto entry_parser = monad::lift(addToVector, parse_item);
-    constexpr auto entry_parser = parse_item;
+//    constexpr auto entry_parser = parse_item;
 
-//    std::vector<row> r;
-       std::vector<item> r;
-//    std::ifstream t("test");
-       std::ifstream t("hub");
+    std::vector<row> r;
+//       std::vector<item> r;
+    std::ifstream t("test");
+//       std::ifstream t("hub");
     std::string line;
     while (std::getline(t, line)) {
         auto result = entry_parser(line);
@@ -85,7 +76,7 @@ int main()
             auto res = *result.second;
 //            res(r);
 //            r.push_back(res);
-//            res(r);
+            res(r);
 //            res()(r);
         }
     }

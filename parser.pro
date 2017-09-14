@@ -10,5 +10,4 @@ SOURCES += main.cpp
 HEADERS += \
     parser.h \
     monad.h \
-    functor.h \
     lazy.h
