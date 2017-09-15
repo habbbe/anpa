@@ -72,7 +72,7 @@ struct parser {
 
     template <typename T, typename... Args>
     static constexpr auto mreturn_forward(Args&&... args) {
-        return parse::mreturn_forward<T>(args...);
+        return parse::mreturn_forward<T>(std::forward<Args>(args)...);
     }
 
     template <typename T>
@@ -463,6 +463,51 @@ constexpr auto integer() {
  */
 constexpr auto whitespace() {
     return while_in(" \t\n\r\f");
+}
+
+
+// Base (fail) case
+template <typename ResultType, typename StringType, typename F>
+constexpr auto lift_or_rec(StringType &s,[[maybe_unused]] F f) {
+        return return_fail<ResultType>(s);
+}
+
+// Compile time recursive resolver for lifting of arbitrary number of parsers
+template <typename ResultType, typename StringType, typename F, typename Parser, typename... Parsers>
+constexpr auto lift_or_rec(StringType &s, F f, Parser p, Parsers... ps) {
+    if (auto res = p(s); res.second) {
+            return return_success(s, f(*res.second));
+    } else {
+        return lift_or_rec<ResultType>(s, f, ps...);
+    }
+}
+
+// Preparation step for or-lift
+template <typename F, typename Parser, typename... Parsers>
+constexpr auto lift_or_prep(F f, Parser p, Parsers... ps) {
+    return parser([=](source_string_type s) {
+        using return_type = std::decay_t<decltype(f(*p(s).second))>;
+        return lift_or_rec<return_type>(s, f, p, ps...);
+    });
+}
+
+/**
+ * Lift the result of unary function to the parser monad after applying it to the first argument that succeeds.
+ * The lifted function must provide an overload for every parser result type.
+ */
+template <typename F, typename Parser, typename... Parsers>
+constexpr auto lift_or(F f, Parser p, Parsers... ps) {
+    return lift_or_prep(f, p, ps...);
+}
+
+/**
+ * Lift a type to the parser monad after applying the first successful argument to its constructor.
+ * The constructor must provide an overload for every parser result type.
+ */
+template <typename T, typename Parser, typename... Parsers>
+constexpr auto lift_or_value(Parser p, Parsers... ps) {
+    constexpr auto construct = [](auto&&... args) {return T(std::forward<decltype(args)>(args)...);};
+    return lift_or_prep(construct, p, ps...);
 }
 
 }
