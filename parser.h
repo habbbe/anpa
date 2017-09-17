@@ -20,7 +20,7 @@ constexpr auto return_fail(S&& s) {
 
 template <typename S, typename Res>
 constexpr auto return_success(S&& s, Res&& res) {
-    return std::make_pair(std::forward<S>(s), std::make_optional<Res>(std::forward<Res>(res)));
+    return std::make_pair(std::forward<S>(s), std::make_optional(std::forward<Res>(res)));
 }
 
 template <typename S, typename Res>
@@ -41,7 +41,7 @@ struct parser;
 template <typename T, typename... Args>
 static constexpr auto mreturn_forward(Args&&... args) {
     return parser([=](source_string_type s) {
-        return return_success(s, T(args...));
+        return return_success(s, T(std::forward<Args>(args)...));
     });
 }
 
@@ -49,9 +49,9 @@ static constexpr auto mreturn_forward(Args&&... args) {
  * Monadic bind
  */
 template <typename T>
-static constexpr auto mreturn(T&& v) {
+static constexpr auto mreturn(T t) {
     return parser([=](source_string_type s) {
-        return return_success(s, v);
+        return return_success(s, std::move(t));
     });
 }
 
@@ -193,7 +193,7 @@ inline constexpr auto success() {
 template <typename Parser>
 inline constexpr auto not_empty(Parser p) {
     return parser([=](source_string_type s) {
-        constexpr auto empty = [](auto&& v) {
+        constexpr auto empty = [](auto& v) {
             return std::empty(v);
         };
         if (auto result = p(s); result.second && !empty(*result.second)) {
@@ -232,7 +232,7 @@ inline constexpr auto many_if_value(Parser p, Predicate pred) {
             c.push_back(*result.second);
             result = p(result.first);
         }
-        return std::make_pair(result.first, std::optional(c));
+        return std::make_pair(result.first, std::make_optional(c));
     });
 }
 
@@ -242,13 +242,13 @@ inline constexpr auto many_if_value(Parser p, Predicate pred) {
  */
 template <typename Parser, typename OutputIt, typename Predicate>
 inline constexpr auto many_if(Parser p, OutputIt it, Predicate pred) {
-    return parser([=](source_string_type s) mutable {
+    return parser([=](source_string_type s) {
         auto result = p(s);
         while (result.second && pred(*result.second)) {
             *it++ = *result.second;
             result = p(result.first);
         }
-        return std::make_pair(result.first, std::optional(it));
+        return std::make_pair(result.first, std::make_optional(it));
     });
 }
 
@@ -356,7 +356,7 @@ inline constexpr auto rest() {
 template <size_t N>
 inline constexpr auto while_in(const char (&str)[N]) {
     return parser([=](source_string_type s) {
-        constexpr auto contains = [](auto&& s, auto c) {
+        constexpr auto contains = [](auto& s, auto c) {
             for (size_t i = 0; i < N-1; ++i) {
                 if (s[i] == c) return true;
             }
@@ -444,7 +444,7 @@ inline constexpr auto match_bracket() {
 template <bool Signed = true>
 constexpr auto integer() {
     constexpr auto integer_parser = [](bool addMinus) {
-        while_in("0123456789") >>= [addMinus](auto res) {
+        while_in("0123456789") >>= [addMinus](auto&& res) {
             std::string str(res);
             return mreturn(std::stoi("-" + str));
         };
@@ -465,30 +465,19 @@ constexpr auto whitespace() {
     return while_in(" \t\n\r\f");
 }
 
-
-// Base (fail) case
-template <typename ResultType, typename StringType, typename F>
-constexpr auto lift_or_rec(StringType &s,[[maybe_unused]] F f) {
-        return return_fail<ResultType>(s);
-}
-
 // Compile time recursive resolver for lifting of arbitrary number of parsers
-template <typename ResultType, typename StringType, typename F, typename Parser, typename... Parsers>
+template <typename StringType, typename F, typename Parser, typename... Parsers>
 constexpr auto lift_or_rec(StringType &s, F f, Parser p, Parsers... ps) {
     if (auto res = p(s); res.second) {
             return return_success(s, f(*res.second));
     } else {
-        return lift_or_rec<ResultType>(s, f, ps...);
+        if constexpr (sizeof...(ps) > 0) {
+            return lift_or_rec(s, f, ps...);
+        } else {
+            // All parsers failed
+            return return_fail<std::decay_t<decltype(f(*p(s).second))>>(s);
+        }
     }
-}
-
-// Preparation step for or-lift
-template <typename F, typename Parser, typename... Parsers>
-constexpr auto lift_or_prep(F f, Parser p, Parsers... ps) {
-    return parser([=](source_string_type s) {
-        using return_type = std::decay_t<decltype(f(*p(s).second))>;
-        return lift_or_rec<return_type>(s, f, p, ps...);
-    });
 }
 
 /**
@@ -497,7 +486,9 @@ constexpr auto lift_or_prep(F f, Parser p, Parsers... ps) {
  */
 template <typename F, typename Parser, typename... Parsers>
 constexpr auto lift_or(F f, Parser p, Parsers... ps) {
-    return lift_or_prep(f, p, ps...);
+    return parser([=](source_string_type s) {
+        return lift_or_rec(s, f, p, ps...);
+    });
 }
 
 /**
@@ -506,8 +497,25 @@ constexpr auto lift_or(F f, Parser p, Parsers... ps) {
  */
 template <typename T, typename Parser, typename... Parsers>
 constexpr auto lift_or_value(Parser p, Parsers... ps) {
-    constexpr auto construct = [](auto&&... args) {return T(std::forward<decltype(args)>(args)...);};
-    return lift_or_prep(construct, p, ps...);
+    return parser([=](source_string_type s) {
+        constexpr auto construct = [](auto&& arg) {return T(std::forward<decltype(arg)>(arg));};
+        return lift_or_rec(s, construct, p, ps...);
+    });
+}
+
+/**
+ * Lift a type to the parser monad after applying the first successful argument to its constructor.
+ * The constructor must provide an overload for every parser result type.
+ * This version applies the constructor to a lazy argument
+ */
+template <typename T, typename Parser, typename... Parsers>
+constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
+    return parser([=](source_string_type s) {
+        constexpr auto construct = [](auto arg) {
+            return T(arg());
+        };
+        return lift_or_rec(s, construct, p, ps...);
+    });
 }
 
 }

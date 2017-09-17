@@ -53,6 +53,13 @@ inline auto constexpr make_lazy(T t) {
 template <typename F, typename... Args>
 inline auto constexpr make_lazy_forward(F f, Args&&... args) {
     return value([=] () {
+        return f(args()...);
+    });
+}
+
+template <typename F, typename... Args>
+inline auto constexpr make_lazy_forward_raw(F f, Args&&... args) {
+    return value([=] () {
         return f(args...);
     });
 }
@@ -82,6 +89,13 @@ template <typename T>
 inline auto constexpr make_lazy_value_forward_fun() {
     return [=] (auto&&... args) {
         return make_lazy_value_forward<T>(args...);
+    };
+}
+
+template <typename T>
+inline auto constexpr make_lazy_value_forward_fun_raw() {
+    return [=] (auto&&... args) {
+        return make_lazy_value_forward_raw<T>(args...);
     };
 }
 

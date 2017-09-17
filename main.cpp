@@ -25,8 +25,12 @@ using command = std::pair<std::string, std::string>;
 
 struct action {
     command com;
-    bool button;
-    action(command com, bool button) : com{com}, button{button}{}
+    action(command com) : com{com} {}
+};
+
+struct info {
+    command com;
+    info(command com) : com{com} {}
 };
 
 struct separator {};
@@ -38,6 +42,7 @@ struct syntax_error {
 
 using item = std::variant<
 action,
+info,
 separator,
 space,
 syntax_error
@@ -45,36 +50,39 @@ syntax_error
 
 constexpr auto parse_name = parse::until_token('=');
 constexpr auto parse_cmd = parse::not_empty(parse::rest());
-constexpr auto parse_command = monad::lift_value<command>(parse_name, parse_cmd);
-constexpr auto parse_action = parse::string("Com:") >> monad::lift_value<action>(parse_command, parse::mreturn(true));
-constexpr auto parse_info = parse::string("Info:") >> monad::lift_value<action>(parse_command, parse::mreturn(false));
-constexpr auto parse_separator = parse::string("Separator") >> parse::empty() >> parse::mreturn_forward<separator>();
-constexpr auto parse_space = parse::string("Space") >> parse::empty() >> parse::mreturn_forward<space>();
-constexpr auto parse_error = monad::lift_value<syntax_error>(parse::rest());
-constexpr auto parse_item = parse::lift_or_value<item>(parse_action, parse_info, parse_separator, parse_space, parse_error);
+constexpr auto parse_command = monad::lift_value_lazy_raw<command>(parse_name, parse_cmd);
+constexpr auto parse_action = parse::string("Com:") >> monad::lift_value_lazy<action>(parse_command);
+constexpr auto parse_info = parse::string("Info:") >> monad::lift_value_lazy<info>(parse_command);
+constexpr auto parse_separator = parse::string("Separator") >> parse::empty() >> parse::mreturn(lazy::make_lazy(separator()));
+constexpr auto parse_space = parse::string("Space") >> parse::empty() >> parse::mreturn(lazy::make_lazy(space()));
+constexpr auto parse_error = monad::lift_value_lazy_raw<syntax_error>(parse::rest());
+constexpr auto parse_item = parse::lift_or_value_from_lazy<item>(parse_action, parse_info, parse_separator, parse_space, parse_error);
 
 int main()
 {
-    constexpr auto addToVector = [] (auto&&... args) {
-        return [=] (auto&& v) {
-            v.emplace_back(args...);
+
+    constexpr auto addToVector = [] (auto& args) {
+        return [&] (auto& v) {
+            v.emplace_back(std::move(args));
         };
     };
 
-    constexpr auto entry_parser = parse::string("Entry:") >> monad::lift(addToVector, parse::until_token(':'), parse::until_token(';'));
-//    constexpr auto entry_parser = parse_item;
+//    constexpr auto entry_parser = parse::string("Entry:") >> monad::lift(addToVector, parse::until_token(':'), parse::until_token(';'));
+//    constexpr auto entry_parser = monad::lift(addToVector, parse_item);
+    constexpr auto entry_parser = parse_item;
 
-    std::vector<row> r;
-//       std::vector<item> r;
-    std::ifstream t("test");
-//       std::ifstream t("hub");
+//    std::vector<row> r;
+       std::vector<item> r;
+//    std::ifstream t("test");
+       std::ifstream t("hub");
     std::string line;
     while (std::getline(t, line)) {
         auto result = entry_parser(line);
         if (result.second) {
-            auto res = *result.second;
-//            r.push_back(res);
-            res(r);
+//            auto res = (*result.second)();
+//            r.emplace_back(std::move((*result.second)()));
+            r.emplace_back(std::move(*result.second));
+//            (*result.second)(r);
         }
     }
 
