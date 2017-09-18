@@ -38,7 +38,7 @@ struct parser;
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
     return parser([=](auto &s) {
-        return return_success(s, T(std::forward<Args>(args)...));
+        return return_success(s, T(args...));
     });
 }
 

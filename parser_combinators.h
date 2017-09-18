@@ -195,7 +195,7 @@ inline constexpr auto many_to_state(Parser p) {
 template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     if (auto res = p(s); res.second) {
-            return return_success(s, f(*res.second));
+        return return_success(s, f(*res.second));
     } else {
         if constexpr (sizeof...(ps) > 0) {
             return lift_or_rec(s, f, ps...);
@@ -216,6 +216,20 @@ template <typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
     return parser([=](auto &s) {
         return lift_or_rec(s, f, p, ps...);
+    });
+}
+
+/**
+ * Lift a type to the parser monad after applying the first successful parser's result to its constructor.
+ * The constructor must provide an overload for every parser result type.
+ */
+template <typename Fun, typename Parser, typename... Parsers>
+inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
+    return parser([=](auto &s) {
+        auto to_apply = [f, &s] (auto&& val) {
+             return f(s.user_state, std::forward<decltype(val)>(val));
+        };
+        return lift_or_rec(s, to_apply, p, ps...);
     });
 }
 

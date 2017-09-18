@@ -28,7 +28,7 @@ inline constexpr auto lift_inner2([[maybe_unused]] F f, Arg&& arg, Args&&... arg
         else
             return Monad::mreturn(f(std::forward<Arg>(arg), std::forward<Args>(args)...));
     } else {
-        return arg >>= [=](auto& v) {
+        return arg >>= [=](auto &v) {
             return lift_inner2<T, Emplace, F, Monad, total - 1>(f, args..., v);
         };
     }
@@ -39,7 +39,7 @@ inline constexpr auto lift_inner2([[maybe_unused]] F f, Arg&& arg, Args&&... arg
  */
 template <typename T, bool Emplace, typename F, typename Monad, typename... Monads>
 inline constexpr auto lift_inner(F f, Monad&& m, Monads&&... monads) {
-    return lift_inner2<T, Emplace, F, std::decay_t<Monad>, sizeof...(Monads) + 1>(f, m, monads...);
+    return lift_inner2<T, Emplace, F, std::decay_t<Monad>, sizeof...(Monads) + 1>(f, std::forward<Monad>(m), std::forward<Monads>(monads)...);
 }
 
 /**
@@ -48,7 +48,7 @@ inline constexpr auto lift_inner(F f, Monad&& m, Monads&&... monads) {
  */
 template <typename F, typename... Monads>
 inline constexpr auto lift(F f, Monads&&... monads) {
-    return lift_inner<bool, false>(f, monads...);
+    return lift_inner<bool, false>(f, std::forward<Monads>(monads)...);
 }
 
 /**
@@ -57,7 +57,7 @@ inline constexpr auto lift(F f, Monads&&... monads) {
  */
 template <typename F, typename... Monads>
 inline constexpr auto lift_lazy(F f, Monads&&... monads) {
-    return lift_inner<bool, false>(lazy::make_lazy_forward_fun(f), monads...);
+    return lift_inner<bool, false>(lazy::make_lazy_forward_fun(f), std::forward<Monads>(monads)...);
 }
 
 /**
@@ -69,7 +69,7 @@ inline constexpr auto lift_lazy(F f, Monads&&... monads) {
 template <typename T, typename... Monads>
 inline constexpr auto lift_value(Monads&&... monads) {
     //
-    return lift_inner<T, true>([](){}, monads...);
+    return lift_inner<T, true>([](){}, std::forward<Monads>(monads)...);
 }
 
 /**
@@ -78,7 +78,7 @@ inline constexpr auto lift_value(Monads&&... monads) {
  */
 template <typename T, typename... Monads>
 inline constexpr auto lift_value_lazy(Monads&&... monads) {
-    return lift(lazy::make_lazy_value_forward_fun<T>(), monads...);
+    return lift(lazy::make_lazy_value_forward_fun<T>(), std::forward<Monads>(monads)...);
 }
 
 /**
@@ -87,7 +87,7 @@ inline constexpr auto lift_value_lazy(Monads&&... monads) {
  */
 template <typename T, typename... Monads>
 inline constexpr auto lift_value_lazy_raw(Monads&&... monads) {
-    return lift(lazy::make_lazy_value_forward_fun_raw<T>(), monads...);
+    return lift(lazy::make_lazy_value_forward_fun_raw<T>(), std::forward<Monads>(monads)...);
 }
 
 }
