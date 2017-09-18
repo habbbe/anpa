@@ -92,21 +92,27 @@ struct parser {
     }
 
     /**
-     * Begin parsing with the user supplied string and state
+     * Begin parsing with the user supplied string and state.
+     * The result is a std::pair with the unparsed string as first element and
+     * the result of the parse as the second.
      */
     template <typename StringType, typename State>
     auto parse_with_state(StringType&& string, State &user_state) const {
         auto state = parser_state(std::forward<StringType>(string), user_state);
-        return p(state);
+        auto res = p(state);
+        return std::make_pair(std::move(res.first.rest), std::move(res.second));
     }
 
     /**
      * Begin parsing with the user supplied string
+     * The result is a std::pair with the unparsed string as first element and
+     * the result of the parse as the second.
      */
     template <typename StringType>
     auto parse(StringType&& string) const {
         auto state = parser_state_simple(std::forward<StringType>(string));
-        return p(state);
+        auto res = p(state);
+        return std::make_pair(std::move(res.first.rest), std::move(res.second));
     }
 
     /**
