@@ -8,14 +8,8 @@
 
 using namespace std;
 
-int died = 0;
-
 struct row {
     row(std::string_view firstName, std::string_view lastName) : firstName{firstName}, lastName{lastName} {}
-    ~row() {
-        ++died;
-//        cout << died << endl;
-    }
 
     std::string firstName;
     std::string lastName;
@@ -51,8 +45,8 @@ syntax_error
 constexpr auto parse_name = parse::until_token('=');
 constexpr auto parse_cmd = parse::not_empty(parse::rest());
 constexpr auto parse_command = monad::lift_value_lazy_raw<command>(parse_name, parse_cmd);
-constexpr auto parse_action = parse::string("Com:") >> monad::lift_value_lazy<action>(parse_command);
-constexpr auto parse_info = parse::string("Info:") >> monad::lift_value_lazy<info>(parse_command);
+constexpr auto parse_action = parse::try_parser(parse::string("Com:") >> monad::lift_value_lazy<action>(parse_command));
+constexpr auto parse_info = parse::try_parser(parse::string("Info:") >> monad::lift_value_lazy<info>(parse_command));
 constexpr auto parse_separator = parse::string("Separator") >> parse::empty() >> parse::mreturn(lazy::make_lazy(separator()));
 constexpr auto parse_space = parse::string("Space") >> parse::empty() >> parse::mreturn(lazy::make_lazy(space()));
 constexpr auto parse_error = monad::lift_value_lazy_raw<syntax_error>(parse::rest());
@@ -61,33 +55,28 @@ constexpr auto parse_item = parse::lift_or_value_from_lazy<item>(parse_action, p
 int main()
 {
 
-    constexpr auto addToVector = [] (auto& args) {
-        return [&] (auto& v) {
-            v.emplace_back(std::move(args));
-        };
+    constexpr auto add_to_state = [] (auto &s, auto&&... args) {
+        s.emplace_back(args...);
+        return true;
     };
 
-//    constexpr auto entry_parser = parse::string("Entry:") >> monad::lift(addToVector, parse::until_token(':'), parse::until_token(';'));
-//    constexpr auto entry_parser = monad::lift(addToVector, parse_item);
-    constexpr auto entry_parser = parse_item;
+    constexpr auto entry_parser = parse::string("Entry:") >> parse::apply_to_state(add_to_state, parse::until_token(':'), parse::until_token(';'));
+//    constexpr auto entry_parser = parse_item;
 
-//    std::vector<row> r;
-       std::vector<item> r;
-//    std::ifstream t("test");
-       std::ifstream t("hub");
+    std::vector<row> r;
+//       std::vector<item> r;
+    std::ifstream t("test");
+//       std::ifstream t("hub");
     std::string line;
     while (std::getline(t, line)) {
-        auto result = entry_parser(line);
-        if (result.second) {
-//            auto res = (*result.second)();
-//            r.emplace_back(std::move((*result.second)()));
-            r.emplace_back(std::move(*result.second));
-//            (*result.second)(r);
-        }
+        entry_parser.parse_with_state(std::string_view(line), r);
+//        auto result = entry_parser.parse(std::string_view(line));
+//        if (result.second) {
+//            r.emplace_back(*result.second);
+//        }
     }
 
     cout << "Size: " << r.size() << endl;
-    cout << "Died: " << died << endl;
 
     return 0;
 }
