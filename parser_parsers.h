@@ -41,9 +41,9 @@ inline constexpr auto empty() {
  */
 inline constexpr auto token(const char c) {
     return parser([=](auto &s) {
-        if (s.empty() || s.front() != c)
+        if (s.rest.empty() || s.rest.front() != c)
             return return_fail<char>(s);
-        auto front = s.front();
+        auto front = s.rest.front();
         remove_prefix(s.rest, 1);
         return return_success(s, front);
     });
@@ -68,7 +68,7 @@ inline constexpr auto string(const char (&str)[N]) {
  */
 inline constexpr auto consume(unsigned int n) {
     return parser([=](auto &s) {
-        if (s.length() < n)
+        if (s.rest.length() < n)
             return return_fail(s);
         auto res = s.rest.substr(0, n);
         remove_prefix(s.rest, n);
@@ -119,7 +119,7 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
         };
 
         size_t found = 0;
-        for (size_t i = 0; i < s.length(); ++i) {
+        for (size_t i = 0; i < s.rest.length(); ++i) {
             if (contains(str, s.rest[i])) {
                 ++found;
             } else {
@@ -135,59 +135,84 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
     });
 }
 
-/**
- * Parser that consumes all characters between two of the specified character
- */
-template <typename CharType, bool eat = true>
-inline constexpr auto match(const CharType c) {
+// General matching algorithm with supplied equality functions.
+template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = true, typename Start, typename End, typename EqualStart, typename EqualEnd>
+static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
+
     return parser([=](auto &s) {
-        if (!s.rest.empty() && s.rest.front() == c) {
-            if (auto pos = s.find_first_of(c, 1); pos != std::decay_t<decltype(s.rest)>::npos) {
-                constexpr size_t start = eat ? 1 : 0;
-                constexpr size_t end = eat ? -1 : 1;
-                auto res = s.rest.substr(start, pos+end);
-                remove_prefix(s.rest, pos + 1);
-                return return_success(s, res);
+        auto len = s.rest.length();
+        if (len == 0 || !equal_start(s.rest, 0, StartLength, start))
+            return return_fail(s);
+
+        size_t to_match = 0;
+        for (size_t i = StartLength; i<=len-EndLength;) {
+            if (equal_end(s.rest, i, EndLength, end)) {
+                if (to_match == 0) {
+                    constexpr size_t finalStart = Eat ? StartLength : 0;
+                    size_t size = Eat ? i - StartLength : i + EndLength;
+                    auto res = s.rest.substr(finalStart, size);
+                    remove_prefix(s.rest, i + EndLength);
+                    return return_success(s, res);
+                } else if constexpr (Nested) {
+                    --to_match;
+                    i += EndLength;
+                }
+            } else if (Nested && equal_start(s.rest, i, StartLength, start)) {
+                ++to_match;
+                i += StartLength;
+            } else {
+                ++i;
             }
         }
         return return_fail(s);
     });
 }
 
+
 /**
- * Parser that consumes all characters between the two specified characters.
+ * Parser that consumes all characters between the two supplied strings.
  * Use template parameter `Nested` to decide whether to support nested matchings or not,
  * and template parameter `Eat` to decide whether to include the matching characters in the
  * result or not.
  */
-template <typename CharType, bool Nested = false, bool Eat = true>
-inline constexpr auto match_two(const CharType first, const CharType last) {
+template <bool Nested = false, bool Eat = true, typename CharType, size_t NStart, size_t NEnd>
+inline constexpr auto between_strings(const CharType (&start)[NStart], const CharType (&end)[NEnd]) {
 
-    return parser([=](auto &s) {
-        if (s.rest.empty() || s.rest.front() != first)
-            return return_fail(s);
+    // Use faster comparison when the string is only one character long
+    [[maybe_unused]] constexpr auto compare_single = [](auto &s, auto start_index, [[maybe_unused]] auto length, auto toCompare) {
+        return s[start_index] == toCompare[0];
+    };
+    [[maybe_unused]] constexpr auto compare_str = [](auto &s, auto start_index, auto length, auto toCompare) {
+        return !s.compare(start_index, length, toCompare);
+    };
 
-        auto len = s.rest.length();
-        size_t to_match = 0;
-        for (size_t i = 1; i<len; ++i) {
-            if (s.rest[i] == last) {
-                if (to_match == 0) {
-                    constexpr size_t start = Eat ? 1 : 0;
-                    constexpr size_t end = Eat ? -1 : 1;
-                    auto res = s.rest.substr(start, i+end);
-                    remove_prefix(s.rest, i + 1);
-                    return return_success(s, res);
-                } else if constexpr (Nested) {
-                    --to_match;
-                }
-            } else if (s[i] == first) {
-                if constexpr (Nested) {
-                    ++to_match;
-                }
-            }
-        }
-        return return_fail(s);
-    });
+    constexpr auto compare_start = []() {
+        if constexpr (NStart - 1 == 1) return compare_single; else return compare_str;
+    }();
+    constexpr auto compare_end = []() {
+        if constexpr (NEnd - 1 == 1) return compare_single; else return compare_str;
+    }();
+
+    return between_general<NStart-1, NEnd-1, Nested, Eat>(start, end, compare_start, compare_end);
+}
+
+/**
+ * Parser that consumes all characters between the two supplied characters
+ */
+template <bool Eat = true, typename CharType>
+inline constexpr auto between_tokens(const CharType start, const CharType end) {
+    constexpr auto compare_single = [](auto &s, auto start_index, [[maybe_unused]] auto length, auto toCompare) {
+        return s[start_index] == toCompare;
+    };
+    return between_general<1, 1, false, Eat>(start, end, compare_single, compare_single);
+}
+
+/**
+ * Parser that consumes all characters between two of the supplied character
+ */
+template <typename CharType, bool eat = true>
+inline constexpr auto between_token(const CharType c) {
+    return between_tokens(c, c);
 }
 
 // CONVENIENCE PARSERS

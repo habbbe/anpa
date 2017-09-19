@@ -196,14 +196,12 @@ template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     if (auto res = p(s); res.second) {
         return return_success(s, f(*res.second));
+    } else if constexpr (sizeof...(ps) > 0) {
+        return lift_or_rec(s, f, ps...);
     } else {
-        if constexpr (sizeof...(ps) > 0) {
-            return lift_or_rec(s, f, ps...);
-        } else {
-            // All parsers failed
-            using result_type = std::decay_t<decltype(f(*p(s).second))>;
-            return return_fail_type<result_type>(s);
-        }
+        // All parsers failed
+        using result_type = std::decay_t<decltype(f(*p(s).second))>;
+        return return_fail_type<result_type>(s);
     }
 }
 
