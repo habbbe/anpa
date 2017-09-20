@@ -5,28 +5,22 @@
 
 namespace parse {
 
-// Convenience function for returning a pair with reference o state and a result.
-template <typename State, typename Result>
-static constexpr auto make_pair(State &s, Result&& res) {
-    return std::pair<State&, Result>(s, std::forward<Result>(res));
-}
-
 // Convenience function for returning a failed parse. Default result to the string type used.
-template <typename S>
-static constexpr auto return_fail(S& s) {
-    return make_pair(s, std::optional<typename std::decay_t<S>::string_type>{});
+template <typename State>
+static constexpr auto return_fail() {
+    return std::optional<typename std::decay_t<State>::string_type>{};
 }
 
 // Convenience function for returning a failed parse with state and type of result.
-template <typename Res, typename S>
-static constexpr auto return_fail_type(S& s) {
-    return make_pair(s, std::optional<std::decay_t<Res>>{});
+template <typename Res>
+static constexpr auto return_fail_type() {
+    return std::optional<std::decay_t<Res>>{};
 }
 
 // Convenience function for returning a succesful parse.
-template <typename S, typename Res>
-static constexpr auto return_success(S& s, Res&& res) {
-    return make_pair(s, std::make_optional(std::forward<Res>(res)));
+template <typename Res>
+static constexpr auto return_success(Res&& res) {
+    return std::make_optional(std::forward<Res>(res));
 }
 
 template <typename P>
@@ -37,8 +31,8 @@ struct parser;
  */
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
-    return parser([=](auto &s) {
-        return return_success(s, T(args...));
+    return parser([=]([[maybe_unused]]auto &s) {
+        return return_success(T(args...));
     });
 }
 
@@ -47,8 +41,8 @@ constexpr auto mreturn_forward(Args&&... args) {
  */
 template <typename T>
 constexpr auto mreturn(T t) {
-    return parser([=](auto &s) {
-        return return_success(s, std::move(t));
+    return parser([=]([[maybe_unused]]auto &s) {
+        return return_success(std::move(t));
     });
 }
 
@@ -80,8 +74,7 @@ struct parser_state: public parser_state_simple<StringType> {
 template <typename P>
 struct parser {
 
-    // The meat of the parser. A function that takes a parser state and returns
-    // a std::pair<State&, ResultType>
+    // The meat of the parser. A function that takes a parser state and returns an optional result
     P p;
 
     constexpr parser(P&& p) : p{std::forward<P>(p)} {}
@@ -100,7 +93,7 @@ struct parser {
     auto parse_with_state(StringType&& string, State &user_state) const {
         auto state = parser_state(std::forward<StringType>(string), user_state);
         auto res = p(state);
-        return std::make_pair(std::move(res.first.rest), std::move(res.second));
+        return std::make_pair(std::move(state.rest), std::move(res));
     }
 
     /**
@@ -112,7 +105,7 @@ struct parser {
     auto parse(StringType&& string) const {
         auto state = parser_state_simple(std::forward<StringType>(string));
         auto res = p(state);
-        return std::make_pair(std::move(res.first.rest), std::move(res.second));
+        return std::make_pair(std::move(state.rest), std::move(res));
     }
 
     /**
@@ -139,11 +132,11 @@ template <typename Parser, typename F>
 static constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto &s) {
         auto result = p(s);
-        if (result.second) {
-            return f(*result.second)(result.first);
+        if (result) {
+            return f(*result)(s);
         } else {
-            using new_return_type = std::decay_t<decltype(f(*result.second)(s))>;
-            return new_return_type(result.first, {});
+            using new_return_type = std::decay_t<decltype(f(*result)(s))>;
+            return new_return_type({});
         }
     });
 }

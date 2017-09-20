@@ -10,7 +10,7 @@ namespace parse {
  */
 inline constexpr auto success() {
     return parser([=](auto &s) {
-        return return_success(s, std::decay_t<decltype(s)>{});
+        return return_success(std::decay_t<decltype(s)>{});
     });
 }
 
@@ -19,7 +19,7 @@ inline constexpr auto success() {
  */
 inline constexpr auto fail() {
     return parser([=](auto &s) {
-        return return_fail_type<bool>(s);
+        return return_fail_type<bool>();
     });
 }
 
@@ -29,10 +29,10 @@ inline constexpr auto fail() {
 inline constexpr auto empty() {
     return parser([=](auto &s) {
         if (s.rest.empty()) {
-            return return_success(s, true);
+            return return_success(true);
         }
 
-        return return_fail_type<bool>(s);
+        return return_fail_type<bool>();
     });
 }
 
@@ -42,10 +42,10 @@ inline constexpr auto empty() {
 inline constexpr auto token(const char c) {
     return parser([=](auto &s) {
         if (s.rest.empty() || s.rest.front() != c)
-            return return_fail<char>(s);
+            return return_fail_type<char>();
         auto front = s.rest.front();
         remove_prefix(s.rest, 1);
-        return return_success(s, front);
+        return return_success(front);
     });
 }
 
@@ -56,10 +56,10 @@ template <int N>
 inline constexpr auto string(const char (&str)[N]) {
     return parser([=](auto &s) {
         if (s.rest.length() < N-1 || s.rest.compare(0, N-1, str) != 0)
-            return return_fail(s);
+            return return_fail<decltype(s)>();
         auto res = s.rest.substr(0, N-1);
         remove_prefix(s.rest, N-1);
-        return return_success(s, res);
+        return return_success(res);
     });
 }
 
@@ -69,10 +69,10 @@ inline constexpr auto string(const char (&str)[N]) {
 inline constexpr auto consume(unsigned int n) {
     return parser([=](auto &s) {
         if (s.rest.length() < n)
-            return return_fail(s);
+            return return_fail<decltype(s)>();
         auto res = s.rest.substr(0, n);
         remove_prefix(s.rest, n);
-        return return_success(s, res);
+        return return_success(res);
     });
 }
 
@@ -87,9 +87,9 @@ inline constexpr auto until_token(const CharType c) {
             constexpr auto end = Eat ? 0 : 1;
             auto res = s.rest.substr(0, pos + end);
             remove_prefix(s.rest, pos+1);
-            return return_success(s, res);
+            return return_success(res);
         } else {
-            return return_fail(s);
+            return return_fail<decltype(s)>();
         }
     });
 }
@@ -101,7 +101,7 @@ inline constexpr auto rest() {
     return parser([=](auto &s) {
         auto res = s.rest;
         s.rest = "";
-        return return_success(s, res);
+        return return_success(res);
     });
 }
 
@@ -129,9 +129,9 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
         if (found > 0) {
             auto result = s.rest.substr(0, found);
             remove_prefix(s.rest, found);
-            return return_success(s, result);
+            return return_success(result);
         }
-        return return_fail(s);
+        return return_fail<decltype(s)>();
     });
 }
 
@@ -142,7 +142,7 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
     return parser([=](auto &s) {
         auto len = s.rest.length();
         if (len == 0 || !equal_start(s.rest, 0, StartLength, start))
-            return return_fail(s);
+            return return_fail<decltype(s)>();
 
         size_t to_match = 0;
         for (size_t i = StartLength; i<=len-EndLength;) {
@@ -164,7 +164,7 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
                 ++i;
             }
         }
-        return return_fail(s);
+        return return_fail<decltype(s)>();
     });
 }
 

@@ -13,10 +13,10 @@ template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto &s) {
         auto result = p(s);
-        if (result.second) {
-            return return_success(result.first, true);
+        if (result) {
+            return return_success(true);
         }
-        return return_success(result.first, false);
+        return return_success(false);
     });
 }
 
@@ -29,11 +29,11 @@ inline constexpr auto not_empty(Parser p) {
         constexpr auto empty = [](auto& v) {
             return std::empty(v);
         };
-        if (auto result = p(s); result.second && !empty(*result.second)) {
-            return return_success(result.first, *result.second);
+        if (auto result = p(s); result && !empty(*result)) {
+            return return_success(*result);
         }
-        using return_type = std::decay_t<decltype(*p(s).second)>;
-        return make_pair(s, std::optional<return_type>{});
+        using return_type = std::decay_t<decltype(*p(s))>;
+        return std::optional<return_type>{};
     });
 }
 
@@ -45,13 +45,13 @@ inline constexpr auto try_parser(Parser p) {
     return parser([=](auto &s) {
         // Make copy of rest of string to parse
         auto str_copy = s.rest;
-        if (auto res = p(s); res.second) {
+        if (auto res = p(s); res) {
             return res;
         } else {
-            using return_type = std::decay_t<decltype(*p(s).second)>;
+            using return_type = std::decay_t<decltype(*p(s))>;
             // Move back the old string
             s.rest = std::move(str_copy);
-            return make_pair(s, std::optional<return_type>{});
+            return std::optional<return_type>{};
         }
     });
 }
@@ -65,7 +65,7 @@ inline constexpr auto no_consume(Parser p) {
         auto str_copy = s.rest;
         auto res = p(s);
         s.rest = std::move(str_copy);
-        return make_pair(s, res);
+        return res;
     });
 }
 
@@ -75,25 +75,25 @@ inline constexpr auto no_consume(Parser p) {
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
-    using R1 = decltype(*p1({}).second);
-    using R2 = decltype(*p2({}).second);
+    using R1 = decltype(*p1({}));
+    using R2 = decltype(*p2({}));
     return parser([=](auto &s) {
         if constexpr (std::is_same_v<R1, R2>) {
-            if (auto res1 = p1(s); res1.second) {
+            if (auto res1 = p1(s); res1) {
                 return res1;
-            } else if (auto res2 = p2(s); res2.second) {
+            } else if (auto res2 = p2(s); res2) {
                 return res2;
             } else {
                 using return_type = decltype(p1(s));
-                return return_type(s, {});
+                return return_type{};
             }
         } else {
-            if (auto res1 = p1(s); res1.second) {
-                return return_success(res1.first, true);
-            } else if (auto res2 = p2(s); res2.second) {
-                return return_success(res2.first, true);
+            if (auto res1 = p1(s); res1) {
+                return return_success(true);
+            } else if (auto res2 = p2(s); res2) {
+                return return_success(true);
             } else {
-                return return_fail<bool>(s);
+                return return_fail_type<bool>();
             }
         }
     });
@@ -123,11 +123,11 @@ inline constexpr auto many_if(Parser p, Predicate pred) {
     return parser([=](auto &s) {
         Container c;
         auto result = p(s);
-        while (result.second && pred(*result.second)) {
-            c.push_back(*result.second);
-            result = p(result.first);
+        while (result && pred(*result)) {
+            c.push_back(*result);
+            result = p(s);
         }
-        return return_success(result.first, std::move(c));
+        return return_success(std::move(c));
     });
 }
 
@@ -153,12 +153,12 @@ inline constexpr auto many_if_to_state(Parser p, Predicate pred, Accessor acc) {
         auto result = p(s);
         std::decay_t<decltype(acc(s.user_state).size())> number_of_results = 0;
         auto &c = acc(s.user_state);
-        while (result.second && pred(*result.second)) {
-            c.emplace_back(std::move(*result.second));
-            result = p(result.first);
+        while (result && pred(*result)) {
+            c.emplace_back(std::move(*result));
+            result = p(s);
             ++number_of_results;
         }
-        return return_success(result.first, number_of_results);
+        return return_success(number_of_results);
     });
 }
 
@@ -194,14 +194,14 @@ inline constexpr auto many_to_state(Parser p) {
 // Compile time recursive resolver for lifting of arbitrary number of parsers
 template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
-    if (auto res = p(s); res.second) {
-        return return_success(s, f(*res.second));
+    if (auto res = p(s); res) {
+        return return_success(f(*res));
     } else if constexpr (sizeof...(ps) > 0) {
         return lift_or_rec(s, f, ps...);
     } else {
         // All parsers failed
-        using result_type = std::decay_t<decltype(f(*p(s).second))>;
-        return return_fail_type<result_type>(s);
+        using result_type = std::decay_t<decltype(f(*p(s)))>;
+        return return_fail_type<result_type>();
     }
 }
 
