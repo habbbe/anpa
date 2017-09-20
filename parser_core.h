@@ -161,14 +161,14 @@ struct can_call_test
 };
 
 template<typename T>
-constexpr bool is_string_view(T&&) { return decltype(can_call_test::f<T>(0)){}; }
+constexpr bool is_string_view() { return decltype(can_call_test::f<T>(0)){}; }
 
 /**
  * Helper function for removing prefix from std::string or std::string_view.
  */
 template <typename S>
 static constexpr auto remove_prefix(S &s, size_t size) {
-    if constexpr (is_string_view(s)) {
+    if constexpr (is_string_view<S>()) {
          s.remove_prefix(size);
     } else {
         s.erase(0, size);
