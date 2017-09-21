@@ -136,7 +136,7 @@ inline constexpr auto many_if(Parser p, Predicate pred) {
  */
 template <typename Container, typename Parser>
 inline constexpr auto many_value(Parser p) {
-    return many_if<Container>(p, []([[maybe_unused]]auto a){return true;});
+    return many_if<Container>(p, [](auto &){return true;});
 }
 
 /**
@@ -178,7 +178,7 @@ inline constexpr auto many_if_to_state(Parser p, Predicate pred) {
  */
 template <typename Parser, typename Accessor>
 inline constexpr auto many_to_state(Parser p, Accessor acc) {
-    return many_if_to_state(p, [](auto &v) {return true;}, acc);
+    return many_if_to_state(p, [](auto &) {return true;}, acc);
 }
 
 /**

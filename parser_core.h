@@ -31,8 +31,8 @@ struct parser;
  */
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
-    return parser([=]([[maybe_unused]]auto &s) {
-        return return_success(T(args...));
+    return parser([=](auto &) {
+        return return_success(T(std::move(args)...));
     });
 }
 
@@ -40,8 +40,8 @@ constexpr auto mreturn_forward(Args&&... args) {
  * Lift a value to the parser monad
  */
 template <typename T>
-constexpr auto mreturn(T t) {
-    return parser([=]([[maybe_unused]]auto &s) {
+constexpr auto mreturn(T&& t) {
+    return parser([=](auto &) {
         return return_success(std::move(t));
     });
 }
@@ -55,7 +55,7 @@ struct parser_state_simple {
     StringType rest;
     constexpr parser_state_simple(StringType rest) : rest{rest} {}
 private:
-    parser_state_simple(const parser_state_simple &other) {}
+    parser_state_simple(const parser_state_simple &other) = delete;
 };
 
 /**

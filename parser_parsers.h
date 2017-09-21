@@ -18,7 +18,7 @@ inline constexpr auto success() {
  * Parser that always fails
  */
 inline constexpr auto fail() {
-    return parser([=](auto &s) {
+    return parser([=](auto &) {
         return return_fail_type<bool>();
     });
 }
@@ -179,8 +179,8 @@ template <bool Nested = false, bool Eat = true, typename CharType, size_t NStart
 inline constexpr auto between_strings(const CharType (&start)[NStart], const CharType (&end)[NEnd]) {
 
     // Use faster comparison when the string is only one character long
-    [[maybe_unused]] constexpr auto compare_single = [](auto &s, auto start_index, [[maybe_unused]] auto length, auto toCompare) {
-        return s[start_index] == toCompare[0];
+    [[maybe_unused]] constexpr auto compare_single = [](auto &s, auto start_index, auto, auto toCompare) {
+        return s[start_index] == *toCompare;
     };
     [[maybe_unused]] constexpr auto compare_str = [](auto &s, auto start_index, auto length, auto toCompare) {
         return !s.compare(start_index, length, toCompare);
@@ -201,7 +201,7 @@ inline constexpr auto between_strings(const CharType (&start)[NStart], const Cha
  */
 template <bool Eat = true, typename CharType>
 inline constexpr auto between_tokens(const CharType start, const CharType end) {
-    constexpr auto compare_single = [](auto &s, auto start_index, [[maybe_unused]] auto length, auto toCompare) {
+    constexpr auto compare_single = [](auto &s, auto start_index, auto, auto toCompare) {
         return s[start_index] == toCompare;
     };
     return between_general<1, 1, false, Eat>(start, end, compare_single, compare_single);
