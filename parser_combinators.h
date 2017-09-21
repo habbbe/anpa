@@ -21,15 +21,12 @@ inline constexpr auto succeed(Parser p) {
 }
 
 /**
- * Transform a parser to a parser that fails on a successful, but empty result
+ * Transform a parser to a parser that fails on a successful, but empty result (as decided by std::empty)
  */
 template <typename Parser>
 inline constexpr auto not_empty(Parser p) {
     return parser([=](auto &s) {
-        constexpr auto empty = [](auto& v) {
-            return std::empty(v);
-        };
-        if (auto result = p(s); result && !empty(*result)) {
+        if (auto result = p(s); result && !std::empty(*result)) {
             return return_success(*result);
         }
         using return_type = std::decay_t<decltype(*p(s))>;
