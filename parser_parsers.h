@@ -83,7 +83,8 @@ inline constexpr auto consume(unsigned int n) {
 template <typename CharType, bool Eat = true>
 inline constexpr auto until_token(const CharType c) {
     return parser([=](auto &s) {
-        if (auto pos = s.rest.find_first_of(c); pos != std::decay_t<decltype(s.rest)>::npos) {
+        auto pos = s.rest.find_first_of(c);
+        if (pos != std::decay_t<decltype(s.rest)>::npos) {
             constexpr auto end = Eat ? 0 : 1;
             auto res = s.rest.substr(0, pos + end);
             remove_prefix(s.rest, pos+1);
