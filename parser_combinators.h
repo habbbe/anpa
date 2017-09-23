@@ -44,14 +44,11 @@ inline constexpr auto try_parser(Parser p) {
     return parser([=](auto &s) {
         // Make copy of rest of string to parse
         auto str_copy = s.rest;
-        if (auto result = p(s)) {
-            return result;
-        } else {
-            using return_type = std::decay_t<decltype(*result)>;
-            // Move back the old string
+        auto result = p(s);
+        if (!result) {
             s.rest = std::move(str_copy);
-            return std::optional<return_type>{};
         }
+        return result;
     });
 }
 
@@ -74,22 +71,14 @@ inline constexpr auto no_consume(Parser p) {
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
-    using R1 = decltype(*p1({}));
-    using R2 = decltype(*p2({}));
     return parser([=](auto &s) {
+        using R1 = decltype(*p1(s));
+        using R2 = decltype(*p2(s));
         if constexpr (std::is_same_v<R1, R2>) {
-            if (auto result1 = p1(s)) {
-                return result1;
-            } else if (auto result2 = p2(s)) {
-                return result2;
-            } else {
-                using return_type = decltype(p1(s));
-                return return_type{};
-            }
+            auto result1 = p1(s);
+            return result1 ?: p2(s);
         } else {
-            if (auto result1 = p1(s)) {
-                return return_success(true);
-            } else if (auto result2 = p2(s)) {
+            if (p1(s) || p2(s)) {
                 return return_success(true);
             } else {
                 return return_fail_type<bool>();
@@ -126,7 +115,7 @@ inline constexpr auto many_if(Parser p, Predicate pred) {
             c.push_back(*result);
             result = p(s);
         }
-        return return_success(std::move(c));
+        return return_success(c);
     });
 }
 

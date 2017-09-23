@@ -9,28 +9,32 @@
 using namespace std;
 
 struct row {
-    row(std::string_view firstName, std::string_view lastName) : firstName{firstName}, lastName{lastName} {}
+    template <typename StringType1, typename StringType2>
+    row(StringType1 firstName, StringType2 lastName) : firstName{firstName}, lastName{lastName} {}
 
     std::string firstName;
     std::string lastName;
 };
 
-using command = std::pair<std::string, std::string>;
-
 struct action {
-    command com;
-    action(command com) : com{com} {}
+    std::string name;
+    std::string com;
+    template <typename S1, typename S2>
+    action(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
 };
 
 struct info {
-    command com;
-    info(command com) : com{com} {}
+    std::string name;
+    std::string com;
+    template <typename S1, typename S2>
+    info(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
 };
 
 struct separator {};
 struct space {};
 struct syntax_error {
-    syntax_error(std::string_view s) : description{s}{}
+    template <typename StringType>
+    syntax_error(StringType s) : description{s} {}
     std::string description;
 };
 
@@ -45,17 +49,16 @@ syntax_error
 int main()
 {
 //    constexpr auto add_to_state = [] (auto &s, auto&&... args) {
-//        s.emplace_back(args()...);
+//        s.emplace_back(std::move(args)...);
 //        return true;
 //    };
 //    constexpr auto parse_name = parse::until_token('=');
 //    constexpr auto parse_cmd = parse::not_empty(parse::rest());
-//    constexpr auto parse_command = monad::lift_value_lazy_raw<command>(parse_name, parse_cmd);
-//    constexpr auto parse_action = parse::try_parser(parse::string("Com:") >> monad::lift_value_lazy<action>(parse_command));
-//    constexpr auto parse_info = parse::try_parser(parse::string("Info:") >> monad::lift_value_lazy<info>(parse_command));
-//    constexpr auto parse_separator = parse::string("Separator") >> parse::empty() >> parse::mreturn(lazy::make_lazy_value_forward<separator>());
-//    constexpr auto parse_space = parse::string("Space") >> parse::empty() >> parse::mreturn(lazy::make_lazy_value_forward<space>());
-//    constexpr auto parse_error = monad::lift_value_lazy_raw<syntax_error>(parse::rest());
+//    constexpr auto parse_action = parse::try_parser(parse::string("Com:") >> monad::lift_value<action>(parse_name, parse_cmd));
+//    constexpr auto parse_info = parse::try_parser(parse::string("Info:") >> monad::lift_value<info>(parse_name, parse_cmd));
+//    constexpr auto parse_separator = parse::string("Separator") >> parse::empty() >> parse::mreturn_forward<separator>();
+//    constexpr auto parse_space = parse::string("Space") >> parse::empty() >> parse::mreturn_forward<space>();
+//    constexpr auto parse_error = monad::lift_value<syntax_error>(parse::rest());
 //    constexpr auto entry_parser = parse::lift_or_state(add_to_state, parse_action, parse_info, parse_separator, parse_space, parse_error);
 //    std::vector<item> r;
 //    std::ifstream t("hub");

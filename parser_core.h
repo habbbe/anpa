@@ -32,7 +32,7 @@ struct parser;
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
     return parser([=](auto &) {
-        return return_success(T(std::move(args)...));
+        return std::make_optional<T>(args...);
     });
 }
 
@@ -42,7 +42,7 @@ constexpr auto mreturn_forward(Args&&... args) {
 template <typename T>
 constexpr auto mreturn(T&& t) {
     return parser([=](auto &) {
-        return return_success(std::move(t));
+        return std::make_optional(t);
     });
 }
 
@@ -131,8 +131,7 @@ struct parser {
 template <typename Parser, typename F>
 static constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto &s) {
-        auto result = p(s);
-        if (result) {
+        if (auto result = p(s)) {
             return f(*result)(s);
         } else {
             using new_return_type = std::decay_t<decltype(f(*result)(s))>;
