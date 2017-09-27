@@ -17,9 +17,10 @@ inline constexpr auto success() {
 /**
  * Parser that always fails
  */
+template <typename T = bool>
 inline constexpr auto fail() {
     return parser([=](auto &) {
-        return return_fail_type<bool>();
+        return return_fail_type<T>();
     });
 }
 
@@ -266,11 +267,15 @@ inline constexpr auto integer() {
     constexpr auto integer_parser = [](bool addMinus) {
         return while_in("0123456789") >>= [addMinus](auto& res) {
             std::string str(res);
-            return mreturn(std::stoi("-" + str));
+            if constexpr (Signed)
+                return mreturn(std::stoi((addMinus ? "-" : "") + str));
+            else
+                return mreturn(unsigned(std::stoul(str)));
+
         };
     };
     if constexpr (Signed) {
-        return succeed(string("-")) >>= [](bool hasMinus) {
+        return succeed(token('-')) >>= [](bool hasMinus) {
             return integer_parser(hasMinus);
         };
     } else {
