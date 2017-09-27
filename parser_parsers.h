@@ -37,6 +37,19 @@ inline constexpr auto empty() {
 }
 
 /**
+ * Parser for any character
+ */
+inline constexpr auto any_token() {
+    return parser([=](auto &s) {
+        if (s.rest.empty())
+            return return_fail_type<char>();
+        auto front = s.rest.front();
+        remove_prefix(s.rest, 1);
+        return return_success(front);
+    });
+}
+
+/**
  * Parser for a single character
  */
 inline constexpr auto token(const char c) {
