@@ -251,7 +251,7 @@ inline constexpr auto between_token(const CharType c) {
 template <bool Signed = true>
 inline constexpr auto integer() {
     constexpr auto integer_parser = [](bool addMinus) {
-        while_in("0123456789") >>= [addMinus](auto& res) {
+        return while_in("0123456789") >>= [addMinus](auto& res) {
             std::string str(res);
             return mreturn(std::stoi("-" + str));
         };
