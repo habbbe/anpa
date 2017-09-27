@@ -6,7 +6,7 @@
 #include <variant>
 #include "parser.h"
 
-using namespace std;
+//using namespace std;
 
 struct row {
     template <typename StringType1, typename StringType2>
@@ -76,11 +76,11 @@ int main()
         entry_parser.parse_with_state(std::string_view(line), r);
 //        auto result = entry_parser.parse(std::string_view(line));
 //        if (result.second) {
-//            r.emplace_back(*result.second);
+//            r.emplace_back(std::move(*result.second));
 //        }
     }
 
-    cout << "Size: " << r.size() << endl;
+    std::cout << "Size: " << r.size() << std::endl;
 
     return 0;
 }

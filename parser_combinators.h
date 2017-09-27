@@ -120,6 +120,23 @@ inline constexpr auto many_if(Parser p, Predicate pred) {
 }
 
 /**
+ * Create a parser that applies a parser multiple times and returns the number it succeeds.
+ * Useful when applying parses to state.
+ */
+template <typename Parser>
+inline constexpr auto many_simple(Parser p) {
+    return parser([=](auto &s) {
+        auto result = p(s);
+        size_t successes = 0;
+        while (result) {
+            result = p(s);
+            ++successes;
+        }
+        return return_success(successes);
+    });
+}
+
+/**
  * Create a parser that applies a parser until it fails
  */
 template <typename Container, typename Parser>
@@ -180,12 +197,17 @@ inline constexpr auto many_to_state(Parser p) {
 }
 
 // Compile time recursive resolver for lifting of arbitrary number of parsers
-template <typename State, typename F, typename Parser, typename... Parsers>
+template <bool Move, typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     if (auto result = p(s)) {
-        return return_success(f(*result));
+        // We can move the result when we have control over the supplied function
+        if constexpr (Move) {
+            return return_success(f(std::move(*result)));
+        } else {
+            return return_success(f(*result));
+        }
     } else if constexpr (sizeof...(ps) > 0) {
-        return lift_or_rec(s, f, ps...);
+        return lift_or_rec<Move>(s, f, ps...);
     } else {
         // All parsers failed
         using result_type = std::decay_t<decltype(f(*result))>;
@@ -201,7 +223,7 @@ static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps)
 template <typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
     return parser([=](auto &s) {
-        return lift_or_rec(s, f, p, ps...);
+        return lift_or_rec<false>(s, f, p, ps...);
     });
 }
 
@@ -212,10 +234,10 @@ inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
 template <typename Fun, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
     return parser([=](auto &s) {
-        auto to_apply = [f, &s] (auto&& val) {
-             return f(s.user_state, std::forward<decltype(val)>(val));
+        auto to_apply = [f, &s] (auto &val) {
+             return f(s.user_state, val);
         };
-        return lift_or_rec(s, to_apply, p, ps...);
+        return lift_or_rec<false>(s, to_apply, p, ps...);
     });
 }
 
@@ -227,7 +249,9 @@ template <typename T, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_value(Parser p, Parsers... ps) {
     return parser([=](auto &s) {
         constexpr auto construct = [](auto&& arg) {return T(std::forward<decltype(arg)>(arg));};
-        return lift_or_rec(s, construct, p, ps...);
+        // We let the recursive function move the argument into the above function because the caller
+        // will never see it anyway.
+        return lift_or_rec<true>(s, construct, p, ps...);
     });
 }
 
@@ -242,7 +266,7 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
         constexpr auto construct = [](auto arg) {
             return T(arg());
         };
-        return lift_or_rec(s, construct, p, ps...);
+        return lift_or_rec<false>(s, construct, p, ps...);
     });
 }
 

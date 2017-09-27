@@ -78,7 +78,8 @@ inline constexpr auto consume(unsigned int n) {
 
 /**
  * Parser for consuming all characters up until a certain character
- * Use boolean template parameter `Eat` to control whether or not the
+ * Use boolean template parameter `Eat` to control whether or not to
+ * include the matched token in the result.
  */
 template <typename CharType, bool Eat = true>
 inline constexpr auto until_token(const CharType c) {
@@ -96,6 +97,26 @@ inline constexpr auto until_token(const CharType c) {
 }
 
 /**
+ * Parser for consuming all characters up until a certain string
+ * Use boolean template parameter `Eat` to control whether or not to
+ * include the matched string in the result
+ */
+template <size_t N, bool Eat = true>
+inline constexpr auto until_string(const char (&str)[N]) {
+    return parser([=](auto &s) {
+        auto pos = s.rest.find(str);
+        if (pos != std::decay_t<decltype(s.rest)>::npos) {
+            auto end_pos = pos + (Eat ? 0 : N - 1);
+            auto res = s.rest.substr(0, end_pos);
+            remove_prefix(s.rest, pos + N - 1);
+            return return_success(res);
+        } else {
+            return return_fail<decltype(s)>();
+        }
+    });
+}
+
+/**
  * Parser for the rest for the string
  */
 inline constexpr auto rest() {
@@ -104,6 +125,13 @@ inline constexpr auto rest() {
         s.rest = "";
         return return_success(res);
     });
+}
+
+/**
+ * Parser for the rest of the line
+ */
+inline constexpr auto rest_of_line() {
+    return parse::until_string("\r\n") || parse::until_token('\r') || parse::until_token('\n');
 }
 
 /**
@@ -223,7 +251,7 @@ inline constexpr auto between_token(const CharType c) {
 template <bool Signed = true>
 inline constexpr auto integer() {
     constexpr auto integer_parser = [](bool addMinus) {
-        while_in("0123456789") >>= [addMinus](auto&& res) {
+        while_in("0123456789") >>= [addMinus](auto& res) {
             std::string str(res);
             return mreturn(std::stoi("-" + str));
         };
