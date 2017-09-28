@@ -2,31 +2,32 @@
 #define PARSER_CORE_H
 
 #include <optional>
+//#include <variant>
 
 namespace parse {
 
-// Convenience function for returning a failed parse. Default result to the string type used.
-template <typename State>
-static constexpr auto return_fail() {
-    return std::optional<typename std::decay_t<State>::string_type>{};
-}
+//template <typename T>
+//using variant = std::variant<const char *, T>;
 
 // Convenience function for returning a failed parse with state and type of result.
 template <typename Res>
-static constexpr auto return_fail_type() {
+static constexpr auto return_fail() {
     return std::optional<std::decay_t<Res>>{};
+//    return variant<std::decay_t<Res>>(std::in_place_index_t<0>(), error);
 }
 
 // Convenience function for returning a succesful parse.
 template <typename Res>
 static constexpr auto return_success(Res&& res) {
     return std::make_optional(std::forward<Res>(res));
+//    return variant<std::decay_t<Res>>(std::in_place_index_t<1>(), std::forward<Res>(res));
 }
 
 // Convenience function for returning a succesful parse.
 template <typename T, typename... Res>
 static constexpr auto return_success_forward(Res&&... res) {
     return std::make_optional<T>(std::forward<Res>(res)...);
+//    return variant<T>(std::in_place_index_t<1>(), std::forward<Res>(res)...);
 }
 
 /**
@@ -35,15 +36,27 @@ static constexpr auto return_success_forward(Res&&... res) {
 template <typename Result>
 static constexpr bool has_result(Result&& r) {
     return r.has_value();
+//    return r.index() == 1;
 }
 
 /**
- * Unpack the result to the underlying type.
- * Note: Has undefined behavior if the result is not successful. Check has_result before.
+ * Unpack the result to the underlying successful result.
+ * Note: Has undefined behavior if the result is not successful. Check has_result() before.
  */
 template <typename Result>
 static constexpr decltype(auto) get_result(Result&& r) {
     return *r;
+//    return std::get<1>(r);
+}
+
+/**
+ * Unpack the result to the underlying error.
+ * Note: Has undefined behavior if the result is successful. Check !has_result() before.
+ */
+template <typename Result>
+static constexpr decltype(auto) get_error(Result&& r) {
+    return false;
+//    return std::get<0>(r);
 }
 
 template <typename P>
@@ -91,7 +104,7 @@ static constexpr auto operator>>=(Parser p, F f) {
             return f(get_result(result))(s);
         } else {
             using new_return_type = std::decay_t<decltype(get_result(f(get_result(result))(s)))>;
-            return return_fail_type<new_return_type>();
+            return return_fail<new_return_type>();
         }
     });
 }

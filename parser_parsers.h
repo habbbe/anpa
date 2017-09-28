@@ -20,7 +20,7 @@ inline constexpr auto success() {
 template <typename T = bool>
 inline constexpr auto fail() {
     return parser([=](auto &) {
-        return return_fail_type<T>();
+        return return_fail<T>();
     });
 }
 
@@ -33,7 +33,7 @@ inline constexpr auto empty() {
             return return_success(true);
         }
 
-        return return_fail_type<bool>();
+        return return_fail<bool>();
     });
 }
 
@@ -43,7 +43,7 @@ inline constexpr auto empty() {
 inline constexpr auto any_token() {
     return parser([=](auto &s) {
         if (s.rest.empty())
-            return return_fail_type<char>();
+            return return_fail<char>();
         auto front = s.rest.front();
         remove_prefix(s.rest, 1);
         return return_success(front);
@@ -56,7 +56,7 @@ inline constexpr auto any_token() {
 inline constexpr auto token(const char c) {
     return parser([=](auto &s) {
         if (s.rest.empty() || s.rest.front() != c)
-            return return_fail_type<char>();
+            return return_fail<char>();
         auto front = s.rest.front();
         remove_prefix(s.rest, 1);
         return return_success(front);
@@ -70,7 +70,7 @@ template <int N>
 inline constexpr auto string(const char (&str)[N]) {
     return parser([=](auto &s) {
         if (s.rest.length() < N-1 || s.rest.compare(0, N-1, str) != 0)
-            return return_fail<decltype(s)>();
+            return return_fail<decltype(s.rest)>();
         auto res = s.rest.substr(0, N-1);
         remove_prefix(s.rest, N-1);
         return return_success(res);
@@ -83,7 +83,7 @@ inline constexpr auto string(const char (&str)[N]) {
 inline constexpr auto consume(unsigned int n) {
     return parser([=](auto &s) {
         if (s.rest.length() < n)
-            return return_fail<decltype(s)>();
+            return return_fail<decltype(s.rest)>();
         auto res = s.rest.substr(0, n);
         remove_prefix(s.rest, n);
         return return_success(res);
@@ -105,7 +105,7 @@ inline constexpr auto until_token(const CharType c) {
             remove_prefix(s.rest, pos+1);
             return return_success(res);
         } else {
-            return return_fail<decltype(s)>();
+            return return_fail<decltype(s.rest)>();
         }
     });
 }
@@ -125,7 +125,7 @@ inline constexpr auto until_string(const char (&str)[N]) {
             remove_prefix(s.rest, pos + N - 1);
             return return_success(res);
         } else {
-            return return_fail<decltype(s)>();
+            return return_fail<decltype(s.rest)>();
         }
     });
 }
@@ -181,7 +181,7 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
             remove_prefix(s.rest, found);
             return return_success(result);
         } else {
-            return return_fail<decltype(s)>();
+            return return_fail<decltype(s.rest)>();
         }
     });
 }
@@ -189,11 +189,10 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
 // General matching algorithm with supplied equality functions.
 template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = true, typename Start, typename End, typename EqualStart, typename EqualEnd>
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
-
     return parser([=](auto &s) {
         auto len = s.rest.length();
         if (len == 0 || !equal_start(s.rest, 0, StartLength, start))
-            return return_fail<decltype(s)>();
+            return return_fail<decltype(s.rest)>();
 
         size_t to_match = 0;
         for (size_t i = StartLength; i<=len-EndLength;) {
@@ -215,7 +214,7 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
                 ++i;
             }
         }
-        return return_fail<decltype(s)>();
+        return return_fail<decltype(s.rest)>();
     });
 }
 

@@ -41,7 +41,7 @@ inline constexpr auto not_empty(Parser p) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(get_result(result))>;
-            return return_fail_type<return_type>();
+            return return_fail<return_type>();
         }
     });
 }
@@ -86,7 +86,7 @@ inline constexpr auto constrain(Predicate pred, Parser p) {
         if (has_result(result) && pred(get_result(result))) {
             return result;
         } else {
-            return return_fail_type<decltype(get_result(result))>();
+            return return_fail<decltype(get_result(result))>();
         }
     });
 }
@@ -107,7 +107,7 @@ inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
             if (p1(s) || p2(s)) {
                 return return_success(true);
             } else {
-                return return_fail_type<bool>();
+                return return_fail<bool>();
             }
         }
     });
@@ -279,7 +279,7 @@ static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps)
     } else {
         // All parsers failed
         using result_type = std::decay_t<decltype(f(get_result(result)))>;
-        return return_fail_type<result_type>();
+        return return_fail<result_type>();
     }
 }
 
