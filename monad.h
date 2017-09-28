@@ -13,6 +13,18 @@ inline constexpr auto operator>>(Monad1 m1, Monad2 m2) {
     };
 }
 
+/*
+ * Combine two monads, ignoring the result of the second one
+ */
+template <typename Monad1, typename Monad2>
+inline constexpr auto operator<<(Monad1 m1, Monad2 m2) {
+    return m1 >>= [=] (auto&& r) {
+        return m2 >>= [=](auto &&) {
+            return std::decay_t<Monad1>::mreturn(r);
+        };
+    };
+}
+
 namespace monad {
 
 /**

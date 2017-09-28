@@ -23,6 +23,29 @@ static constexpr auto return_success(Res&& res) {
     return std::make_optional(std::forward<Res>(res));
 }
 
+// Convenience function for returning a succesful parse.
+template <typename T, typename... Res>
+static constexpr auto return_success_forward(Res&&... res) {
+    return std::make_optional<T>(std::forward<Res>(res)...);
+}
+
+/**
+ * Check if the result is a successful one
+ */
+template <typename Result>
+static constexpr bool has_result(Result&& r) {
+    return r.has_value();
+}
+
+/**
+ * Unpack the result to the underlying type.
+ * Note: Has undefined behavior if the result is not successful. Check has_result before.
+ */
+template <typename Result>
+static constexpr decltype(auto) get_result(Result&& r) {
+    return *r;
+}
+
 template <typename P>
 struct parser;
 
@@ -32,7 +55,7 @@ struct parser;
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
     return parser([=](auto &) {
-        return std::make_optional<T>(args...);
+        return return_success_forward<T>(args...);
     });
 }
 
@@ -42,7 +65,7 @@ constexpr auto mreturn_forward(Args&&... args) {
 template <typename T>
 constexpr auto mreturn(T&& t) {
     return parser([=](auto &) {
-        return std::make_optional(t);
+        return return_success(t);
     });
 }
 
@@ -57,6 +80,21 @@ struct parser_state_simple {
 private:
     parser_state_simple(const parser_state_simple &other) = delete;
 };
+
+/**
+ * Monadic bind for the parser
+ */
+template <typename Parser, typename F>
+static constexpr auto operator>>=(Parser p, F f) {
+    return parser([=](auto &s) {
+        if (auto result = p(s); has_result(result)) {
+            return f(get_result(result))(s);
+        } else {
+            using new_return_type = std::decay_t<decltype(get_result(f(get_result(result))(s)))>;
+            return return_fail_type<new_return_type>();
+        }
+    });
+}
 
 /**
  * Class for the parser state. Contains the rest of the string to be parsed, along
@@ -124,21 +162,6 @@ struct parser {
         return parse::mreturn(std::forward<T>(v));
     }
 };
-
-/**
- * Monadic bind for the parser
- */
-template <typename Parser, typename F>
-static constexpr auto operator>>=(Parser p, F f) {
-    return parser([=](auto &s) {
-        if (auto result = p(s)) {
-            return f(*result)(s);
-        } else {
-            using new_return_type = std::decay_t<decltype(f(*result)(s))>;
-            return new_return_type({});
-        }
-    });
-}
 
 // For the below remove_prefix
 struct can_call_test

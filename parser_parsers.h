@@ -136,7 +136,7 @@ inline constexpr auto until_string(const char (&str)[N]) {
 inline constexpr auto rest() {
     return parser([=](auto &s) {
         auto res = s.rest;
-        s.rest = "";
+        s.rest = std::decay_t<decltype(s.rest)>();
         return return_success(res);
     });
 }
@@ -146,6 +146,13 @@ inline constexpr auto rest() {
  */
 inline constexpr auto rest_of_line() {
     return parse::until_string("\r\n") || parse::until_token('\r') || parse::until_token('\n');
+}
+
+/**
+ * Parser for the rest of the line
+ */
+inline constexpr auto end_of_line() {
+    return parse::string("\r\n") || parse::string("\r") || parse::string("\n");
 }
 
 /**
@@ -173,8 +180,9 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
             auto result = s.rest.substr(0, found);
             remove_prefix(s.rest, found);
             return return_success(result);
+        } else {
+            return return_fail<decltype(s)>();
         }
-        return return_fail<decltype(s)>();
     });
 }
 
@@ -264,7 +272,7 @@ inline constexpr auto between_token(const CharType c) {
  */
 template <bool Signed = true>
 inline constexpr auto integer() {
-    constexpr auto integer_parser = [](bool addMinus) {
+    [[maybe_unused]] constexpr auto integer_parser = [](bool addMinus) {
         return while_in("0123456789") >>= [addMinus](auto& res) {
             std::string str(res);
             if constexpr (Signed)
