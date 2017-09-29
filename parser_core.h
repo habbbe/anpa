@@ -54,7 +54,7 @@ static constexpr decltype(auto) get_result(Result&& r) {
  * Note: Has undefined behavior if the result is successful. Check !has_result() before.
  */
 template <typename Result>
-static constexpr decltype(auto) get_error(Result&& r) {
+static constexpr decltype(auto) get_error(Result&&) {
     return false;
 //    return std::get<0>(r);
 }

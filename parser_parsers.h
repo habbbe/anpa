@@ -271,8 +271,8 @@ inline constexpr auto between_token(const CharType c) {
  */
 template <bool Signed = true>
 inline constexpr auto integer() {
-    [[maybe_unused]] constexpr auto integer_parser = [](bool addMinus) {
-        return while_in("0123456789") >>= [addMinus](auto& res) {
+    constexpr auto integer_parser = [](bool addMinus) {
+        return while_in("0123456789") >>= [=](auto& res) {
             std::string str(res);
             if constexpr (Signed)
                 return mreturn(std::stoi((addMinus ? "-" : "") + str));
@@ -282,12 +282,108 @@ inline constexpr auto integer() {
         };
     };
     if constexpr (Signed) {
-        return succeed(token('-')) >>= [](bool hasMinus) {
+        return succeed(token('-')) >>= [integer_parser](bool hasMinus) {
             return integer_parser(hasMinus);
         };
     } else {
         return integer_parser(false);
     }
+}
+
+
+/**
+ * Parser for numbers using provided c call (strtol, strotof and friends).
+ * This is fast, but doesn't behave correctly at the end of string types that aren't
+ * null terminated in their underlying data array.
+ */
+template <typename Ret, typename ReturnType = Ret, typename CharType, typename... Base>
+static inline constexpr auto convert_to_num(Ret (*c)(const CharType*, CharType**, Base...), Base... base) {
+    return parser([=](auto &s) {
+        const CharType *begin = s.rest.data();
+        CharType* end;
+        errno = 0;
+        Ret result = c(begin, &end, base...);
+        if (begin == end || errno == ERANGE ||
+                   (std::is_integral<ReturnType>::value && sizeof(int) == sizeof(ReturnType) &&
+                    (result < std::numeric_limits<ReturnType>::min() || result > std::numeric_limits<ReturnType>::max()))) {
+            return return_fail<ReturnType>();
+        } else {
+            remove_prefix(s.rest, end - begin);
+            return return_success(ReturnType(result));
+        }
+    });
+}
+
+/**
+ * Parse an integer.
+ * Note: Doesn't behave correctly at the end of non null terminated strings.
+ * Also consumes any whitespace before the number.
+ */
+inline constexpr auto integer_fast(int base = 10) {
+    return convert_to_num<long, int>(std::strtol, base);
+}
+
+/**
+ * Parse an unsigned integer.
+ * Note: Doesn't behave correctly at the end of non null terminated strings.
+ * Also consumes any whitespace before the number.
+ */
+inline constexpr auto unsigned_integer_fast(int base = 10) {
+    return convert_to_num<unsigned long, unsigned int>(std::strtoul, base);
+}
+
+/**
+ * Parse a long integer.
+ * Note: Doesn't behave correctly at the end of non null terminated strings.
+ * Also consumes any whitespace before the number.
+ */
+inline constexpr auto long_fast(int base = 10) {
+    return convert_to_num(std::strtol, base);
+}
+
+/**
+ * Parse an unsigned long integer.
+ * Note: Doesn't behave correctly at the end of non null terminated strings.
+ * Also consumes any whitespace before the number.
+ */
+inline constexpr auto unsigned_long_fast(int base = 10) {
+    return convert_to_num(std::strtoul, base);
+}
+
+/**
+ * Parse a long long integer.
+ * Note: Doesn't behave correctly at the end of non null terminated strings.
+ * Also consumes any whitespace before the number.
+ */
+inline constexpr auto long_long_fast(int base = 10) {
+    return convert_to_num(std::strtoll, base);
+}
+
+/**
+ * Parse an unsigned long long integer.
+ * Note: Doesn't behave correctly at the end of non null terminated strings.
+ * Also consumes any whitespace before the number.
+ */
+inline constexpr auto unsigned_long_long_fast(int base = 10) {
+    return convert_to_num(std::strtoull, base);
+}
+
+/**
+ * Parse a double.
+ * Note: Doesn't behave correctly at the end of non null terminated strings
+ * Also consumes any whitespace before the number.
+ */
+inline constexpr auto double_fast() {
+    return convert_to_num(std::strtod);
+}
+
+/**
+ * Parse a float.
+ * Note: Doesn't behave correctly at the end of non null terminated strings
+ * Also consumes any whitespace before the number.
+ */
+inline constexpr auto float_fast() {
+    return convert_to_num<float>(std::strtof);
 }
 
 /**

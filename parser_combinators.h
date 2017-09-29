@@ -204,7 +204,6 @@ template <typename Container, typename Parser>
 inline constexpr auto many(Parser p) {
     return parser([=](auto &s) {
         Container c;
-        auto result = p(s);
         for (auto result = p(s); has_result(result); result = p(s)) {
             c.push_back(get_result(result));
         }
