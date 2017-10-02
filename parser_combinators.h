@@ -355,8 +355,12 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
     });
 }
 
+/**
+ * Create a parser that parses the result of `p1` with `p2`.
+ * Useful for parsing the content between brackets.
+ */
 template <typename Parser1, typename Parser2>
-inline constexpr auto parse_result_from(Parser1 p1, Parser2 p2) {
+inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
     return parser([=](auto &s) {
         auto result = p1(s);
         if (has_result(result)) {
@@ -371,6 +375,13 @@ inline constexpr auto parse_result_from(Parser1 p1, Parser2 p2) {
     });
 }
 
+/**
+ * Parse all text until the supplied parser succeeds.
+ * Use template parameter `Eat` to specify whether to include the parsed string in
+ * the result or not.
+ * Note: For parsing until a certain string or token, use functions
+ * `until_token` and `until_string` instead, as they are more efficient.
+ */
 template <bool Eat = true, typename Parser>
 inline constexpr auto until(Parser p) {
     return parser([=](auto &s) {

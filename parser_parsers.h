@@ -43,7 +43,7 @@ inline constexpr auto any_token() {
     return parser([=](auto &s) {
         if (s.empty())
             return return_fail<char>();
-        auto front = s.text[s.position];
+        auto front = s.front();
         s.advance(1);
         return return_success(front);
     });
@@ -55,7 +55,7 @@ inline constexpr auto any_token() {
 inline constexpr auto token(const char c) {
     return parser([=](auto &s) {
         if (!s.empty()) {
-            auto front = s.text[s.position];
+            auto front = s.front();
             if (front == c) {
                 s.advance(1);
                 return return_success(front);
@@ -116,7 +116,8 @@ inline constexpr auto until_token(const CharType c) {
 /**
  * Parser for consuming all characters up until a certain string
  * Use boolean template parameter `Eat` to control whether or not to
- * include the matched string in the result
+ * include the matched string in the result.
+ * This is much faster than using until(string()).
  */
 template <size_t N, bool Eat = true>
 inline constexpr auto until_string(const char (&str)[N]) {
@@ -203,11 +204,11 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
         for (size_t i = s.position + StartLength; i<=len-EndLength;) {
             if (equal_end(s.text, i, EndLength, end)) {
                 if (to_match == 0) {
-                    constexpr size_t start_index = s.position + (Eat ? StartLength : 0);
+                    size_t start_index = s.position + (Eat ? StartLength : 0);
                     size_t size = Eat ? i - StartLength : i + EndLength;
                     auto res = s.text.substr(start_index, size);
                     s.advance(i + EndLength);
-                    return return_success(s, res);
+                    return return_success(res);
                 } else if (Nested) {
                     --to_match;
                     i += EndLength;
@@ -240,10 +241,10 @@ inline constexpr auto between_strings(const CharType (&start)[NStart], const Cha
         return !s.compare(start_index, length, toCompare);
     };
 
-    constexpr auto compare_start = []() {
+    constexpr auto compare_start = [=]() {
         if constexpr (NStart - 1 == 1) return compare_single; else return compare_str;
     }();
-    constexpr auto compare_end = []() {
+    constexpr auto compare_end = [=]() {
         if constexpr (NEnd - 1 == 1) return compare_single; else return compare_str;
     }();
 
@@ -253,20 +254,20 @@ inline constexpr auto between_strings(const CharType (&start)[NStart], const Cha
 /**
  * Parser that consumes all characters between the two supplied characters
  */
-template <bool Eat = true, typename CharType>
+template <bool Nested = false, bool Eat = true, typename CharType>
 inline constexpr auto between_tokens(const CharType start, const CharType end) {
     constexpr auto compare_single = [](auto &s, auto start_index, auto, auto toCompare) {
         return s[start_index] == toCompare;
     };
-    return between_general<1, 1, false, Eat>(start, end, compare_single, compare_single);
+    return between_general<1, 1, Nested, Eat>(start, end, compare_single, compare_single);
 }
 
 /**
  * Parser that consumes all characters between two of the supplied character
  */
-template <typename CharType, bool eat = true>
+template <typename CharType, bool Nested = false, bool Eat = true>
 inline constexpr auto between_token(const CharType c) {
-    return between_tokens(c, c);
+    return between_tokens<Nested, Eat>(c, c);
 }
 
 // CONVENIENCE PARSERS

@@ -73,6 +73,7 @@ struct parser_state_simple {
     size_t position = 0;
     constexpr parser_state_simple(const StringType& text) : text{text} {}
     constexpr parser_state_simple(const parser_state_simple &, StringType& text) : text{text} {}
+    auto front() {return text[position];}
     auto length() { return text.length() - position; }
     auto empty() {return length() < 1;}
     void advance(size_t n) {
@@ -154,7 +155,7 @@ struct parser {
     auto parse_with_state(const StringType &string, State &user_state) const {
         parser_state state(string, user_state);
         auto res = p(state);
-        return std::make_pair(std::move(state.text), std::move(res));
+        return std::make_pair(state.position, std::move(res));
     }
 
     /**
@@ -166,7 +167,7 @@ struct parser {
     auto parse(const StringType &string) const {
         auto state = parser_state_simple(string);
         auto res = p(state);
-        return std::make_pair(std::move(state.text), std::move(res));
+        return std::make_pair(state.position, std::move(res));
     }
 
     /**
@@ -185,33 +186,6 @@ struct parser {
         return parse::mreturn(std::forward<T>(v));
     }
 };
-
-// For the below remove_prefix
-struct can_call_test
-{
-    template<typename F>
-    static decltype(std::declval<F>().remove_prefix(0), std::true_type())
-    f(int);
-
-    template<typename F>
-    static std::false_type
-    f(...);
-};
-
-template<typename T>
-constexpr bool is_string_view() { return decltype(can_call_test::f<T>(0)){}; }
-
-/**
- * Helper function for removing prefix from std::string or std::string_view.
- */
-template <typename S>
-static constexpr auto remove_prefix(S &s, size_t size) {
-    if constexpr (is_string_view<S>()) {
-         s.remove_prefix(size);
-    } else {
-        s.erase(0, size);
-    }
-}
 
 }
 
