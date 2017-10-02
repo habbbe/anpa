@@ -35,7 +35,7 @@ static constexpr auto return_success_forward(Res&&... res) {
  */
 template <typename Result>
 static constexpr bool has_result(Result&& r) {
-    return r.has_value();
+    return r.operator bool();
 //    return r.index() == 1;
 }
 
@@ -148,8 +148,8 @@ struct parser {
 
     /**
      * Begin parsing with the user supplied string and state.
-     * The result is a std::pair with the unparsed string as first element and
-     * the result of the parse as the second.
+     * The result is a std::pair with the position of the first unparsed token as first
+     * element and the result of the parse as the second.
      */
     template <typename StringType, typename State>
     auto parse_with_state(const StringType &string, State &user_state) const {
@@ -160,8 +160,8 @@ struct parser {
 
     /**
      * Begin parsing with the user supplied string
-     * The result is a std::pair with the unparsed string as first element and
-     * the result of the parse as the second.
+     * The result is a std::pair with the position of the first unparsed token as first
+     * element and the result of the parse as the second.
      */
     template <typename StringType>
     auto parse(const StringType &string) const {

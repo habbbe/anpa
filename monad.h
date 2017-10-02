@@ -50,7 +50,7 @@ inline constexpr auto lift_inner2([[maybe_unused]] F f, Arg&& arg, Args&&... arg
         else
             return Monad::mreturn(f(std::forward<Arg>(arg), std::forward<Args>(args)...));
     } else {
-        return arg >>= [=](auto &v) {
+        return arg >>= [=](auto &&v) {
             return lift_inner2<T, Emplace, F, Monad, total - 1>(f, args..., v);
         };
     }

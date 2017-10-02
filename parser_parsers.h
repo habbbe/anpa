@@ -100,7 +100,7 @@ inline constexpr auto consume(unsigned int n) {
 template <typename CharType, bool Eat = true>
 inline constexpr auto until_token(const CharType c) {
     return parser([=](auto &s) {
-        auto pos = s.text.find_first_of(c);
+        auto pos = s.text.find_first_of(c, s.position);
         if (pos != std::decay_t<decltype(s.text)>::npos) {
             auto parsed_length_excluding_token = pos - s.position;
             auto parsed_length_including_token = parsed_length_excluding_token + 1;
@@ -182,6 +182,7 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
                 break;
             }
         }
+
         if (found > 0) {
             auto result = s.text.substr(s.position, found);
             s.advance(found);

@@ -10,7 +10,8 @@ namespace parse {
 
 /**
  * Transform a parser to a parser that always succeeds.
- * Will return true as result if the parser succeeded, and false otherwise
+ * Will return true as result if the parser succeeded, and false otherwise.
+ * The result of the parse will be ignored.
  */
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
@@ -115,7 +116,9 @@ inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
 }
 
 /**
- * Modify the supplied user state
+ * Modify the supplied user state.
+ * Will use the returned value from the user supplied function as result,
+ * or `true` if return type is `void`.
  */
 template <typename Fun>
 inline constexpr auto modify_state(Fun f) {
@@ -285,11 +288,11 @@ template <typename Parser>
 inline constexpr auto many_to_state(Parser p) {
     return many_to_state([](auto &s) -> auto& {return s;}, p);
 }
+
 // Compile time recursive resolver for lifting of arbitrary number of parsers
 template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     if (auto result = p(s); has_result(result)) {
-        // We can move the result when we have control over the supplied function
         return return_success(f(get_result(result)));
     } else if constexpr (sizeof...(ps) > 0) {
         return lift_or_rec(s, f, ps...);
