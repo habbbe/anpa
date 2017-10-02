@@ -2,6 +2,8 @@
 #define PARSER_COMBINATORS_H
 
 #include <type_traits>
+#include <unordered_map>
+#include <vector>
 #include "parser_core.h"
 
 namespace parse {
@@ -52,11 +54,10 @@ inline constexpr auto not_empty(Parser p) {
 template <typename Parser>
 inline constexpr auto try_parser(Parser p) {
     return parser([=](auto &s) {
-        // Make copy of rest of string to parse
-        auto str_copy = s.rest;
+        auto old_position = s.position;
         auto result = p(s);
         if (!has_result(result)) {
-            s.rest = std::move(str_copy);
+            s.position = old_position;
         }
         return result;
     });
@@ -68,9 +69,9 @@ inline constexpr auto try_parser(Parser p) {
 template <typename Parser>
 inline constexpr auto no_consume(Parser p) {
     return parser([=](auto &s) {
-        auto str_copy = s.rest;
+        auto old_position = s.position;
         auto result = p(s);
-        s.rest = std::move(str_copy);
+        s.position = old_position;
         return result;
     });
 }
@@ -197,17 +198,38 @@ inline constexpr auto emplace_back_to_state_direct(Parsers... ps) {
 }
 
 /**
- * Create a parser that applies a parser until it fails or until the result doesn't satisfy
- * the user provided criteria.
+ * General helper for functions that saves the results in collections.
  */
-template <typename Container, typename Parser>
-inline constexpr auto many(Parser p) {
+template <typename Container, typename State, typename Inserter, typename Parser>
+inline constexpr auto many_internal(State &s, Inserter insert, Parser p) {
+    Container c;
+    for (auto result = p(s); has_result(result); result = p(s)) {
+        insert(c, std::move(get_result(result)));
+    }
+    return return_success(c);
+}
+
+/**
+ * Create a parser that applies a parser until it fails and returns the result in a vector.
+ */
+template <typename Parser>
+inline constexpr auto many_to_vector(Parser p) {
     return parser([=](auto &s) {
-        Container c;
-        for (auto result = p(s); has_result(result); result = p(s)) {
-            c.push_back(get_result(result));
-        }
-        return return_success(c);
+        using result_type = std::decay_t<decltype(get_result(p(s)))>;
+        return many_internal<std::vector<result_type>>(s, [](auto &v, auto &&r){v.emplace_back(r);}, p);
+    });
+}
+
+/**
+ * Create a parser that applies a parser until it fails and returns the result in a vector.
+ */
+template <typename Parser>
+inline constexpr auto many_to_unordered_map(Parser p) {
+    return parser([=](auto &s) {
+        using result_type = std::decay_t<decltype(get_result(p(s)))>;
+        using key = typename result_type::first_type;
+        using value = typename result_type::second_type;
+        return many_internal<std::unordered_map<key, value>>(s, [](auto &m, auto &&r){m.insert(r);}, p);
     });
 }
 
@@ -264,17 +286,13 @@ inline constexpr auto many_to_state(Parser p) {
     return many_to_state([](auto &s) -> auto& {return s;}, p);
 }
 // Compile time recursive resolver for lifting of arbitrary number of parsers
-template <bool Move, typename State, typename F, typename Parser, typename... Parsers>
+template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     if (auto result = p(s); has_result(result)) {
         // We can move the result when we have control over the supplied function
-        if constexpr (Move) {
-            return return_success(f(std::move(get_result(result))));
-        } else {
-            return return_success(f(get_result(result)));
-        }
+        return return_success(f(get_result(result)));
     } else if constexpr (sizeof...(ps) > 0) {
-        return lift_or_rec<Move>(s, f, ps...);
+        return lift_or_rec(s, f, ps...);
     } else {
         // All parsers failed
         using result_type = std::decay_t<decltype(f(get_result(result)))>;
@@ -290,7 +308,7 @@ static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps)
 template <typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
     return parser([=](auto &s) {
-        return lift_or_rec<false>(s, f, p, ps...);
+        return lift_or_rec(s, f, p, ps...);
     });
 }
 
@@ -304,7 +322,7 @@ inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
         auto to_apply = [f, &s] (auto &val) {
              return f(s.user_state, val);
         };
-        return lift_or_rec<false>(s, to_apply, p, ps...);
+        return lift_or_rec(s, to_apply, p, ps...);
     });
 }
 
@@ -318,7 +336,7 @@ inline constexpr auto lift_or_value(Parser p, Parsers... ps) {
         constexpr auto construct = [](auto&& arg) {return T(std::forward<decltype(arg)>(arg));};
         // We let the recursive function move the argument into the above function because the caller
         // will never see it anyway.
-        return lift_or_rec<true>(s, construct, p, ps...);
+        return lift_or_rec(s, construct, p, ps...);
     });
 }
 
@@ -333,7 +351,40 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
         constexpr auto construct = [](auto arg) {
             return T(arg());
         };
-        return lift_or_rec<false>(s, construct, p, ps...);
+        return lift_or_rec(s, construct, p, ps...);
+    });
+}
+
+template <typename Parser1, typename Parser2>
+inline constexpr auto parse_result_from(Parser1 p1, Parser2 p2) {
+    return parser([=](auto &s) {
+        auto result = p1(s);
+        if (has_result(result)) {
+            auto result_text = get_result(result);
+            using state_type = std::decay_t<decltype(s)>;
+            state_type new_state(s, result_text);
+            auto new_result = p2(new_state);
+            return new_result;
+        } else {
+            return return_fail<decltype(get_result(p2(s)))>();
+        }
+    });
+}
+
+template <bool Eat = true, typename Parser>
+inline constexpr auto until(Parser p) {
+    return parser([=](auto &s) {
+        auto position_start = s.position;
+        auto position_end = position_start;
+        while (!has_result(p(s))) {
+            s.advance(1);
+            position_end = s.position;
+        }
+        if constexpr (Eat) {
+            return return_success(s.text.substr(position_start, position_end - position_start));
+        } else {
+            return return_success(s.text.substr(position_start, s.position - position_start));
+        }
     });
 }
 

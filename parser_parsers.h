@@ -9,8 +9,8 @@ namespace parse {
  * Parser that always succeeds
  */
 inline constexpr auto success() {
-    return parser([=](auto &s) {
-        return return_success(std::decay_t<decltype(s)>{});
+    return parser([=](auto &) {
+        return return_success(true);
     });
 }
 
@@ -29,10 +29,9 @@ inline constexpr auto fail() {
  */
 inline constexpr auto empty() {
     return parser([=](auto &s) {
-        if (s.rest.empty()) {
+        if (s.empty()) {
             return return_success(true);
         }
-
         return return_fail<bool>();
     });
 }
@@ -42,10 +41,10 @@ inline constexpr auto empty() {
  */
 inline constexpr auto any_token() {
     return parser([=](auto &s) {
-        if (s.rest.empty())
+        if (s.empty())
             return return_fail<char>();
-        auto front = s.rest.front();
-        remove_prefix(s.rest, 1);
+        auto front = s.text[s.position];
+        s.advance(1);
         return return_success(front);
     });
 }
@@ -55,11 +54,14 @@ inline constexpr auto any_token() {
  */
 inline constexpr auto token(const char c) {
     return parser([=](auto &s) {
-        if (s.rest.empty() || s.rest.front() != c)
-            return return_fail<char>();
-        auto front = s.rest.front();
-        remove_prefix(s.rest, 1);
-        return return_success(front);
+        if (!s.empty()) {
+            auto front = s.text[s.position];
+            if (front == c) {
+                s.advance(1);
+                return return_success(front);
+            }
+        }
+        return return_fail<char>();
     });
 }
 
@@ -69,10 +71,10 @@ inline constexpr auto token(const char c) {
 template <int N>
 inline constexpr auto string(const char (&str)[N]) {
     return parser([=](auto &s) {
-        if (s.rest.length() < N-1 || s.rest.compare(0, N-1, str) != 0)
-            return return_fail<decltype(s.rest)>();
-        auto res = s.rest.substr(0, N-1);
-        remove_prefix(s.rest, N-1);
+        if (s.length() < N-1 || s.text.compare(s.position, N-1, str) != 0)
+            return return_fail<decltype(s.text)>();
+        auto res = s.text.substr(s.position, N-1);
+        s.advance(N-1);
         return return_success(res);
     });
 }
@@ -82,10 +84,10 @@ inline constexpr auto string(const char (&str)[N]) {
  */
 inline constexpr auto consume(unsigned int n) {
     return parser([=](auto &s) {
-        if (s.rest.length() < n)
-            return return_fail<decltype(s.rest)>();
-        auto res = s.rest.substr(0, n);
-        remove_prefix(s.rest, n);
+        if (s.length() < n)
+            return return_fail<decltype(s.text)>();
+        auto res = s.text.substr(s.position, n);
+        s.advance(n);
         return return_success(res);
     });
 }
@@ -98,14 +100,15 @@ inline constexpr auto consume(unsigned int n) {
 template <typename CharType, bool Eat = true>
 inline constexpr auto until_token(const CharType c) {
     return parser([=](auto &s) {
-        auto pos = s.rest.find_first_of(c);
-        if (pos != std::decay_t<decltype(s.rest)>::npos) {
-            constexpr auto end = Eat ? 0 : 1;
-            auto res = s.rest.substr(0, pos + end);
-            remove_prefix(s.rest, pos+1);
+        auto pos = s.text.find_first_of(c);
+        if (pos != std::decay_t<decltype(s.text)>::npos) {
+            auto parsed_length_excluding_token = pos - s.position;
+            auto parsed_length_including_token = parsed_length_excluding_token + 1;
+            auto res = s.text.substr(s.position, (Eat ? parsed_length_excluding_token : parsed_length_including_token));
+            s.advance(parsed_length_including_token);
             return return_success(res);
         } else {
-            return return_fail<decltype(s.rest)>();
+            return return_fail<decltype(s.text)>();
         }
     });
 }
@@ -118,14 +121,16 @@ inline constexpr auto until_token(const CharType c) {
 template <size_t N, bool Eat = true>
 inline constexpr auto until_string(const char (&str)[N]) {
     return parser([=](auto &s) {
-        auto pos = s.rest.find(str);
-        if (pos != std::decay_t<decltype(s.rest)>::npos) {
-            auto end_pos = pos + (Eat ? 0 : N - 1);
-            auto res = s.rest.substr(0, end_pos);
-            remove_prefix(s.rest, pos + N - 1);
+        auto pos = s.text.find(str, s.position);
+        if (pos != std::decay_t<decltype(s.text)>::npos) {
+            constexpr auto str_length = N - 1;
+            auto parsed_size_excluding_string = pos - s.position;
+            auto parsed_size_including_string = parsed_size_excluding_string + str_length;
+            auto res = s.text.substr(s.position, Eat ? parsed_size_excluding_string : parsed_size_including_string);
+            s.advance(parsed_size_including_string);
             return return_success(res);
         } else {
-            return return_fail<decltype(s.rest)>();
+            return return_fail<decltype(s.text)>();
         }
     });
 }
@@ -135,8 +140,8 @@ inline constexpr auto until_string(const char (&str)[N]) {
  */
 inline constexpr auto rest() {
     return parser([=](auto &s) {
-        auto res = s.rest;
-        s.rest = std::decay_t<decltype(s.rest)>();
+        auto res = s.text.substr(s.position);
+        s.advance(s.length());
         return return_success(res);
     });
 }
@@ -169,19 +174,19 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
         };
 
         size_t found = 0;
-        for (size_t i = 0; i < s.rest.length(); ++i) {
-            if (contains(str, s.rest[i])) {
+        for (size_t i = s.position; i < s.text.length(); ++i) {
+            if (contains(str, s.text[i])) {
                 ++found;
             } else {
                 break;
             }
         }
         if (found > 0) {
-            auto result = s.rest.substr(0, found);
-            remove_prefix(s.rest, found);
+            auto result = s.text.substr(s.position, found);
+            s.advance(found);
             return return_success(result);
         } else {
-            return return_fail<decltype(s.rest)>();
+            return return_fail<decltype(s.text)>();
         }
     });
 }
@@ -190,34 +195,33 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
 template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = true, typename Start, typename End, typename EqualStart, typename EqualEnd>
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
-        auto len = s.rest.length();
-        if (len == 0 || !equal_start(s.rest, 0, StartLength, start))
-            return return_fail<decltype(s.rest)>();
+        if (s.empty() || !equal_start(s.text, s.position, StartLength, start))
+            return return_fail<decltype(s.text)>();
 
+        auto len = s.text.length();
         size_t to_match = 0;
-        for (size_t i = StartLength; i<=len-EndLength;) {
-            if (equal_end(s.rest, i, EndLength, end)) {
+        for (size_t i = s.position + StartLength; i<=len-EndLength;) {
+            if (equal_end(s.text, i, EndLength, end)) {
                 if (to_match == 0) {
-                    constexpr size_t finalStart = Eat ? StartLength : 0;
+                    constexpr size_t start_index = s.position + (Eat ? StartLength : 0);
                     size_t size = Eat ? i - StartLength : i + EndLength;
-                    auto res = s.rest.substr(finalStart, size);
-                    remove_prefix(s.rest, i + EndLength);
+                    auto res = s.text.substr(start_index, size);
+                    s.advance(i + EndLength);
                     return return_success(s, res);
-                } else if constexpr (Nested) {
+                } else if (Nested) {
                     --to_match;
                     i += EndLength;
                 }
-            } else if (Nested && equal_start(s.rest, i, StartLength, start)) {
+            } else if (Nested && equal_start(s.text, i, StartLength, start)) {
                 ++to_match;
                 i += StartLength;
             } else {
                 ++i;
             }
         }
-        return return_fail<decltype(s.rest)>();
+        return return_fail<decltype(s.text)>();
     });
 }
-
 
 /**
  * Parser that consumes all characters between the two supplied strings.
@@ -299,7 +303,7 @@ inline constexpr auto integer() {
 template <typename Ret, typename ReturnType = Ret, typename CharType, typename... Base>
 static inline constexpr auto convert_to_num(Ret (*c)(const CharType*, CharType**, Base...), Base... base) {
     return parser([=](auto &s) {
-        const CharType *begin = s.rest.data();
+        const CharType *begin = s.text.data() + s.position;
         CharType* end;
         errno = 0;
         Ret result = c(begin, &end, base...);
@@ -308,7 +312,7 @@ static inline constexpr auto convert_to_num(Ret (*c)(const CharType*, CharType**
                     (result < std::numeric_limits<ReturnType>::min() || result > std::numeric_limits<ReturnType>::max()))) {
             return return_fail<ReturnType>();
         } else {
-            remove_prefix(s.rest, end - begin);
+            s.advance(end - begin);
             return return_success(ReturnType(result));
         }
     });

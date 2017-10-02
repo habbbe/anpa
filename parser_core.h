@@ -62,36 +62,36 @@ static constexpr decltype(auto) get_error(Result&&) {
 template <typename P>
 struct parser;
 
-/**
- * Lifts a type to the parser monad by forwarding the provided arguments to its constructor.
- */
-template <typename T, typename... Args>
-constexpr auto mreturn_forward(Args&&... args) {
-    return parser([=](auto &) {
-        return return_success_forward<T>(args...);
-    });
-}
 
 /**
- * Lift a value to the parser monad
- */
-template <typename T>
-constexpr auto mreturn(T&& t) {
-    return parser([=](auto &) {
-        return return_success(t);
-    });
-}
-
-/**
- * Class for the parser state. Contains the rest of the string to be parsed.
+ * Class for the parser state.
  */
 template <typename StringType>
 struct parser_state_simple {
     using string_type = std::decay_t<StringType>;
-    StringType rest;
-    constexpr parser_state_simple(StringType rest) : rest{rest} {}
+    const StringType& text;
+    size_t position = 0;
+    constexpr parser_state_simple(const StringType& text) : text{text} {}
+    constexpr parser_state_simple(const parser_state_simple &, StringType& text) : text{text} {}
+    auto length() { return text.length() - position; }
+    auto empty() {return length() < 1;}
+    void advance(size_t n) {
+        position += n;
+    }
 private:
     parser_state_simple(const parser_state_simple &other) = delete;
+};
+
+
+/**
+ * Class for the parser state. Contains the string to be parsed, along
+ * with the user provided state
+ */
+template <typename StringType, typename UserState>
+struct parser_state: public parser_state_simple<StringType> {
+    UserState& user_state;
+    constexpr parser_state(const StringType& text, UserState& state) : parser_state_simple<StringType>{text}, user_state{state} {}
+    constexpr parser_state(const parser_state& other, StringType& text) : parser_state_simple<StringType>{text}, user_state{other.user_state} {}
 };
 
 /**
@@ -110,14 +110,24 @@ static constexpr auto operator>>=(Parser p, F f) {
 }
 
 /**
- * Class for the parser state. Contains the rest of the string to be parsed, along
- * with the user provided state
+ * Lifts a type to the parser monad by forwarding the provided arguments to its constructor.
  */
-template <typename StringType, typename UserState>
-struct parser_state: public parser_state_simple<StringType> {
-    UserState& user_state;
-    constexpr parser_state(StringType rest, UserState& state) : parser_state_simple<StringType>{rest}, user_state{state} {}
-};
+template <typename T, typename... Args>
+constexpr auto mreturn_forward(Args&&... args) {
+    return parser([=](auto &) {
+        return return_success_forward<T>(std::move(args)...);
+    });
+}
+
+/**
+ * Lift a value to the parser monad
+ */
+template <typename T>
+constexpr auto mreturn(T&& t) {
+    return parser([=](auto &) {
+        return return_success(std::move(t));
+    });
+}
 
 /**
  * Monadic parser
@@ -141,10 +151,10 @@ struct parser {
      * the result of the parse as the second.
      */
     template <typename StringType, typename State>
-    auto parse_with_state(StringType&& string, State &user_state) const {
-        auto state = parser_state(std::forward<StringType>(string), user_state);
+    auto parse_with_state(const StringType &string, State &user_state) const {
+        parser_state state(string, user_state);
         auto res = p(state);
-        return std::make_pair(std::move(state.rest), std::move(res));
+        return std::make_pair(std::move(state.text), std::move(res));
     }
 
     /**
@@ -153,10 +163,10 @@ struct parser {
      * the result of the parse as the second.
      */
     template <typename StringType>
-    auto parse(StringType&& string) const {
-        auto state = parser_state_simple(std::forward<StringType>(string));
+    auto parse(const StringType &string) const {
+        auto state = parser_state_simple(string);
         auto res = p(state);
-        return std::make_pair(std::move(state.rest), std::move(res));
+        return std::make_pair(std::move(state.text), std::move(res));
     }
 
     /**

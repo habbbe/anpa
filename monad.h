@@ -8,8 +8,18 @@
  */
 template <typename Monad1, typename Monad2>
 inline constexpr auto operator>>(Monad1 m1, Monad2 m2) {
-    return m1 >>= [=] ([[maybe_unused]] auto&& r) {
+    return m1 >>= [=] (auto&&) {
         return m2;
+    };
+}
+
+/*
+ * Put the provided value in the monad on successful computation
+ */
+template <typename Monad, typename Value>
+inline constexpr auto operator>=(Monad m, Value &&v) {
+    return m >>= [=] (auto&&) {
+        return Monad::mreturn(v);
     };
 }
 

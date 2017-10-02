@@ -73,6 +73,8 @@ int main()
 
     std::string line;
     while (std::getline(t, line)) {
+//        std::string_view str(line);
+//        entry_parser.parse_with_state(str, r);
         entry_parser.parse_with_state(std::string_view(line), r);
 //        auto result = entry_parser.parse(std::string_view(line));
 //        if (result.second) {
