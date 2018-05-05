@@ -9,7 +9,7 @@ namespace parse {
  * Parser that always succeeds
  */
 inline constexpr auto success() {
-    return parser([=](auto &) {
+    return parser([](auto &) {
         return return_success(true);
     });
 }
@@ -19,7 +19,7 @@ inline constexpr auto success() {
  */
 template <typename T = bool>
 inline constexpr auto fail() {
-    return parser([=](auto &) {
+    return parser([](auto &) {
         return return_fail<T>();
     });
 }
@@ -28,7 +28,7 @@ inline constexpr auto fail() {
  * Parser for the empty string
  */
 inline constexpr auto empty() {
-    return parser([=](auto &s) {
+    return parser([](auto &s) {
         if (s.empty()) {
             return return_success(true);
         }
@@ -40,7 +40,7 @@ inline constexpr auto empty() {
  * Parser for any character
  */
 inline constexpr auto any_token() {
-    return parser([=](auto &s) {
+    return parser([](auto &s) {
         if (s.empty())
             return return_fail<char>();
         auto front = s.front();
@@ -70,7 +70,7 @@ inline constexpr auto token(const char c) {
  */
 template <int N>
 inline constexpr auto string(const char (&str)[N]) {
-    return parser([=](auto &s) {
+    return parser([&](auto &s) {
         if (s.length() < N-1 || s.text.compare(s.position, N-1, str) != 0)
             return return_fail<decltype(s.text)>();
         auto res = s.text.substr(s.position, N-1);
@@ -121,7 +121,7 @@ inline constexpr auto until_token(const CharType c) {
  */
 template <size_t N, bool Eat = true>
 inline constexpr auto until_string(const char (&str)[N]) {
-    return parser([=](auto &s) {
+    return parser([&](auto &s) {
         auto pos = s.text.find(str, s.position);
         if (pos != std::decay_t<decltype(s.text)>::npos) {
             constexpr auto str_length = N - 1;
@@ -140,7 +140,7 @@ inline constexpr auto until_string(const char (&str)[N]) {
  * Parser for the rest for the string
  */
 inline constexpr auto rest() {
-    return parser([=](auto &s) {
+    return parser([](auto &s) {
         auto res = s.text.substr(s.position);
         s.advance(s.length());
         return return_success(res);
@@ -166,7 +166,7 @@ inline constexpr auto end_of_line() {
  */
 template <typename CharType, size_t N>
 inline constexpr auto while_in(const CharType (&str)[N]) {
-    return parser([=](auto &s) {
+    return parser([&](auto &s) {
         constexpr auto contains = [](auto& str, auto c) {
             for (size_t i = 0; i < N-1; ++i) {
                 if (str[i] == c) return true;
@@ -196,7 +196,7 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
 // General matching algorithm with supplied equality functions.
 template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = true, typename Start, typename End, typename EqualStart, typename EqualEnd>
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
-    return parser([=](auto &s) {
+    return parser([&](auto &s) {
         if (s.empty() || !equal_start(s.text, s.position, StartLength, start))
             return return_fail<decltype(s.text)>();
 
@@ -389,7 +389,7 @@ inline constexpr auto double_fast() {
  * Also consumes any whitespace before the number.
  */
 inline constexpr auto float_fast() {
-    return convert_to_num<float>(std::strtof);
+    return convert_to_num(std::strtof);
 }
 
 /**

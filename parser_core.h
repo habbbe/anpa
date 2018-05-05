@@ -34,7 +34,7 @@ static constexpr auto return_success_forward(Res&&... res) {
  * Check if the result is a successful one
  */
 template <typename Result>
-static constexpr bool has_result(Result&& r) {
+static constexpr bool has_result(const Result& r) {
     return r.operator bool();
 //    return r.index() == 1;
 }
@@ -44,7 +44,7 @@ static constexpr bool has_result(Result&& r) {
  * Note: Has undefined behavior if the result is not successful. Check has_result() before.
  */
 template <typename Result>
-static constexpr decltype(auto) get_result(Result&& r) {
+static constexpr decltype(auto) get_result(const Result& r) {
     return *r;
 //    return std::get<1>(r);
 }
@@ -54,7 +54,7 @@ static constexpr decltype(auto) get_result(Result&& r) {
  * Note: Has undefined behavior if the result is successful. Check !has_result() before.
  */
 template <typename Result>
-static constexpr decltype(auto) get_error(Result&&) {
+static constexpr auto get_error(const Result&) {
     return false;
 //    return std::get<0>(r);
 }
@@ -139,7 +139,7 @@ struct parser {
     // The meat of the parser. A function that takes a parser state and returns an optional result
     P p;
 
-    constexpr parser(P&& p) : p{std::forward<P>(p)} {}
+    constexpr parser(P p) : p{std::forward<P>(p)} {}
 
     template <typename State>
     constexpr auto operator()(State &s) const {
