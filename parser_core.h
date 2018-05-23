@@ -1,33 +1,30 @@
 #ifndef PARSER_CORE_H
 #define PARSER_CORE_H
 
-#include <optional>
-//#include <variant>
+#include <variant>
+#include <string_view>
 
 namespace parse {
 
-//template <typename T>
-//using variant = std::variant<const char *, T>;
+template <typename T>
+using variant = std::variant<const char *, T>;
 
 // Convenience function for returning a failed parse with state and type of result.
 template <typename Res>
-static constexpr auto return_fail() {
-    return std::optional<std::decay_t<Res>>{};
-//    return variant<std::decay_t<Res>>(std::in_place_index_t<0>(), error);
+static constexpr auto return_fail(const char *error = "Parsing error") {
+    return variant<std::decay_t<Res>>(std::in_place_index_t<0>(), error);
 }
 
 // Convenience function for returning a succesful parse.
 template <typename Res>
 static constexpr auto return_success(Res&& res) {
-    return std::make_optional(std::forward<Res>(res));
-//    return variant<std::decay_t<Res>>(std::in_place_index_t<1>(), std::forward<Res>(res));
+    return variant<std::decay_t<Res>>(std::in_place_index_t<1>(), std::forward<Res>(res));
 }
 
 // Convenience function for returning a succesful parse.
 template <typename T, typename... Res>
 static constexpr auto return_success_forward(Res&&... res) {
-    return std::make_optional<T>(std::forward<Res>(res)...);
-//    return variant<T>(std::in_place_index_t<1>(), std::forward<Res>(res)...);
+    return variant<T>(std::in_place_index_t<1>(), std::forward<Res>(res)...);
 }
 
 /**
@@ -35,8 +32,7 @@ static constexpr auto return_success_forward(Res&&... res) {
  */
 template <typename Result>
 static constexpr bool has_result(const Result& r) {
-    return r.operator bool();
-//    return r.index() == 1;
+    return r.index() == 1;
 }
 
 /**
@@ -45,8 +41,7 @@ static constexpr bool has_result(const Result& r) {
  */
 template <typename Result>
 static constexpr decltype(auto) get_result(const Result& r) {
-    return *r;
-//    return std::get<1>(r);
+    return std::get<1>(r);
 }
 
 /**
@@ -54,9 +49,8 @@ static constexpr decltype(auto) get_result(const Result& r) {
  * Note: Has undefined behavior if the result is successful. Check !has_result() before.
  */
 template <typename Result>
-static constexpr auto get_error(const Result&) {
-    return false;
-//    return std::get<0>(r);
+static constexpr auto get_error(const Result& r) {
+    return std::get<0>(r);
 }
 
 template <typename P>
@@ -114,9 +108,9 @@ static constexpr auto operator>>=(Parser p, F f) {
  * Lifts a type to the parser monad by forwarding the provided arguments to its constructor.
  */
 template <typename T, typename... Args>
-constexpr auto mreturn_forward(Args&&... args) {
+constexpr auto mreturn_forward(Args... args) {
     return parser([=](auto &) {
-        return return_success_forward<T>(std::move(args)...);
+        return return_success_forward<T>(args...);
     });
 }
 
@@ -124,9 +118,9 @@ constexpr auto mreturn_forward(Args&&... args) {
  * Lift a value to the parser monad
  */
 template <typename T>
-constexpr auto mreturn(T&& t) {
+constexpr auto mreturn(T t) {
     return parser([=](auto &) {
-        return return_success(std::move(t));
+        return return_success(t);
     });
 }
 

@@ -26,6 +26,22 @@ inline constexpr auto succeed(Parser p) {
 }
 
 /**
+ * Change the error to be returned upon a failed parse with the provided parser
+ */
+template <typename Parser>
+inline constexpr auto change_error(Parser p, const char *error) {
+    return parser([=](auto &s) {
+        auto result = p(s);
+        if (has_result(result)) {
+            return result;
+        } else {
+            using return_type = std::decay_t<decltype(get_result(result))>;
+            return return_fail<return_type>(error);
+        }
+    });
+}
+
+/**
  * Transform a parser to a parser that fails on a successful, but empty result (as decided by std::empty
  * or == 0 if integral)
  */
@@ -82,8 +98,8 @@ inline constexpr auto no_consume(Parser p) {
  * Constrain a parser.
  * Takes in addition to a parser a predicate that takes the resulting type of the parser as argument.
  */
-template <typename Predicate, typename Parser>
-inline constexpr auto constrain(Predicate pred, Parser p) {
+template <typename Parser, typename Predicate>
+inline constexpr auto constrain(Parser p, Predicate pred) {
     return parser([=](auto &s) {
         auto result = p(s);
         if (has_result(result) && pred(get_result(result))) {
@@ -138,8 +154,8 @@ inline constexpr auto modify_state(Fun f) {
  * Set a value in the state accessed by `Accessor` from the result of the parser.
  * Note: Make sure that a reference is returned by `acc`.
  */
-template <typename Accessor, typename Parser>
-inline constexpr auto set_in_state(Accessor acc, Parser p) {
+template <typename Parser, typename Accessor>
+inline constexpr auto set_in_state(Parser p, Accessor acc) {
     return parser([=](auto &s) {
         auto result = p(s);
         if (has_result(result)) {
@@ -305,9 +321,9 @@ static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps)
 }
 
 /**
- * Lift the result of a unary function to the parser monad after applying it to the first successful
+ * Lift the result of a unary functor to the parser monad after applying it to the first successful
  * parser's result.
- * The lifted function must provide an overload for every parser result type.
+ * The lifted functor must provide an overload for every parser result type.
  */
 template <typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
@@ -338,8 +354,6 @@ template <typename T, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_value(Parser p, Parsers... ps) {
     return parser([=](auto &s) {
         constexpr auto construct = [](auto&& arg) {return T(std::forward<decltype(arg)>(arg));};
-        // We let the recursive function move the argument into the above function because the caller
-        // will never see it anyway.
         return lift_or_rec(s, construct, p, ps...);
     });
 }
