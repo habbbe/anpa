@@ -70,7 +70,7 @@ inline constexpr auto token(const char c) {
  */
 template <int N>
 inline constexpr auto string(const char (&str)[N]) {
-    return parser([&](auto &s) {
+    return parser([=](auto &s) {
         if (s.length() < N-1 || s.text.compare(s.position, N-1, str) != 0)
             return return_fail<decltype(s.text)>();
         auto res = s.text.substr(s.position, N-1);
@@ -196,7 +196,7 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
 // General matching algorithm with supplied equality functions.
 template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = true, typename Start, typename End, typename EqualStart, typename EqualEnd>
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
-    return parser([&](auto &s) {
+    return parser([=](auto &s) {
         if (s.empty() || !equal_start(s.text, s.position, StartLength, start))
             return return_fail<decltype(s.text)>();
 

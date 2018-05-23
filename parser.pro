@@ -13,4 +13,5 @@ HEADERS += \
     lazy.h \
     parser_core.h \
     parser_combinators.h \
-    parser_parsers.h
+    parser_parsers.h \
+    json_parser.h

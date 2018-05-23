@@ -48,6 +48,8 @@ syntax_error
 
 int main()
 {
+//    auto test = get_array_parser();
+
     constexpr auto add_to_state = [] (auto &s, auto&&... args) {
         s.emplace_back(std::move(args)...);
         return true;
@@ -61,6 +63,9 @@ int main()
     constexpr auto parse_space = parse::string("Space") >> parse::empty() >> parse::mreturn_forward<space>();
     constexpr auto parse_error = monad::lift_value<syntax_error>(parse::rest());
     constexpr auto entry_parser = parse::lift_or_state(add_to_state, parse_action, parse_info, parse_separator, parse_space, parse_error);
+
+    parse::parser test = parse::until_token('=');
+
     std::vector<item> r;
     std::ifstream t("hub");
 

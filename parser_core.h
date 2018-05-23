@@ -66,19 +66,16 @@ struct parser;
 /**
  * Class for the parser state.
  */
-template <typename StringType>
 struct parser_state_simple {
-    using string_type = std::decay_t<StringType>;
-    const StringType& text;
+    const std::string_view text;
     size_t position = 0;
-    constexpr parser_state_simple(const StringType& text) : text{text} {}
-    constexpr parser_state_simple(const parser_state_simple &, StringType& text) : text{text} {}
-    auto front() {return text[position];}
-    auto length() { return text.length() - position; }
-    auto empty() {return length() < 1;}
-    void advance(size_t n) {
-        position += n;
-    }
+
+    template <typename StringType>
+    constexpr parser_state_simple(const StringType& text) : text{std::string_view(text)} {}
+    constexpr auto front() const {return text[position];}
+    constexpr auto length() const {return text.length() - position; }
+    constexpr auto empty() const {return length() < 1;}
+    constexpr auto advance(size_t n) {position += n;}
 private:
     parser_state_simple(const parser_state_simple &other) = delete;
 };
@@ -88,11 +85,14 @@ private:
  * Class for the parser state. Contains the string to be parsed, along
  * with the user provided state
  */
-template <typename StringType, typename UserState>
-struct parser_state: public parser_state_simple<StringType> {
+template <typename UserState>
+struct parser_state: public parser_state_simple {
     UserState& user_state;
-    constexpr parser_state(const StringType& text, UserState& state) : parser_state_simple<StringType>{text}, user_state{state} {}
-    constexpr parser_state(const parser_state& other, StringType& text) : parser_state_simple<StringType>{text}, user_state{other.user_state} {}
+    template <typename StringType>
+    constexpr parser_state(const StringType& text, UserState& state) : parser_state_simple{text}, user_state{state} {}
+
+    template <typename StringType>
+    constexpr parser_state(const parser_state& other, StringType& text) : parser_state_simple{text}, user_state{other.user_state} {}
 };
 
 /**
@@ -139,7 +139,7 @@ struct parser {
     // The meat of the parser. A function that takes a parser state and returns an optional result
     P p;
 
-    constexpr parser(P p) : p{std::forward<P>(p)} {}
+    constexpr parser(P p) : p{p} {}
 
     template <typename State>
     constexpr auto operator()(State &s) const {
@@ -152,7 +152,7 @@ struct parser {
      * element and the result of the parse as the second.
      */
     template <typename StringType, typename State>
-    auto parse_with_state(const StringType &string, State &user_state) const {
+    constexpr auto parse_with_state(const StringType &string, State &user_state) const {
         parser_state state(string, user_state);
         auto res = p(state);
         return std::make_pair(state.position, std::move(res));
@@ -164,7 +164,7 @@ struct parser {
      * element and the result of the parse as the second.
      */
     template <typename StringType>
-    auto parse(const StringType &string) const {
+    constexpr auto parse(const StringType &string) const {
         auto state = parser_state_simple(string);
         auto res = p(state);
         return std::make_pair(state.position, std::move(res));

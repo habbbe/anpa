@@ -1,6 +1,8 @@
 #ifndef LAZY_VALUE_H
 #define LAZY_VALUE_H
 
+#include <utility>
+
 namespace lazy {
 
 template <typename F>

@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include "parser_core.h"
+#include "monad.h"
 
 namespace parse {
 
