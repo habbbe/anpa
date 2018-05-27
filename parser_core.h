@@ -62,13 +62,20 @@ struct parser;
  */
 struct parser_state_simple {
     const std::string_view text;
-    size_t position = 0;
+    size_t position;
+    size_t end;
 
     template <typename StringType>
-    constexpr parser_state_simple(const StringType& text) : text{std::string_view(text)} {}
+    constexpr parser_state_simple(const StringType& text, size_t start, size_t end) :
+        text{std::string_view(text)}, position{start}, end{end} {}
+    template <typename StringType>
+    constexpr parser_state_simple(const StringType& text) :
+        parser_state_simple(text, 0, std::size(text)) {}
+
     constexpr auto front() const {return text[position];}
-    constexpr auto length() const {return text.length() - position; }
+    constexpr auto length() const {return end - position;}
     constexpr auto empty() const {return length() < 1;}
+    constexpr auto substr(size_t pos, size_t size) {return text.substr(pos, size);}
     constexpr auto advance(size_t n) {position += n;}
 private:
     parser_state_simple(const parser_state_simple &other) = delete;

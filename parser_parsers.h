@@ -1,7 +1,10 @@
 #ifndef PARSER_PARSERS_H
 #define PARSER_PARSERS_H
 
+#include <stdlib.h>
+#include <string>
 #include "parser_core.h"
+#include "parser_combinators.h"
 
 namespace parse {
 
@@ -55,8 +58,7 @@ inline constexpr auto any_token() {
 inline constexpr auto token(const char c) {
     return parser([=](auto &s) {
         if (!s.empty()) {
-            auto front = s.front();
-            if (front == c) {
+            if (auto front = s.front(); front == c) {
                 s.advance(1);
                 return return_success(front);
             }
@@ -73,7 +75,7 @@ inline constexpr auto string(const char (&str)[N]) {
     return parser([=](auto &s) {
         if (s.length() < N-1 || s.text.compare(s.position, N-1, str) != 0)
             return return_fail<decltype(s.text)>();
-        auto res = s.text.substr(s.position, N-1);
+        auto res = s.substr(s.position, N-1);
         s.advance(N-1);
         return return_success(res);
     });
@@ -86,7 +88,7 @@ inline constexpr auto consume(unsigned int n) {
     return parser([=](auto &s) {
         if (s.length() < n)
             return return_fail<decltype(s.text)>();
-        auto res = s.text.substr(s.position, n);
+        auto res = s.substr(s.position, n);
         s.advance(n);
         return return_success(res);
     });
@@ -100,11 +102,10 @@ inline constexpr auto consume(unsigned int n) {
 template <typename CharType, bool Eat = true>
 inline constexpr auto until_token(const CharType c) {
     return parser([=](auto &s) {
-        auto pos = s.text.find_first_of(c, s.position);
-        if (pos != std::decay_t<decltype(s.text)>::npos) {
+        if (auto pos = s.text.find_first_of(c, s.position); pos != std::decay_t<decltype(s.text)>::npos) {
             auto parsed_length_excluding_token = pos - s.position;
             auto parsed_length_including_token = parsed_length_excluding_token + 1;
-            auto res = s.text.substr(s.position, (Eat ? parsed_length_excluding_token : parsed_length_including_token));
+            auto res = s.substr(s.position, (Eat ? parsed_length_excluding_token : parsed_length_including_token));
             s.advance(parsed_length_including_token);
             return return_success(res);
         } else {
@@ -122,12 +123,11 @@ inline constexpr auto until_token(const CharType c) {
 template <size_t N, bool Eat = true>
 inline constexpr auto until_string(const char (&str)[N]) {
     return parser([&](auto &s) {
-        auto pos = s.text.find(str, s.position);
-        if (pos != std::decay_t<decltype(s.text)>::npos) {
+        if (auto pos = s.text.find(str, s.position); pos != std::decay_t<decltype(s.text)>::npos) {
             constexpr auto str_length = N - 1;
             auto parsed_size_excluding_string = pos - s.position;
             auto parsed_size_including_string = parsed_size_excluding_string + str_length;
-            auto res = s.text.substr(s.position, Eat ? parsed_size_excluding_string : parsed_size_including_string);
+            auto res = s.substr(s.position, Eat ? parsed_size_excluding_string : parsed_size_including_string);
             s.advance(parsed_size_including_string);
             return return_success(res);
         } else {
@@ -141,7 +141,7 @@ inline constexpr auto until_string(const char (&str)[N]) {
  */
 inline constexpr auto rest() {
     return parser([](auto &s) {
-        auto res = s.text.substr(s.position);
+        auto res = s.substr(s.position, std::string_view::npos);
         s.advance(s.length());
         return return_success(res);
     });
@@ -175,7 +175,7 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
         };
 
         size_t found = 0;
-        for (size_t i = s.position; i < s.text.length(); ++i) {
+        for (size_t i = s.position; i < s.end; ++i) {
             if (contains(str, s.text[i])) {
                 ++found;
             } else {
@@ -184,7 +184,7 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
         }
 
         if (found > 0) {
-            auto result = s.text.substr(s.position, found);
+            auto result = s.substr(s.position, found);
             s.advance(found);
             return return_success(result);
         } else {
@@ -200,14 +200,14 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
         if (s.empty() || !equal_start(s.text, s.position, StartLength, start))
             return return_fail<decltype(s.text)>();
 
-        auto len = s.text.length();
+        auto len = s.end;
         size_t to_match = 0;
         for (size_t i = s.position + StartLength; i<=len-EndLength;) {
             if (equal_end(s.text, i, EndLength, end)) {
                 if (to_match == 0) {
                     size_t start_index = s.position + (Eat ? StartLength : 0);
                     size_t size = Eat ? i - StartLength : i + EndLength;
-                    auto res = s.text.substr(start_index, size);
+                    auto res = s.substr(start_index, size);
                     s.advance(i + EndLength);
                     return return_success(res);
                 } else if (Nested) {
@@ -272,30 +272,42 @@ inline constexpr auto between_token(const CharType c) {
 }
 
 // CONVENIENCE PARSERS
-/**
- * Parser for an integer
- */
-template <bool Signed = true>
-inline constexpr auto integer() {
-    constexpr auto integer_parser = [](bool addMinus) {
-        return while_in("0123456789") >>= [=](auto& res) {
-            std::string str(res);
-            if constexpr (Signed)
-                return mreturn(std::stoi((addMinus ? "-" : "") + str));
-            else
-                return mreturn(unsigned(std::stoul(str)));
 
-        };
+template <typename Integral>
+inline constexpr std::pair<size_t, Integral> parse_integral(const char* str, size_t length) {
+    constexpr auto is_digit = [](char c) {
+        return c <= '9' && c >= '0';
     };
-    if constexpr (Signed) {
-        return succeed(token('-')) >>= [integer_parser](bool hasMinus) {
-            return integer_parser(hasMinus);
-        };
-    } else {
-        return integer_parser(false);
+    Integral result = 0;
+    size_t parsed = 0;
+    for (; parsed < length; ++parsed, ++str) {
+        if (is_digit(*str)) {
+            result = (*str - '0') + result * 10;
+        } else {
+            break;
+        }
     }
+    return {parsed, result};
 }
 
+/**
+ * Parser for an integer.
+ * Parses negative numbers if the template argument is signed.
+ */
+template <typename Integral = int>
+inline constexpr auto integer() {
+    return parser([=](auto &s) {
+        bool negate = std::is_signed_v<Integral> && !s.empty() && s.front() == '-';
+        size_t start_pos = s.position + (negate ? 1 : 0);
+        auto [parsed, result] = parse_integral<Integral>(s.text.data() + start_pos, s.end - start_pos);
+        if (parsed > 0) {
+            s.advance(parsed);
+            return return_success(result * (negate ? -1 : 1));
+        } else {
+            return return_fail<Integral>();
+        }
+    });
+}
 
 /**
  * Parser for numbers using provided c call (strtol, strotof and friends).
@@ -318,60 +330,6 @@ static inline constexpr auto convert_to_num(Ret (*c)(const CharType*, CharType**
             return return_success(ReturnType(result));
         }
     });
-}
-
-/**
- * Parse an integer.
- * Note: Doesn't behave correctly at the end of non null terminated strings.
- * Also consumes any whitespace before the number.
- */
-inline constexpr auto integer_fast(int base = 10) {
-    return convert_to_num<long, int>(std::strtol, base);
-}
-
-/**
- * Parse an unsigned integer.
- * Note: Doesn't behave correctly at the end of non null terminated strings.
- * Also consumes any whitespace before the number.
- */
-inline constexpr auto unsigned_integer_fast(int base = 10) {
-    return convert_to_num<unsigned long, unsigned int>(std::strtoul, base);
-}
-
-/**
- * Parse a long integer.
- * Note: Doesn't behave correctly at the end of non null terminated strings.
- * Also consumes any whitespace before the number.
- */
-inline constexpr auto long_fast(int base = 10) {
-    return convert_to_num(std::strtol, base);
-}
-
-/**
- * Parse an unsigned long integer.
- * Note: Doesn't behave correctly at the end of non null terminated strings.
- * Also consumes any whitespace before the number.
- */
-inline constexpr auto unsigned_long_fast(int base = 10) {
-    return convert_to_num(std::strtoul, base);
-}
-
-/**
- * Parse a long long integer.
- * Note: Doesn't behave correctly at the end of non null terminated strings.
- * Also consumes any whitespace before the number.
- */
-inline constexpr auto long_long_fast(int base = 10) {
-    return convert_to_num(std::strtoll, base);
-}
-
-/**
- * Parse an unsigned long long integer.
- * Note: Doesn't behave correctly at the end of non null terminated strings.
- * Also consumes any whitespace before the number.
- */
-inline constexpr auto unsigned_long_long_fast(int base = 10) {
-    return convert_to_num(std::strtoull, base);
 }
 
 /**

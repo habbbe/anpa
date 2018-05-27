@@ -21,7 +21,7 @@ struct json_value {
     json_object,
     json_array,
     bool,
-    std::nullptr_t
+    std::monostate
     > val;
     template <typename T>
     json_value(T &&t) : val(std::forward<T>(t)) {}
@@ -33,34 +33,19 @@ constexpr auto eat(Parser p) {
     return parse::whitespace() >> p;
 }
 
-constexpr auto True = true;
-constexpr auto False = false;
-constexpr auto Null = nullptr;
-
 constexpr auto string_parser = parse::between_token('"');
 constexpr auto integer_parser = parse::long_fast();
 constexpr auto double_parser = parse::double_fast();
-constexpr auto bool_parser = (parse::string("true") >= True) || (parse::string("false") >= False);
-constexpr auto null_parser = parse::string("null") >= Null;
+constexpr auto bool_parser = (parse::string("true") >= true) || (parse::string("false") >= false);
+constexpr auto null_parser = parse::string("null") >= std::monostate();
 
-
-
-auto tmp()
-{
-    return parse::lift_or_value<json_value>(string_parser);
+template <typename T>
+auto get_array_parser() {
+    auto parser = parse::token('[') >> get_value_parser<T>() << parse::token(']');
+    return parse::parse_result_from(parse::between_tokens('[', ']'),
+                                    )
+    return parse::token('[') >> parse::many_to_vector<json_array>(eat(parse::succeed(parse::token(','))) >> get_value_parser()) << eat(parse::token(']'));
 }
-using tmp_type = decltype(tmp());
-
-//template <typename T>
-tmp_type get_value_parser();
-
-//template <typename T>
-//auto get_array_parser() {
-//    auto parser = parse::token('[') >> get_value_parser<T>() << parse::token(']');
-//    return parse::parse_result_from(parse::between_tokens('[', ']'),
-//                                    )
-//    return parse::token('[') >> parse::many_to_vector<json_array>(eat(parse::succeed(parse::token(','))) >> get_value_parser()) << eat(parse::token(']'));
-//}
 
 //template <typename T>
 auto get_pair_parser() {
@@ -68,14 +53,15 @@ auto get_pair_parser() {
 }
 
 //template <typename T>
-auto get_object_parser() {
-    return parse::token('{') >> parse::many_to_unordered_map<json_array>(eat(parse::succeed(parse::token(','))) >> get_value_parser()) << eat(parse::token('}'));
-}
+//auto get_object_parser() {
+//    return parse::token('{') >> parse::many_to_unordered_map<json_array>(eat(parse::succeed(parse::token(','))) >> get_value_parser()) << eat(parse::token('}'));
+//}
 
 
 //template <typename T>
-tmp_type get_value_parser() {
-    auto array_parser = parse::token('[') >> parse::many_to_vector(eat(parse::succeed(parse::token(','))) >> get_value_parser()) << eat(parse::token(']'));
+auto get_value_parser() {
+//    auto array_parser = parse::token('[') >> parse::many_to_vector(eat(parse::succeed(parse::token(','))) >> get_value_parser()) << eat(parse::token(']'));
+
     return parse::lift_or_value<json_value>(string_parser, integer_parser, double_parser,
                                                                bool_parser, null_parser,
                                                                array_parser);

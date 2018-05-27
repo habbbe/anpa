@@ -31,8 +31,7 @@ inline constexpr auto succeed(Parser p) {
 template <typename Parser>
 inline constexpr auto change_error(Parser p, const char *error) {
     return parser([=](auto &s) {
-        auto result = p(s);
-        if (has_result(result)) {
+        if (auto result = p(s); has_result(result)) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(get_result(result))>;
@@ -48,8 +47,7 @@ inline constexpr auto change_error(Parser p, const char *error) {
 template <typename Parser>
 inline constexpr auto not_empty(Parser p) {
     return parser([=](auto &s) {
-        auto result = p(s);
-        using result_type = std::decay_t<decltype(get_result(result))>;
+        using result_type = std::decay_t<decltype(get_result(p(s)))>;
         constexpr auto empty = [](auto &t) {
             if constexpr (std::is_integral<result_type>::value) {
                 return t == 0;
@@ -57,7 +55,7 @@ inline constexpr auto not_empty(Parser p) {
                 return std::empty(t);
             }
         };
-        if (has_result(result) && !empty(get_result(result))) {
+        if (auto result = p(s); has_result(result) && !empty(get_result(result))) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(get_result(result))>;
@@ -111,6 +109,43 @@ inline constexpr auto constrain(Parser p, Predicate pred) {
 }
 
 /**
+ * Recursive helper for `get_parsed`
+ */
+template <typename State, typename Parser, typename... Parsers>
+static inline constexpr auto get_parsed_recursive(State &s, size_t original_position, Parser p, Parsers... ps) {
+    if (const auto &res = p(s); has_result(res)) {
+        if constexpr (sizeof...(Parsers) == 0) {
+            size_t size = s.position - original_position;
+            return return_success(s.substr(original_position, size));
+        } else {
+            return get_parsed_recursive(s, original_position, ps...);
+        }
+    } else {
+        return return_fail<std::string_view>(get_error(res));
+    }
+}
+
+/**
+ * Make a parser that evaluates an arbitrary number of parsers, and returns the successfully parsed text upon
+ * success.
+ */
+template <typename Parser, typename ... Parsers>
+inline constexpr auto get_parsed(Parser p, Parsers ... ps) {
+    return parser([=](auto &s) {
+        auto original_position = s.position;
+        return get_parsed_recursive(s, original_position, p, ps...);
+    });
+}
+
+/**
+ * Make a parser that evaluates two parsers, and returns the successfully parsed text upon success.
+ */
+template <typename Parser1, typename Parser2>
+inline constexpr auto operator+(Parser1 p1, Parser2 p2) {
+    return get_parsed(p1, p2);
+}
+
+/**
  * Combine two parsers so that the second will be tried before failing.
  * If the two parsers return different types the return value will instead be `true`.
  */
@@ -119,14 +154,20 @@ inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
     return parser([=](auto &s) {
         using R1 = decltype(get_result(p1(s)));
         using R2 = decltype(get_result(p2(s)));
+        auto original_position = s.position;
         if constexpr (std::is_same_v<R1, R2>) {
-            auto result1 = p1(s);
-            return has_result(result1) ? result1 : p2(s);
+            if (auto result1 = p1(s); has_result(result1)) {
+                return result1;
+            } else {
+                s.position = original_position;
+                return p2(s);
+            }
         } else {
-            if (p1(s) || p2(s)) {
+            if (has_result(p1(s))) {
                 return return_success(true);
             } else {
-                return return_fail<bool>();
+                s.position = original_position;
+                return has_result(p2(s)) ? return_success(true) : return_fail<bool>();
             }
         }
     });
@@ -288,15 +329,6 @@ inline constexpr auto many_to_state(Accessor acc, Parser p) {
 }
 
 /**
- * Create a parser that applies a parser until it fails and stores the result in the user provided state.
- * Note that the user provided state needs to be a container.
- */
-template <typename Predicate, typename Parser>
-inline constexpr auto many_to_state(Parser p) {
-    return many_to_state([](auto &s) -> auto& {return s;}, p);
-}
-
-/**
  * Create a parser that applies a parser until it fails and stores the result in the user
  * provided state.
  * Note that the user provided state needs to be a container.
@@ -410,9 +442,9 @@ inline constexpr auto until(Parser p) {
             position_end = s.position;
         }
         if constexpr (Eat) {
-            return return_success(s.text.substr(position_start, position_end - position_start));
+            return return_success(s.substr(position_start, position_end - position_start));
         } else {
-            return return_success(s.text.substr(position_start, s.position - position_start));
+            return return_success(s.substr(position_start, s.position - position_start));
         }
     });
 }
