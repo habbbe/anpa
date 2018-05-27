@@ -200,25 +200,29 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
         if (s.empty() || !equal_start(s.text, s.position, StartLength, start))
             return return_fail<decltype(s.text)>();
 
-        auto len = s.end;
         size_t to_match = 0;
-        for (size_t i = s.position + StartLength; i<=len-EndLength;) {
+        size_t size = 0;
+        for (size_t i = s.position + StartLength; i<=s.end-EndLength;) {
             if (equal_end(s.text, i, EndLength, end)) {
                 if (to_match == 0) {
                     size_t start_index = s.position + (Eat ? StartLength : 0);
-                    size_t size = Eat ? i - StartLength : i + EndLength;
-                    auto res = s.substr(start_index, size);
-                    s.advance(i + EndLength);
+                    size_t total_length = StartLength + size + EndLength;
+                    size_t result_size = Eat ? size : total_length;
+                    auto res = s.substr(start_index, result_size);
+                    s.advance(total_length);
                     return return_success(res);
                 } else if (Nested) {
                     --to_match;
                     i += EndLength;
+                    size += EndLength;
                 }
             } else if (Nested && equal_start(s.text, i, StartLength, start)) {
                 ++to_match;
                 i += StartLength;
+                size += StartLength;
             } else {
                 ++i;
+                ++size;
             }
         }
         return return_fail<decltype(s.text)>();
@@ -274,7 +278,7 @@ inline constexpr auto between_token(const CharType c) {
 // CONVENIENCE PARSERS
 
 template <typename Integral>
-inline constexpr std::pair<size_t, Integral> parse_integral(const char* str, size_t length) {
+inline constexpr std::pair<size_t, Integral> parse_integer(const char* str, size_t length) {
     constexpr auto is_digit = [](char c) {
         return c <= '9' && c >= '0';
     };
@@ -299,7 +303,7 @@ inline constexpr auto integer() {
     return parser([=](auto &s) {
         bool negate = std::is_signed_v<Integral> && !s.empty() && s.front() == '-';
         size_t start_pos = s.position + (negate ? 1 : 0);
-        auto [parsed, result] = parse_integral<Integral>(s.text.data() + start_pos, s.end - start_pos);
+        auto [parsed, result] = parse_integer<Integral>(s.text.data() + start_pos, s.end - start_pos);
         if (parsed > 0) {
             s.advance(parsed);
             return return_success(result * (negate ? -1 : 1));

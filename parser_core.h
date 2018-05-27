@@ -66,11 +66,17 @@ struct parser_state_simple {
     size_t end;
 
     template <typename StringType>
-    constexpr parser_state_simple(const StringType& text, size_t start, size_t end) :
-        text{std::string_view(text)}, position{start}, end{end} {}
+    constexpr parser_state_simple(const StringType& input_text, size_t start, size_t end) :
+        text{std::string_view(input_text)}, position{start}, end{end} {}
     template <typename StringType>
-    constexpr parser_state_simple(const StringType& text) :
-        parser_state_simple(text, 0, std::size(text)) {}
+    constexpr parser_state_simple(const StringType& input_text, size_t start) :
+        text{std::string_view(input_text)}, position{start}, end{std::size(text)} {}
+    template <typename StringType>
+    constexpr parser_state_simple(const StringType& input_text) :
+        parser_state_simple(input_text, 0) {}
+    template <typename StringType>
+    constexpr parser_state_simple(const StringType &text, const parser_state_simple &) :
+        parser_state_simple(text) {}
 
     constexpr auto front() const {return text[position];}
     constexpr auto length() const {return end - position;}
@@ -93,7 +99,7 @@ struct parser_state: public parser_state_simple {
     constexpr parser_state(const StringType& text, UserState& state) : parser_state_simple{text}, user_state{state} {}
 
     template <typename StringType>
-    constexpr parser_state(const parser_state& other, StringType& text) : parser_state_simple{text}, user_state{other.user_state} {}
+    constexpr parser_state(const StringType &text, const parser_state& other) : parser_state_simple{text}, user_state{other.user_state} {}
 };
 
 /**

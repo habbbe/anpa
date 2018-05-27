@@ -416,7 +416,7 @@ inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
         if (has_result(result)) {
             auto result_text = get_result(result);
             using state_type = std::decay_t<decltype(s)>;
-            state_type new_state(s, result_text);
+            state_type new_state(result_text, s);
             auto new_result = p2(new_state);
             return new_result;
         } else {

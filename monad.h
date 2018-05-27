@@ -10,7 +10,7 @@
  */
 template <typename Monad1, typename Monad2>
 inline constexpr auto operator>>(Monad1 m1, Monad2 m2) {
-    return m1 >>= [=] (...) {
+    return m1 >>= [=] (auto &) {
         return m2;
     };
 }
@@ -20,7 +20,7 @@ inline constexpr auto operator>>(Monad1 m1, Monad2 m2) {
  */
 template <typename Monad, typename Value>
 inline constexpr auto operator>=(Monad m, Value v) {
-    return m >>= [m, v] (...) {
+    return m >>= [m, v] (auto &) {
         return Monad::mreturn(v);
     };
 }

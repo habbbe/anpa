@@ -67,8 +67,6 @@ int main()
     std::vector<item> r;
     std::ifstream t("hub");
 
-    parse::integer().parse("123");
-
 //    constexpr auto add_to_state = [] (auto &s, auto&&... args) {
 //        s.emplace_back(args...);
 //        return true;
