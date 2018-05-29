@@ -108,12 +108,26 @@ template <typename T, typename S = void>
 using type = std::function<variant<T>(std::conditional_t<std::is_void<S>::value, parser_state_simple &, parser_state<S> &>)>;
 
 /**
+ * Apply a parser to a state and return the result.
+ * This application unwraps arbitrary layers of callables so that one can
+ * wrap the parser to enable recursion.
+ */
+template <typename P, typename S>
+constexpr auto apply(P p, S &s) {
+    if constexpr (std::is_invocable<P>::value) {
+        return apply(p(), s);
+    } else {
+        return p(s);
+    }
+}
+
+/**
  * Monadic bind for the parser
  */
 template <typename Parser, typename F>
 static constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto &s) {
-        if (auto result = p(s); has_result(result)) {
+        if (auto result = apply(p, s); has_result(result)) {
             return f(get_result(result))(s);
         } else {
             using new_return_type = std::decay_t<decltype(get_result(f(get_result(result))(s)))>;
@@ -154,14 +168,6 @@ struct parser {
 
     constexpr parser(P p) : p{p} {}
 
-    template <typename S>
-    constexpr auto apply(P p, S &s) const {
-        if constexpr (std::is_invocable<P>::value) {
-            return p()(s);
-        } else {
-            return p(s);
-        }
-    }
 
     template <typename State>
     constexpr auto operator()(State &s) const {

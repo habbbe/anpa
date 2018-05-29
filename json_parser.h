@@ -39,18 +39,11 @@ constexpr auto double_parser = eat(parse::double_fast());
 constexpr auto bool_parser = eat((parse::string("true") >= true) || (parse::string("false") >= false));
 constexpr auto null_parser = eat(parse::string("null") >= std::monostate());
 
-parse::type<json_value> get_value_parser() {
-    auto lazy_recursive = parse::parser([]() {
-        return get_value_parser();
-    });
-    auto array_parser = parse::parse_result(parse::between_tokens('[', ']'), lazy_recursive);
+parse::type<json_value> value_parser() {
+    auto array_parser = parse::parse_result(parse::between_tokens('[', ']'), value_parser);
     return parse::lift_or_value<json_value>(string_parser, double_parser, integer_parser,
                                                                bool_parser, null_parser,
                                                                array_parser);
-}
-
-auto value_parser() {
-    return parse::parser(get_value_parser);
 }
 
 template <typename T>
