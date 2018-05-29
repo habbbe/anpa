@@ -16,7 +16,7 @@ using json_array = std::vector<json_value>;
 struct json_value {
     std::variant<
     std::string,
-    long,
+    int,
     double,
     json_object,
     json_array,
@@ -33,23 +33,29 @@ constexpr auto eat(Parser p) {
     return parse::whitespace() >> p;
 }
 
-constexpr auto string_parser = parse::between_token('"');
-constexpr auto integer_parser = parse::long_fast();
-constexpr auto double_parser = parse::double_fast();
-constexpr auto bool_parser = (parse::string("true") >= true) || (parse::string("false") >= false);
-constexpr auto null_parser = parse::string("null") >= std::monostate();
+constexpr auto string_parser = eat(monad::lift_value<std::string>(parse::between_token('"')));
+constexpr auto integer_parser = eat(parse::integer());
+constexpr auto double_parser = eat(parse::double_fast());
+constexpr auto bool_parser = eat((parse::string("true") >= true) || (parse::string("false") >= false));
+constexpr auto null_parser = eat(parse::string("null") >= std::monostate());
 
-template <typename T>
-auto get_array_parser() {
-    auto parser = parse::token('[') >> get_value_parser<T>() << parse::token(']');
-    return parse::parse_result_from(parse::between_tokens('[', ']'),
-                                    )
-    return parse::token('[') >> parse::many_to_vector<json_array>(eat(parse::succeed(parse::token(','))) >> get_value_parser()) << eat(parse::token(']'));
+parse::type<json_value> get_value_parser() {
+    auto lazy_recursive = parse::parser([]() {
+        return get_value_parser();
+    });
+    auto array_parser = parse::parse_result(parse::between_tokens('[', ']'), lazy_recursive);
+    return parse::lift_or_value<json_value>(string_parser, double_parser, integer_parser,
+                                                               bool_parser, null_parser,
+                                                               array_parser);
 }
 
-//template <typename T>
+auto value_parser() {
+    return parse::parser(get_value_parser);
+}
+
+template <typename T>
 auto get_pair_parser() {
-    eat(monad::lift_value<std::pair<std::string, json_value>>(string_parser));
+    monad::lift_value<std::pair<std::string, json_value>>(string_parser, eat(parse::token(':') >> eat(value_parser())));
 }
 
 //template <typename T>
@@ -59,13 +65,6 @@ auto get_pair_parser() {
 
 
 //template <typename T>
-auto get_value_parser() {
-//    auto array_parser = parse::token('[') >> parse::many_to_vector(eat(parse::succeed(parse::token(','))) >> get_value_parser()) << eat(parse::token(']'));
-
-    return parse::lift_or_value<json_value>(string_parser, integer_parser, double_parser,
-                                                               bool_parser, null_parser,
-                                                               array_parser);
-}
 
 //auto array_parser = parse::token('[') >>
 //                    parse::many<json_array>(eat(parse::succeed(parse::token(','))) >> value_parser) << eat(parse::token(']'));

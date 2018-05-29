@@ -3,6 +3,8 @@
 
 #include <variant>
 #include <string_view>
+#include <functional>
+#include <type_traits>
 
 namespace parse {
 
@@ -102,6 +104,9 @@ struct parser_state: public parser_state_simple {
     constexpr parser_state(const StringType &text, const parser_state& other) : parser_state_simple{text}, user_state{other.user_state} {}
 };
 
+template <typename T, typename S = void>
+using type = std::function<variant<T>(std::conditional_t<std::is_void<S>::value, parser_state_simple &, parser_state<S> &>)>;
+
 /**
  * Monadic bind for the parser
  */
@@ -143,14 +148,24 @@ constexpr auto mreturn(T t) {
 template <typename P>
 struct parser {
 
-    // The meat of the parser. A function that takes a parser state and returns an optional result
+    // The meat of the parser. A function that takes a parser state and returns an optional result.
+    // This could also be a lazy value, i.e. a callable object that returns what is described above.
     P p;
 
     constexpr parser(P p) : p{p} {}
 
+    template <typename S>
+    constexpr auto apply(P p, S &s) const {
+        if constexpr (std::is_invocable_r<void, P>::value) {
+            return apply(p());
+        } else {
+            return p(s);
+        }
+    }
+
     template <typename State>
     constexpr auto operator()(State &s) const {
-        return p(s);
+        return apply(p, s);
     }
 
     /**
@@ -161,7 +176,7 @@ struct parser {
     template <typename StringType, typename State>
     constexpr auto parse_with_state(const StringType &string, State &user_state) const {
         parser_state state(string, user_state);
-        auto res = p(state);
+        auto res = apply(p, state);
         return std::make_pair(state.position, std::move(res));
     }
 
@@ -173,7 +188,7 @@ struct parser {
     template <typename StringType>
     constexpr auto parse(const StringType &string) const {
         auto state = parser_state_simple(string);
-        auto res = p(state);
+        auto res = apply(p, state);
         return std::make_pair(state.position, std::move(res));
     }
 

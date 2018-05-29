@@ -5,6 +5,8 @@
 
 namespace lazy {
 
+#define inline_lazy(x) []() {return x;}
+
 template <typename F>
 struct value;
 
@@ -27,6 +29,8 @@ inline auto constexpr apply(LazyFun&& f, LazyVals&&... vals) {
 
 template <typename Get>
 struct value {
+
+    using is_lazy = bool;
     Get get;
     constexpr value(Get&& get) : get{std::forward<Get>(get)} {}
 

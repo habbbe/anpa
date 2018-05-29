@@ -48,8 +48,6 @@ syntax_error
 
 int main()
 {
-//    auto test = get_array_parser();
-
     constexpr auto add_to_state = [] (auto &s, auto&&... args) {
         s.emplace_back(std::move(args)...);
         return true;
