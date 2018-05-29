@@ -156,8 +156,8 @@ struct parser {
 
     template <typename S>
     constexpr auto apply(P p, S &s) const {
-        if constexpr (std::is_invocable_r<void, P>::value) {
-            return apply(p());
+        if constexpr (std::is_invocable<P>::value) {
+            return p()(s);
         } else {
             return p(s);
         }
