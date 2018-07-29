@@ -141,8 +141,7 @@ static constexpr auto operator>>=(Parser p, F f) {
  */
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
-    auto tup = std::tuple(std::forward<Args>(args)...);
-    return parser([tup = std::move(tup)](auto &) {
+    return parser([tup = std::tuple(std::forward<Args>(args)...)](auto &) {
         return std::apply(return_success_forward<T, Args...>, tup);
     });
 }
