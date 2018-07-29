@@ -39,40 +39,46 @@ inline constexpr auto operator<<(Monad1 m1, Monad2 m2) {
 
 namespace monad {
 
-/**
- * Recursive compile time resolver for lift methods
- * T type is only used if we are emplacing a value in the monad, and f is only
- * used if we are not, i.e. a normal function lift.
- */
-template <typename T, bool Emplace, typename F, typename Monad, size_t total, typename Arg, typename... Args>
-inline constexpr auto lift_inner2([[maybe_unused]] F f, Arg&& arg, Args&&... args) {
-    if constexpr (total == 0) {
-        if constexpr (Emplace)
-            return Monad::template mreturn_forward<T>(std::forward<Arg>(arg), std::forward<Args>(args)...);
-        else
-            return Monad::mreturn(f(std::forward<Arg>(arg), std::forward<Args>(args)...));
-    } else {
-        return arg >>= [=](auto &&v) {
-            return lift_inner2<T, Emplace, F, Monad, total - 1>(f, args..., v);
+template <size_t num_args, typename F>
+inline constexpr auto curry_n(F f) {
+    if constexpr (num_args > 0) {
+        return [=](auto &&v) {
+            return curry_n<num_args-1>([=](auto&&...vs) {
+                return f(std::forward<decltype(v)>(v), std::forward<decltype(vs)>(vs)...);
+            });
         };
+    } else {
+        return f();
     }
 }
 
-/**
- * Middle step to do parameter counting
- */
-template <typename T, bool Emplace, typename F, typename Monad, typename... Monads>
-inline constexpr auto lift_inner(F f, Monad&& m, Monads&&... monads) {
-    return lift_inner2<T, Emplace, F, std::decay_t<Monad>, sizeof...(Monads) + 1>(f, std::forward<Monad>(m), std::forward<Monads>(monads)...);
+template <typename F, typename M, typename... Ms>
+inline constexpr auto lift_internal(F f, M m, Ms... ms) {
+    return m >>= [=](auto &&r) {
+        if constexpr (sizeof...(ms) == 0) {
+            return f(std::forward<decltype(r)>(r));
+        } else {
+            return lift_internal(f(std::forward<decltype(r)>(r)), ms...);
+        }
+    };
 }
+
+template <typename F, typename... Ms>
+inline constexpr auto lift_prepare(F f, Ms... ms) {
+    return lift_internal(curry_n<sizeof...(Ms)>(f), ms...);
+}
+
 
 /**
  * Apply a function f to the results of the monads (evaluated left to right) and
  * put the result in the monad
  */
-template <typename F, typename... Monads>
-inline constexpr auto lift(F f, Monads&&... monads) {
-    return lift_inner<bool, false>(f, std::forward<Monads>(monads)...);
+template <typename F, typename M, typename... Ms>
+inline constexpr auto lift(F&& f, M m, Ms... ms) {
+    constexpr auto fun = [=](auto &&...ps) {
+        return M::mreturn(f(std::forward<decltype(ps)>(ps)...));
+    };
+    return lift_prepare(fun, m, ms...);
 }
 
 /**
@@ -81,19 +87,21 @@ inline constexpr auto lift(F f, Monads&&... monads) {
  */
 template <typename F, typename... Monads>
 inline constexpr auto lift_lazy(F f, Monads&&... monads) {
-    return lift_inner<bool, false>(lazy::make_lazy_forward_fun(f), std::forward<Monads>(monads)...);
+    return lift(lazy::make_lazy_forward_fun(f), std::forward<Monads>(monads)...);
 }
 
 /**
  * Create an object by passing the results of the monads (evaluated left to right)
- * to its constructer, then put the object in the monad.
+ * to its constructor, then put the object in the monad.
  * This is a specialized version of lift that avoids unnecessary copying by constructing
  * the object in place.
  */
-template <typename T, typename... Monads>
-inline constexpr auto lift_value(Monads&&... monads) {
-    //
-    return lift_inner<T, true>([](){}, std::forward<Monads>(monads)...);
+template <typename T, typename M, typename... Ms>
+inline constexpr auto lift_value(M m, Ms... ms) {
+    constexpr auto fun = [](auto &&...ps) {
+        return M::template mreturn_forward<T>(std::forward<decltype(ps)>(ps)...);
+    };
+    return lift_prepare(fun, m, ms...);
 }
 
 /**
@@ -115,7 +123,6 @@ inline constexpr auto lift_value_lazy_raw(Monads&&... monads) {
 }
 
 }
-
 
 
 #endif // MONAD_H
