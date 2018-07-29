@@ -63,6 +63,7 @@ int main()
     constexpr auto entry_parser = parse::lift_or_state(add_to_state, parse_action, parse_info, parse_separator, parse_space, parse_error);
 
     std::vector<item> r;
+    r.reserve(1000000);
     std::ifstream t("hub");
 
 //    constexpr auto add_to_state = [] (auto &s, auto&&... args) {
