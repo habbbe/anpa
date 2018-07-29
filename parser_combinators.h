@@ -277,7 +277,9 @@ template <typename Parser>
 inline constexpr auto many_to_vector(Parser p) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(get_result(apply(p, s)))>;
-        return many_internal<std::vector<result_type>>(s, [](auto &v, auto &&r){v.emplace_back(r);}, p);
+        return many_internal<std::vector<result_type>>(s, [](auto &v, auto &&r){
+            v.emplace_back(std::forward<decltype(r)>(r));
+        }, p);
     });
 }
 
@@ -290,7 +292,9 @@ inline constexpr auto many_to_unordered_map(Parser p) {
         using result_type = std::decay_t<decltype(get_result(apply(p, s)))>;
         using key = typename result_type::first_type;
         using value = typename result_type::second_type;
-        return many_internal<std::unordered_map<key, value>>(s, [](auto &m, auto &&r){m.insert(r);}, p);
+        return many_internal<std::unordered_map<key, value>>(s, [](auto &m, auto &&r) {
+            m.insert(std::forward<decltype(r)>(r));
+        }, p);
     });
 }
 
@@ -371,8 +375,8 @@ inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
 template <typename Fun, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
     return parser([=](auto &s) {
-        auto to_apply = [f, &s] (auto &val) {
-             return f(s.user_state, val);
+        auto to_apply = [f, &s] (auto &&val) {
+             return f(s.user_state, std::forward<decltype(val)>(val));
         };
         return lift_or_rec(s, to_apply, p, ps...);
     });

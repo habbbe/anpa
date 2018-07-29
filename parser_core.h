@@ -140,9 +140,9 @@ static constexpr auto operator>>=(Parser p, F f) {
  * Lifts a type to the parser monad by forwarding the provided arguments to its constructor.
  */
 template <typename T, typename... Args>
-constexpr auto mreturn_forward(Args... args) {
+constexpr auto mreturn_forward(Args&&... args) {
     return parser([=](auto &) {
-        return return_success_forward<T>(args...);
+        return return_success_forward<T>(std::forward<Args>(args)...);
     });
 }
 
@@ -150,7 +150,7 @@ constexpr auto mreturn_forward(Args... args) {
  * Lift a value to the parser monad
  */
 template <typename T>
-constexpr auto mreturn(T t) {
+constexpr auto mreturn(T&& t) {
     return parser([=](auto &) {
         return return_success(t);
     });
@@ -167,7 +167,6 @@ struct parser {
     P p;
 
     constexpr parser(P p) : p{p} {}
-
 
     template <typename State>
     constexpr auto operator()(State &s) const {

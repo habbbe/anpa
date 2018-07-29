@@ -49,7 +49,7 @@ syntax_error
 int main()
 {
     constexpr auto add_to_state = [] (auto &s, auto&&... args) {
-        s.emplace_back(std::move(args)...);
+        s.emplace_back(std::forward<decltype(args)>(args)...);
         return true;
     };
 
