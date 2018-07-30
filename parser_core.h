@@ -6,6 +6,9 @@
 #include <functional>
 #include <type_traits>
 
+#define return_fail_string(s) return_fail<typename std::decay_t<decltype(s)>::string_result_type>();
+#define return_fail_string_error(s, e) return_fail<typename std::decay_t<decltype(s)>::string_result_type>(e);
+
 namespace parse {
 
 template <typename T>
@@ -62,50 +65,58 @@ struct parser;
 /**
  * Class for the parser state.
  */
+template <typename Iterator, typename StringResultConversion>
 struct parser_state_simple {
-    const std::string_view text;
-    size_t position;
-    size_t end;
+    Iterator position;
+    const Iterator end;
+    StringResultConversion conversion_function;
 
-    template <typename StringType>
-    constexpr parser_state_simple(const StringType& input_text, size_t start, size_t end) :
-        text{std::string_view(input_text)}, position{start}, end{end} {}
-    template <typename StringType>
-    constexpr parser_state_simple(const StringType& input_text, size_t start) :
-        text{std::string_view(input_text)}, position{start}, end{std::size(text)} {}
-    template <typename StringType>
-    constexpr parser_state_simple(const StringType& input_text) :
-        parser_state_simple(input_text, 0) {}
-    template <typename StringType>
-    constexpr parser_state_simple(const StringType &text, const parser_state_simple &) :
-        parser_state_simple(text) {}
+    using string_result_type = decltype(conversion_function(std::declval<Iterator>(), std::declval<Iterator>()));
 
-    constexpr auto front() const {return text[position];}
-    constexpr auto length() const {return end - position;}
-    constexpr auto empty() const {return length() < 1;}
-    constexpr auto substr(size_t pos, size_t size) {return text.substr(pos, size);}
+    constexpr parser_state_simple(Iterator begin, Iterator end, StringResultConversion convert) :
+        position{begin}, end{end}, conversion_function{convert} {}
+
+    constexpr auto front() const {return *position;}
+    constexpr auto length() const {return std::distance(position, end);}
+    constexpr auto empty() const {return position == end;}
+    constexpr auto convert(Iterator begin, Iterator end) const {return conversion_function(begin, end);}
+    constexpr auto convert(Iterator begin, size_t size) const {return convert(begin, begin+size);}
+    constexpr auto convert(Iterator end) const {return convert(position, end);}
+    constexpr auto convert(size_t size) const {return convert(position+size);}
+    constexpr auto set_position(Iterator n) {position = n;}
     constexpr auto advance(size_t n) {position += n;}
 private:
     parser_state_simple(const parser_state_simple &other) = delete;
 };
 
+//template <typename T, typename Iterator>
+//std::basic_string_view<T> basic_string_view_convert(Iterator begin, Iterator end) {
+//    return std::basic_string_view<T>(begin, std::distance(begin, end));
+//}
+
+template <typename T>
+constexpr auto basic_string_view_convert = [](auto begin, auto end) {
+    return std::basic_string_view<T>(begin, std::distance(begin, end));
+};
+
+constexpr auto string_view_convert = [](auto begin, auto end) {
+    return std::string_view(begin, std::distance(begin, end));
+};
 
 /**
  * Class for the parser state. Contains the string to be parsed, along
  * with the user provided state
  */
-template <typename UserState>
-struct parser_state: public parser_state_simple {
+template <typename Iterator, typename StringResultConversion, typename UserState>
+struct parser_state: public parser_state_simple<Iterator, StringResultConversion> {
     UserState& user_state;
-    template <typename StringType>
-    constexpr parser_state(const StringType& text, UserState& state) : parser_state_simple{text}, user_state{state} {}
 
-    template <typename StringType>
-    constexpr parser_state(const StringType &text, const parser_state& other) : parser_state_simple{text}, user_state{other.user_state} {}
+    constexpr parser_state(Iterator begin, Iterator end, UserState& state, StringResultConversion convert)
+        : parser_state_simple<Iterator, StringResultConversion>{begin, end, convert}, user_state{state} {}
 };
 
-template <typename T, typename S = void>
-using type = std::function<variant<T>(std::conditional_t<std::is_void<S>::value, parser_state_simple &, parser_state<S> &>)>;
+template <typename T, typename Iterator, typename StringConversionFunction, typename S = void>
+using type = std::function<variant<T>(std::conditional_t<std::is_void<S>::value, parser_state_simple<Iterator, StringConversionFunction> &, parser_state<Iterator, StringConversionFunction, S> &>)>;
 
 /**
  * Apply a parser to a state and return the result.
@@ -174,27 +185,54 @@ struct parser {
     }
 
     /**
-     * Begin parsing with the user supplied string and state.
+     * Begin parsing between begin and end with a state, using the supplied conversion function when
+     * returning results from two iterators
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename StringType, typename State>
-    constexpr auto parse_with_state(const StringType &string, State &user_state) const {
-        parser_state state(string, user_state);
+    template <typename Iterator, typename State, typename ConversionFunction>
+    constexpr auto parse_with_state(Iterator begin, Iterator end, State &user_state, ConversionFunction convert = string_view_convert) const {
+        parser_state state(begin, end, user_state, convert);
         auto res = apply(p, state);
         return std::make_pair(state.position, std::move(res));
     }
 
     /**
-     * Begin parsing with the user supplied string
+     * Begin parsing a string with a state.
+     * The result is a std::pair with the position of the first unparsed token as first
+     * element and the result of the parse as the second.
+     */
+    template <typename StringType, typename State>
+    constexpr auto parse_with_state(StringType &string, State &user_state) const {
+        return parse_with_state(string.data(),
+                                string.data() + string.length(),
+                                user_state,
+                                basic_string_view_convert<std::decay_t<decltype(*string.data())>>);
+    }
+
+    /**
+     * Begin parsing between begin and end, using the supplied conversion function when
+     * returning results from two iterators
+     * The result is a std::pair with the position of the first unparsed token as first
+     * element and the result of the parse as the second.
+     */
+    template <typename Iterator, typename ConversionFunction>
+    constexpr auto parse(Iterator begin, Iterator end, ConversionFunction convert) const {
+        auto state = parser_state_simple(begin, end, convert);
+        auto res = apply(p, state);
+        return std::make_pair(state.position, std::move(res));
+    }
+
+    /**
+     * Begin parsing a string_view
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
     template <typename StringType>
-    constexpr auto parse(const StringType &string) const {
-        auto state = parser_state_simple(string);
-        auto res = apply(p, state);
-        return std::make_pair(state.position, std::move(res));
+    constexpr auto parse(StringType &string) const {
+        return parse(string.data(),
+                     string.data() + string.length(),
+                     basic_string_view_convert<std::decay_t<decltype(*string.data())>>);
     }
 
     /**

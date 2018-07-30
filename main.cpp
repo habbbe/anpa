@@ -74,9 +74,10 @@ int main()
 //    std::vector<row> r;
 //    std::ifstream t("test");
 
+
     std::string line;
     while (std::getline(t, line)) {
-        entry_parser.parse_with_state(std::string_view(line), r);
+        entry_parser.parse_with_state(line, r);
 //        auto result = entry_parser.parse(std::string_view(line));
 //        if (result.second) {
 //            r.emplace_back(std::move(*result.second));

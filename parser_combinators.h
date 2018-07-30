@@ -111,17 +111,16 @@ inline constexpr auto constrain(Parser p, Predicate pred) {
 /**
  * Recursive helper for `get_parsed`
  */
-template <typename State, typename Parser, typename... Parsers>
-static inline constexpr auto get_parsed_recursive(State &s, size_t original_position, Parser p, Parsers... ps) {
+template <typename State, typename Iterator, typename Parser, typename... Parsers>
+static inline constexpr auto get_parsed_recursive(State &s, Iterator original_position, Parser p, Parsers... ps) {
     if (const auto &res = apply(p, s); has_result(res)) {
         if constexpr (sizeof...(Parsers) == 0) {
-            size_t size = s.position - original_position;
-            return return_success(s.substr(original_position, size));
+            return return_success(s.convert(original_position, s.position));
         } else {
             return get_parsed_recursive(s, original_position, ps...);
         }
     } else {
-        return return_fail<std::string_view>(get_error(res));
+        return return_fail_string_error(s, get_error(res));
     }
 }
 
@@ -132,18 +131,17 @@ static inline constexpr auto get_parsed_recursive(State &s, size_t original_posi
 template <typename Parser, typename ... Parsers>
 inline constexpr auto get_parsed(Parser p, Parsers ... ps) {
     return parser([=](auto &s) {
-        auto original_position = s.position;
-        return get_parsed_recursive(s, original_position, p, ps...);
+        return get_parsed_recursive(s, s.position, p, ps...);
     });
 }
 
 /**
  * Make a parser that evaluates two parsers, and returns the successfully parsed text upon success.
  */
-template <typename Parser1, typename Parser2>
-inline constexpr auto operator+(Parser1 p1, Parser2 p2) {
-    return get_parsed(p1, p2);
-}
+//template <typename Parser1, typename Parser2>
+//inline constexpr auto operator+(Parser1 p1, Parser2 p2) {
+//    return get_parsed(p1, p2);
+//}
 
 /**
  * Combine two parsers so that the second will be tried before failing.
@@ -352,7 +350,7 @@ static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps)
     } else {
         // All parsers failed
         using result_type = std::decay_t<decltype(f(get_result(result)))>;
-        return return_fail<result_type>();
+        return return_fail<result_type>(get_error(result));
     }
 }
 
@@ -416,15 +414,14 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
 template <typename Parser1, typename Parser2>
 inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
     return parser([=](auto &s) {
-        auto result = apply(p1, s);
-        if (has_result(result)) {
+        if (auto result = apply(p1, s); has_result(result)) {
             auto result_text = get_result(result);
             using state_type = std::decay_t<decltype(s)>;
             state_type new_state(result_text, s);
             auto new_result = apply(p2, new_state);
             return new_result;
         } else {
-            return return_fail<decltype(get_result(apply(p2, s)))>();
+            return return_fail<decltype(get_result(apply(p2, s)))>(get_error(result));
         }
     });
 }
@@ -445,11 +442,7 @@ inline constexpr auto until(Parser p) {
             s.advance(1);
             position_end = s.position;
         }
-        if constexpr (Eat) {
-            return return_success(s.substr(position_start, position_end - position_start));
-        } else {
-            return return_success(s.substr(position_start, s.position - position_start));
-        }
+        return return_success(s.convert(position_start, Eat ? position_end : s.position));
     });
 }
 

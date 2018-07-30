@@ -5,6 +5,7 @@
 #include <string>
 #include "parser_core.h"
 #include "parser_combinators.h"
+#include <charconv>
 
 namespace parse {
 
@@ -70,14 +71,15 @@ inline constexpr auto token(const char c) {
 /**
  * Parser for a string
  */
-template <int N>
-inline constexpr auto string(const char (&str)[N]) {
+template <typename CharType, int N>
+inline constexpr auto string(const CharType (&str)[N]) {
     return parser([=](auto &s) {
-        if (s.length() < N-1 || s.text.compare(s.position, N-1, str) != 0)
-            return return_fail<decltype(s.text)>();
-        auto res = s.substr(s.position, N-1);
-        s.advance(N-1);
-        return return_success(res);
+        constexpr auto str_length = N - 1;
+        if (s.length() < str_length || !std::equal(s.position, s.position + str_length, str)) {
+            return return_fail_string(s);
+        }
+        s.advance(str_length);
+        return return_success(s.convert(str_length));
     });
 }
 
@@ -86,11 +88,12 @@ inline constexpr auto string(const char (&str)[N]) {
  */
 inline constexpr auto consume(unsigned int n) {
     return parser([=](auto &s) {
-        if (s.length() < n)
-            return return_fail<decltype(s.text)>();
-        auto res = s.substr(s.position, n);
-        s.advance(n);
-        return return_success(res);
+        if (s.length() >= n) {
+            auto result = s.convert(n);
+            s.advance(n);
+            return return_success(result);
+        }
+        return return_fail_string(s);
     });
 }
 
@@ -102,14 +105,13 @@ inline constexpr auto consume(unsigned int n) {
 template <typename CharType, bool Eat = true>
 inline constexpr auto until_token(const CharType c) {
     return parser([=](auto &s) {
-        if (auto pos = s.text.find_first_of(c, s.position); pos != std::decay_t<decltype(s.text)>::npos) {
-            auto parsed_length_excluding_token = pos - s.position;
-            auto parsed_length_including_token = parsed_length_excluding_token + 1;
-            auto res = s.substr(s.position, (Eat ? parsed_length_excluding_token : parsed_length_including_token));
-            s.advance(parsed_length_including_token);
+        if (auto pos = std::find(s.position, s.end, c); pos != s.end) {
+            auto end_iterator_with_token = pos + 1;
+            auto res = s.convert(Eat ? pos : end_iterator_with_token);
+            s.set_position(end_iterator_with_token);
             return return_success(res);
         } else {
-            return return_fail<decltype(s.text)>();
+            return return_fail_string(s);
         }
     });
 }
@@ -123,15 +125,14 @@ inline constexpr auto until_token(const CharType c) {
 template <size_t N, bool Eat = true>
 inline constexpr auto until_string(const char (&str)[N]) {
     return parser([&](auto &s) {
-        if (auto pos = s.text.find(str, s.position); pos != std::decay_t<decltype(s.text)>::npos) {
+        if (auto pos = std::search(s.position, s.end, str, str+N-1); pos != s.end) {
             constexpr auto str_length = N - 1;
-            auto parsed_size_excluding_string = pos - s.position;
-            auto parsed_size_including_string = parsed_size_excluding_string + str_length;
-            auto res = s.substr(s.position, Eat ? parsed_size_excluding_string : parsed_size_including_string);
-            s.advance(parsed_size_including_string);
+            auto end_iterator_including_string = pos + str_length;
+            auto res = s.convert(Eat ? pos : end_iterator_including_string);
+            s.set_position(end_iterator_including_string);
             return return_success(res);
         } else {
-            return return_fail<decltype(s.text)>();
+            return return_fail_string(s);
         }
     });
 }
@@ -141,8 +142,8 @@ inline constexpr auto until_string(const char (&str)[N]) {
  */
 inline constexpr auto rest() {
     return parser([](auto &s) {
-        auto res = s.substr(s.position, std::string_view::npos);
-        s.advance(s.length());
+        auto res = s.convert(s.end);
+        s.set_position(s.end);
         return return_success(res);
     });
 }
@@ -166,30 +167,16 @@ inline constexpr auto end_of_line() {
  */
 template <typename CharType, size_t N>
 inline constexpr auto while_in(const CharType (&str)[N]) {
-    return parser([&](auto &s) {
-        constexpr auto contains = [](auto& str, auto c) {
-            for (size_t i = 0; i < N-1; ++i) {
-                if (str[i] == c) return true;
-            }
-            return false;
+    return parser([=](auto &s) {
+        constexpr auto contains = [&](auto &val) {
+            auto end = str + N - 1;
+            return std::find(str, end, val) != end;
         };
 
-        size_t found = 0;
-        for (size_t i = s.position; i < s.end; ++i) {
-            if (contains(str, s.text[i])) {
-                ++found;
-            } else {
-                break;
-            }
-        }
-
-        if (found > 0) {
-            auto result = s.substr(s.position, found);
-            s.advance(found);
-            return return_success(result);
-        } else {
-            return return_fail<decltype(s.text)>();
-        }
+        auto i = s.position;
+        auto res = std::find_if_not(s.position, s.end, [](auto &i) {return contains(i);});
+        s.set_position(res);
+        return return_success(s.convert(res));
     });
 }
 
@@ -197,35 +184,29 @@ inline constexpr auto while_in(const CharType (&str)[N]) {
 template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = true, typename Start, typename End, typename EqualStart, typename EqualEnd>
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
-        if (s.empty() || !equal_start(s.text, s.position, StartLength, start))
-            return return_fail<decltype(s.text)>();
+        if (s.empty() || !equal_start(s.position, s.position + StartLength, start))
+            return return_fail_string(s);
 
         size_t to_match = 0;
-        size_t size = 0;
-        for (size_t i = s.position + StartLength; i<=s.end-EndLength;) {
-            if (equal_end(s.text, i, EndLength, end)) {
+        for (auto i = s.position + StartLength; i != s.end - EndLength;) {
+            if (equal_end(i, i + EndLength, end)) {
                 if (to_match == 0) {
-                    size_t start_index = s.position + (Eat ? StartLength : 0);
-                    size_t total_length = StartLength + size + EndLength;
-                    size_t result_size = Eat ? size : total_length;
-                    auto res = s.substr(start_index, result_size);
-                    s.advance(total_length);
-                    return return_success(res);
+                    auto begin_iterator = s.position + (Eat ? StartLength : 0);
+                    auto result_end = i + (Eat ? 0 : EndLength);
+                    s.set_position(i + EndLength);
+                    return return_success(s.convert(begin_iterator, result_end));
                 } else if (Nested) {
                     --to_match;
                     i += EndLength;
-                    size += EndLength;
                 }
-            } else if (Nested && equal_start(s.text, i, StartLength, start)) {
+            } else if (Nested && equal_start(i, i+StartLength, start)) {
                 ++to_match;
                 i += StartLength;
-                size += StartLength;
             } else {
                 ++i;
-                ++size;
             }
         }
-        return return_fail<decltype(s.text)>();
+        return return_fail_string(s);
     });
 }
 
@@ -239,11 +220,11 @@ template <bool Nested = false, bool Eat = true, typename CharType, size_t NStart
 inline constexpr auto between_strings(const CharType (&start)[NStart], const CharType (&end)[NEnd]) {
 
     // Use faster comparison when the string is only one character long
-    [[maybe_unused]] constexpr auto compare_single = [](auto &s, auto start_index, auto, auto toCompare) {
-        return s[start_index] == *toCompare;
+    [[maybe_unused]] constexpr auto compare_single = [](auto begin, auto, auto toCompare) {
+        return *begin == *toCompare;
     };
-    [[maybe_unused]] constexpr auto compare_str = [](auto &s, auto start_index, auto length, auto toCompare) {
-        return !s.compare(start_index, length, toCompare);
+    [[maybe_unused]] constexpr auto compare_str = [](auto begin, auto end, auto toCompare) {
+        return std::equal(begin, end, toCompare) != end;
     };
 
     constexpr auto compare_start = [=]() {
@@ -261,8 +242,8 @@ inline constexpr auto between_strings(const CharType (&start)[NStart], const Cha
  */
 template <bool Nested = false, bool Eat = true, typename CharType>
 inline constexpr auto between_tokens(const CharType start, const CharType end) {
-    constexpr auto compare_single = [](auto &s, auto start_index, auto, auto toCompare) {
-        return s[start_index] == toCompare;
+    constexpr auto compare_single = [](auto iterator, auto, auto toCompare) {
+        return *iterator == toCompare;
     };
     return between_general<1, 1, Nested, Eat>(start, end, compare_single, compare_single);
 }
@@ -277,21 +258,20 @@ inline constexpr auto between_token(const CharType c) {
 
 // CONVENIENCE PARSERS
 
-template <typename Integral>
-inline constexpr std::pair<size_t, Integral> parse_integer(const char* str, size_t length) {
+template <typename Integral, typename Iterator>
+inline constexpr auto parse_integer(Iterator begin, Iterator end) {
     constexpr auto is_digit = [](char c) {
         return c <= '9' && c >= '0';
     };
     Integral result = 0;
-    size_t parsed = 0;
-    for (; parsed < length; ++parsed, ++str) {
-        if (is_digit(*str)) {
-            result = (*str - '0') + result * 10;
+    for (; begin != end; ++begin) {
+        if (is_digit(*begin)) {
+            result = (*begin - '0') + result * 10;
         } else {
             break;
         }
     }
-    return {parsed, result};
+    return std::pair{begin, result};
 }
 
 /**
@@ -302,10 +282,10 @@ template <typename Integral = int>
 inline constexpr auto integer() {
     return parser([=](auto &s) {
         bool negate = std::is_signed_v<Integral> && !s.empty() && s.front() == '-';
-        size_t start_pos = s.position + (negate ? 1 : 0);
-        auto [parsed, result] = parse_integer<Integral>(s.text.data() + start_pos, s.end - start_pos);
-        if (parsed > 0) {
-            s.advance(parsed);
+        auto start_iterator = s.position + (negate ? 1 : 0);
+        auto [new_pos, result] = parse_integer<Integral>(start_iterator, s.end);
+        if (new_pos != start_iterator) {
+            s.set_position(new_pos);
             return return_success(result * (negate ? -1 : 1));
         } else {
             return return_fail<Integral>();
@@ -314,44 +294,21 @@ inline constexpr auto integer() {
 }
 
 /**
- * Parser for numbers using provided c call (strtol, strotof and friends).
- * This is fast, but doesn't behave correctly at the end of string types that aren't
- * null terminated in their underlying data array.
+ * Parse a number. Template parameter indicates the type to be parsed. Uses std::from_chars.
+ * For integers, consider using integer instead, as it is constexpr and slightly faster.
  */
-template <typename Ret, typename ReturnType = Ret, typename CharType, typename... Base>
-static inline constexpr auto convert_to_num(Ret (*c)(const CharType*, CharType**, Base...), Base... base) {
-    return parser([=](auto &s) {
-        const CharType *begin = s.text.data() + s.position;
-        CharType* end;
-        errno = 0;
-        Ret result = c(begin, &end, base...);
-        if (begin == end || errno == ERANGE ||
-                   (std::is_integral<ReturnType>::value && sizeof(int) == sizeof(ReturnType) &&
-                    (result < std::numeric_limits<ReturnType>::min() || result > std::numeric_limits<ReturnType>::max()))) {
-            return return_fail<ReturnType>();
+template <typename Number>
+inline constexpr auto number() {
+    return parser([](auto &s) {
+        Number result;
+        auto res = std::from_chars<Number>(s.position, s.end, result);
+        if (res.errc != std::errc()) {
+            s.set_position(res.ptr);
+            return return_success(result);
         } else {
-            s.advance(end - begin);
-            return return_success(ReturnType(result));
+            return return_fail<Number>();
         }
     });
-}
-
-/**
- * Parse a double.
- * Note: Doesn't behave correctly at the end of non null terminated strings
- * Also consumes any whitespace before the number.
- */
-inline constexpr auto double_fast() {
-    return convert_to_num(std::strtod);
-}
-
-/**
- * Parse a float.
- * Note: Doesn't behave correctly at the end of non null terminated strings
- * Also consumes any whitespace before the number.
- */
-inline constexpr auto float_fast() {
-    return convert_to_num(std::strtof);
 }
 
 /**
