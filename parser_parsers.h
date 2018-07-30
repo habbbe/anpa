@@ -70,6 +70,44 @@ inline constexpr auto item(const ItemType c) {
 }
 
 /**
+ * Create a custom parser.
+ * custom_parser should be a callable with the following signature
+ * std::optional<std::pair<Iterator, Result>>(Iterator position, Iterator End)
+ * where an empty optional signals a failed parse, and a value a successful parse; a pair with
+ * the new iterator position and a result.
+ */
+template <typename Parser>
+inline constexpr auto custom(Parser custom_parser) {
+    return parser([=](auto &s) {
+        if (auto result = custom_parser(s.position, s.end); result) {
+            s.set_position(result->first);
+            return return_success(result->second);
+        } else {
+            return return_fail<decltype(result->second)>();
+        }
+    });
+}
+
+/**
+ * Create a custom parser.
+ * custom_parser should be a callable with the following signature
+ * std::optional<std::pair<Iterator, Result>>(Iterator position, Iterator End, State &state)
+ * where an empty optional signals a failed parse, and a value a successful parse; a pair with
+ * the new iterator position and a result.
+ */
+template <typename Parser>
+inline constexpr auto custom_with_state(Parser custom_parser) {
+    return parser([=](auto &s) {
+        if (auto result = custom_parser(s.position, s.end, s.state); result) {
+            s.set_position(result->first);
+            return return_success(result->second);
+        } else {
+            return return_fail<decltype(result->second)>();
+        }
+    });
+}
+
+/**
  * Parser for a sequence
  */
 template <typename ItemType, size_t N>
