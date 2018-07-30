@@ -6,8 +6,8 @@
 #include <functional>
 #include <type_traits>
 
-#define return_fail_string(s) return_fail<typename std::decay_t<decltype(s)>::string_result_type>();
-#define return_fail_string_error(s, e) return_fail<typename std::decay_t<decltype(s)>::string_result_type>(e);
+#define return_fail_default(s) return_fail<typename std::decay_t<decltype(s)>::string_result_type>();
+#define return_fail_default_error(s, e) return_fail<typename std::decay_t<decltype(s)>::string_result_type>(e);
 
 namespace parse {
 
@@ -77,7 +77,20 @@ struct parser_state_simple {
         position{begin}, end{end}, conversion_function{convert} {}
 
     constexpr auto front() const {return *position;}
-    constexpr auto length() const {return std::distance(position, end);}
+
+    // If we have a random access iterator, just use std::distance, otherwise
+    // iterate so that we don't have to go all the way to end
+    constexpr auto has_at_least(long n) {
+        using category = typename std::iterator_traits<Iterator>::iterator_category;
+        if constexpr (std::is_same_v<category, std::random_access_iterator_tag>) {
+           return std::distance(position, end) >= n;
+        } else {
+            auto start = position;
+            for (long i = 0; i<n; ++i, ++start)
+                if (start == end) return false;
+            return true;
+        }
+    }
     constexpr auto empty() const {return position == end;}
     constexpr auto convert(Iterator begin, Iterator end) const {return conversion_function(begin, end);}
     constexpr auto convert(Iterator begin, size_t size) const {return convert(begin, begin+size);}

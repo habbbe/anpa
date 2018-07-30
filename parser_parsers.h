@@ -29,7 +29,7 @@ inline constexpr auto fail() {
 }
 
 /**
- * Parser for the empty string
+ * Parser for the empty sequence
  */
 inline constexpr auto empty() {
     return parser([](auto &s) {
@@ -41,12 +41,12 @@ inline constexpr auto empty() {
 }
 
 /**
- * Parser for any character
+ * Parser for any item
  */
-inline constexpr auto any_token() {
+inline constexpr auto any_item() {
     return parser([](auto &s) {
         if (s.empty())
-            return return_fail<char>();
+            return return_fail<decltype(s.front())>();
         auto front = s.front();
         s.advance(1);
         return return_success(front);
@@ -54,9 +54,10 @@ inline constexpr auto any_token() {
 }
 
 /**
- * Parser for a single character
+ * Parser for a single item
  */
-inline constexpr auto token(const char c) {
+template <typename ItemType>
+inline constexpr auto item(const ItemType c) {
     return parser([=](auto &s) {
         if (!s.empty()) {
             if (auto front = s.front(); front == c) {
@@ -64,46 +65,47 @@ inline constexpr auto token(const char c) {
                 return return_success(front);
             }
         }
-        return return_fail<char>();
+        return return_fail<ItemType>();
     });
 }
 
 /**
- * Parser for a string
+ * Parser for a sequence
  */
-template <typename CharType, int N>
-inline constexpr auto string(const CharType (&str)[N]) {
+template <typename ItemType, size_t N>
+inline constexpr auto sequence(const ItemType (&seq)[N]) {
     return parser([=](auto &s) {
-        constexpr auto str_length = N - 1;
-        if (s.length() < str_length || !std::equal(s.position, s.position + str_length, str)) {
-            return return_fail_string(s);
+        constexpr auto seq_length = N - 1;
+        if (s.has_at_least(seq_length) && std::equal(s.position, s.position + seq_length, seq)) {
+            s.advance(seq_length);
+            return return_success(s.convert(seq_length));
+        } else {
+            return return_fail_default(s);
         }
-        s.advance(str_length);
-        return return_success(s.convert(str_length));
     });
 }
 
 /**
- * Parser for consuming n characters
+ * Parser for consuming n items
  */
 inline constexpr auto consume(unsigned int n) {
     return parser([=](auto &s) {
-        if (s.length() >= n) {
+        if (s.has_at_least(n)) {
             auto result = s.convert(n);
             s.advance(n);
             return return_success(result);
         }
-        return return_fail_string(s);
+        return return_fail_default(s);
     });
 }
 
 /**
- * Parser for consuming all characters up until a certain character
+ * Parser for consuming all items up until a certain item
  * Use boolean template parameter `Eat` to control whether or not to
- * include the matched token in the result.
+ * include the matched item in the result.
  */
-template <typename CharType, bool Eat = true>
-inline constexpr auto until_token(const CharType c) {
+template <typename ItemType, bool Eat = true>
+inline constexpr auto until_item(const ItemType c) {
     return parser([=](auto &s) {
         if (auto pos = std::find(s.position, s.end, c); pos != s.end) {
             auto end_iterator_with_token = pos + 1;
@@ -111,34 +113,34 @@ inline constexpr auto until_token(const CharType c) {
             s.set_position(end_iterator_with_token);
             return return_success(res);
         } else {
-            return return_fail_string(s);
+            return return_fail_default(s);
         }
     });
 }
 
 /**
- * Parser for consuming all characters up until a certain string
+ * Parser for consuming all items up until a certain sequence
  * Use boolean template parameter `Eat` to control whether or not to
- * include the matched string in the result.
- * This is much faster than using until(string()).
+ * include the matched sequence in the result.
+ * This is much faster than using until(sequence()).
  */
-template <size_t N, bool Eat = true>
-inline constexpr auto until_string(const char (&str)[N]) {
+template <typename ItemType, size_t N, bool Eat = true>
+inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
     return parser([&](auto &s) {
-        if (auto pos = std::search(s.position, s.end, str, str+N-1); pos != s.end) {
-            constexpr auto str_length = N - 1;
-            auto end_iterator_including_string = pos + str_length;
-            auto res = s.convert(Eat ? pos : end_iterator_including_string);
-            s.set_position(end_iterator_including_string);
+        if (auto pos = std::search(s.position, s.end, seq, seq+N-1); pos != s.end) {
+            constexpr auto seq_length = N - 1;
+            auto end_iterator_including_seq = pos + seq_length;
+            auto res = s.convert(Eat ? pos : end_iterator_including_seq);
+            s.set_position(end_iterator_including_seq);
             return return_success(res);
         } else {
-            return return_fail_string(s);
+            return return_fail_default(s);
         }
     });
 }
 
 /**
- * Parser for the rest for the string
+ * Parser for the rest of the sequence
  */
 inline constexpr auto rest() {
     return parser([](auto &s) {
@@ -152,25 +154,25 @@ inline constexpr auto rest() {
  * Parser for the rest of the line
  */
 inline constexpr auto rest_of_line() {
-    return parse::until_string("\r\n") || parse::until_token('\r') || parse::until_token('\n');
+    return parse::until_sequence("\r\n") || parse::until_item('\r') || parse::until_item('\n');
 }
 
 /**
  * Parser for the rest of the line
  */
 inline constexpr auto end_of_line() {
-    return parse::string("\r\n") || parse::string("\r") || parse::string("\n");
+    return parse::sequence("\r\n") || parse::item('\r') || parse::item('\n');
 }
 
 /**
- * Parser that consumes all characters in the given set
+ * Parser that consumes all items in the given set
  */
-template <typename CharType, size_t N>
-inline constexpr auto while_in(const CharType (&str)[N]) {
+template <typename ItemType, size_t N>
+inline constexpr auto while_in(const ItemType (&items)[N]) {
     return parser([=](auto &s) {
         constexpr auto contains = [&](auto &val) {
-            auto end = str + N - 1;
-            return std::find(str, end, val) != end;
+            auto end = items + N - 1;
+            return std::find(items, end, val) != end;
         };
 
         auto i = s.position;
@@ -185,7 +187,7 @@ template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = 
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
         if (s.empty() || !equal_start(s.position, s.position + StartLength, start))
-            return return_fail_string(s);
+            return return_fail_default(s);
 
         size_t to_match = 0;
         for (auto i = s.position + StartLength; i != s.end - EndLength;) {
@@ -206,42 +208,42 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
                 ++i;
             }
         }
-        return return_fail_string(s);
+        return return_fail_default(s);
     });
 }
 
 /**
- * Parser that consumes all characters between the two supplied strings.
+ * Parser that consumes all items between the two supplied sequences.
  * Use template parameter `Nested` to decide whether to support nested matchings or not,
- * and template parameter `Eat` to decide whether to include the matching characters in the
+ * and template parameter `Eat` to decide whether to include the matching sequence in the
  * result or not.
  */
-template <bool Nested = false, bool Eat = true, typename CharType, size_t NStart, size_t NEnd>
-inline constexpr auto between_strings(const CharType (&start)[NStart], const CharType (&end)[NEnd]) {
+template <bool Nested = false, bool Eat = true, typename ItemType, size_t NStart, size_t NEnd>
+inline constexpr auto between_sequences(const ItemType (&start)[NStart], const ItemType (&end)[NEnd]) {
 
-    // Use faster comparison when the string is only one character long
+    // Use faster comparison when the sequence is only one item long
     [[maybe_unused]] constexpr auto compare_single = [](auto begin, auto, auto toCompare) {
         return *begin == *toCompare;
     };
-    [[maybe_unused]] constexpr auto compare_str = [](auto begin, auto end, auto toCompare) {
+    [[maybe_unused]] constexpr auto compare_seq = [](auto begin, auto end, auto toCompare) {
         return std::equal(begin, end, toCompare) != end;
     };
 
     constexpr auto compare_start = [=]() {
-        if constexpr (NStart - 1 == 1) return compare_single; else return compare_str;
+        if constexpr (NStart - 1 == 1) return compare_single; else return compare_seq;
     }();
     constexpr auto compare_end = [=]() {
-        if constexpr (NEnd - 1 == 1) return compare_single; else return compare_str;
+        if constexpr (NEnd - 1 == 1) return compare_single; else return compare_seq;
     }();
 
     return between_general<NStart-1, NEnd-1, Nested, Eat>(start, end, compare_start, compare_end);
 }
 
 /**
- * Parser that consumes all characters between the two supplied characters
+ * Parser that consumes all items between the two supplied items.
  */
-template <bool Nested = false, bool Eat = true, typename CharType>
-inline constexpr auto between_tokens(const CharType start, const CharType end) {
+template <bool Nested = false, bool Eat = true, typename ItemType>
+inline constexpr auto between_items(const ItemType start, const ItemType end) {
     constexpr auto compare_single = [](auto iterator, auto, auto toCompare) {
         return *iterator == toCompare;
     };
@@ -249,24 +251,24 @@ inline constexpr auto between_tokens(const CharType start, const CharType end) {
 }
 
 /**
- * Parser that consumes all characters between two of the supplied character
+ * Parser that consumes all items between two of the supplied item
  */
-template <typename CharType, bool Nested = false, bool Eat = true>
-inline constexpr auto between_token(const CharType c) {
-    return between_tokens<Nested, Eat>(c, c);
+template <typename ItemType, bool Nested = false, bool Eat = true>
+inline constexpr auto between_item(const ItemType c) {
+    return between_items<Nested, Eat>(c, c);
 }
 
 // CONVENIENCE PARSERS
 
 template <typename Integral, typename Iterator>
 inline constexpr auto parse_integer(Iterator begin, Iterator end) {
-    constexpr auto is_digit = [](char c) {
+    constexpr auto is_digit = [](auto &c) {
         return c <= '9' && c >= '0';
     };
     Integral result = 0;
-    for (; begin != end; ++begin) {
+    while (begin != end) {
         if (is_digit(*begin)) {
-            result = (*begin - '0') + result * 10;
+            result = (*begin++ - '0') + result * 10;
         } else {
             break;
         }

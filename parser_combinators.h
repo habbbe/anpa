@@ -120,7 +120,7 @@ static inline constexpr auto get_parsed_recursive(State &s, Iterator original_po
             return get_parsed_recursive(s, original_position, ps...);
         }
     } else {
-        return return_fail_string_error(s, get_error(res));
+        return return_fail_default_error(s, get_error(res));
     }
 }
 
@@ -427,11 +427,11 @@ inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
 }
 
 /**
- * Parse all text until the supplied parser succeeds.
- * Use template parameter `Eat` to specify whether to include the parsed string in
+ * Parse all items until the supplied parser succeeds.
+ * Use template parameter `Eat` to specify whether to include the successful parse in
  * the result or not.
- * Note: For parsing until a certain string or token, use functions
- * `until_token` and `until_string` instead, as they are more efficient.
+ * Note: For parsing until a certain sequence or item, use functions
+ * `until_item` and `until_sequence` instead, as they are more efficient.
  */
 template <bool Eat = true, typename Parser>
 inline constexpr auto until(Parser p) {
