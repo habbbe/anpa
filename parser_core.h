@@ -228,12 +228,12 @@ struct parser {
     }
 
     /**
-     * Begin parsing a string_view
+     * Begin parsing a string type.
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
     template <typename StringType>
-    constexpr auto parse(StringType &string) const {
+    constexpr auto parse(const StringType &string) const {
         return parse(string.data(),
                      string.data() + string.length(),
                      basic_string_view_convert<std::decay_t<decltype(*string.data())>>);

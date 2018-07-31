@@ -114,7 +114,7 @@ template <typename ItemType, size_t N>
 inline constexpr auto sequence(const ItemType (&seq)[N]) {
     return parser([=](auto &s) {
         constexpr auto seq_length = N - 1;
-        if (s.has_at_least(seq_length) && std::equal(s.position, s.position + seq_length, seq)) {
+        if (s.has_at_least(seq_length) && equal(s.position, s.position + seq_length, seq)) {
             s.advance(seq_length);
             return return_success(s.convert(seq_length));
         } else {
@@ -145,7 +145,7 @@ inline constexpr auto consume(unsigned int n) {
 template <typename ItemType, bool Eat = true>
 inline constexpr auto until_item(const ItemType c) {
     return parser([=](auto &s) {
-        if (auto pos = std::find(s.position, s.end, c); pos != s.end) {
+        if (auto pos = find(s.position, s.end, c); pos != s.end) {
             auto end_iterator_with_token = pos + 1;
             auto res = s.convert(Eat ? pos : end_iterator_with_token);
             s.set_position(end_iterator_with_token);
@@ -165,7 +165,7 @@ inline constexpr auto until_item(const ItemType c) {
 template <typename ItemType, size_t N, bool Eat = true>
 inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
     return parser([&](auto &s) {
-        if (auto pos = std::search(s.position, s.end, seq, seq+N-1); pos != s.end) {
+        if (auto pos = search(s.position, s.end, seq, seq+N-1); pos != s.end) {
             constexpr auto seq_length = N - 1;
             auto end_iterator_including_seq = pos + seq_length;
             auto res = s.convert(Eat ? pos : end_iterator_including_seq);
@@ -210,7 +210,7 @@ inline constexpr auto while_in(const ItemType (&items)[N]) {
     return parser([=](auto &s) {
         constexpr auto contains = [&](auto &val) {
             auto end = items + N - 1;
-            return std::find(items, end, val) != end;
+            return find(items, end, val) != end;
         };
 
         auto i = s.position;

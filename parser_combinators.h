@@ -6,6 +6,7 @@
 #include <vector>
 #include "parser_core.h"
 #include "monad.h"
+#include "parse_utils.h"
 
 namespace parse {
 
