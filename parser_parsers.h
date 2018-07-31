@@ -3,9 +3,10 @@
 
 #include <stdlib.h>
 #include <string>
+#include <charconv>
+#include <algorithm>
 #include "parser_core.h"
 #include "parser_combinators.h"
-#include <charconv>
 
 namespace parse {
 
@@ -108,15 +109,16 @@ inline constexpr auto custom_with_state(Parser custom_parser) {
 }
 
 /**
- * Parser for a sequence
+ * Parser for the sequence described by [begin, end)
  */
-template <typename ItemType, size_t N>
-inline constexpr auto sequence(const ItemType (&seq)[N]) {
+template <typename Iterator>
+inline constexpr auto sequence(Iterator begin, Iterator end) {
     return parser([=](auto &s) {
-        constexpr auto seq_length = N - 1;
-        if (s.has_at_least(seq_length) && equal(s.position, s.position + seq_length, seq)) {
-            s.advance(seq_length);
-            return return_success(s.convert(seq_length));
+        auto size = std::distance(begin, end);
+        auto orig_pos = s.position;
+        if (s.has_at_least(size) && equal(begin, end, orig_pos)) {
+            s.advance(size);
+            return return_success(s.convert(orig_pos, size));
         } else {
             return return_fail_default(s);
         }
@@ -124,9 +126,17 @@ inline constexpr auto sequence(const ItemType (&seq)[N]) {
 }
 
 /**
+ * Parser for a sequence
+ */
+template <typename ItemType, size_t N>
+inline constexpr auto sequence(const ItemType (&seq)[N]) {
+    return sequence(seq, seq + N - 1);
+}
+
+/**
  * Parser for consuming n items
  */
-inline constexpr auto consume(unsigned int n) {
+inline constexpr auto consume(size_t n) {
     return parser([=](auto &s) {
         if (s.has_at_least(n)) {
             auto result = s.convert(n);
@@ -143,12 +153,31 @@ inline constexpr auto consume(unsigned int n) {
  * include the matched item in the result.
  */
 template <typename ItemType, bool Eat = true>
-inline constexpr auto until_item(const ItemType c) {
-    return parser([=](auto &s) {
+inline constexpr auto until_item(ItemType &&c) {
+    return parser([c = std::forward<ItemType>(c)](auto &s) {
         if (auto pos = find(s.position, s.end, c); pos != s.end) {
             auto end_iterator_with_token = pos + 1;
             auto res = s.convert(Eat ? pos : end_iterator_with_token);
             s.set_position(end_iterator_with_token);
+            return return_success(res);
+        } else {
+            return return_fail_default(s);
+        }
+    });
+}
+
+/**
+ * Parser for consuming all items up until a certain sequence described by [begin, end).
+ * Use boolean template parameter `Eat` to control whether or not to
+ * include the matched sequence in the result.
+ * This is much faster than using until(sequence()).
+ */
+template <bool Eat = true, typename Iterator>
+inline constexpr auto until_sequence(Iterator begin, Iterator end) {
+    return parser([=](auto &s) {
+        if (auto [pos, new_end] = search(s.position, s.end, begin, end); pos != s.end) {
+            auto res = s.convert(Eat ? pos : new_end);
+            s.set_position(new_end);
             return return_success(res);
         } else {
             return return_fail_default(s);
@@ -162,19 +191,9 @@ inline constexpr auto until_item(const ItemType c) {
  * include the matched sequence in the result.
  * This is much faster than using until(sequence()).
  */
-template <typename ItemType, size_t N, bool Eat = true>
+template <bool Eat = true, typename ItemType, size_t N>
 inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
-    return parser([&](auto &s) {
-        if (auto pos = search(s.position, s.end, seq, seq+N-1); pos != s.end) {
-            constexpr auto seq_length = N - 1;
-            auto end_iterator_including_seq = pos + seq_length;
-            auto res = s.convert(Eat ? pos : end_iterator_including_seq);
-            s.set_position(end_iterator_including_seq);
-            return return_success(res);
-        } else {
-            return return_fail_default(s);
-        }
-    });
+    return until_sequence<Eat>(seq, seq + N - 1);
 }
 
 /**
@@ -203,21 +222,32 @@ inline constexpr auto end_of_line() {
 }
 
 /**
- * Parser that consumes all items in the given set
+ * Parser that consumes all items that matches the provided predicate
+ */
+template <typename Predicate>
+inline constexpr auto while_predicate(Predicate predicate) {
+    return parser([=](auto &s) {
+        auto res = find_if_not(s.position, s.end, predicate);
+        auto result = s.convert(res);
+        s.set_position(res);
+        return return_success(result);
+    });
+}
+
+/**
+ * Parser that consumes all items in the set described by [start, end)
+ */
+template <typename Iterator>
+inline constexpr auto while_in(Iterator start, Iterator end) {
+    return while_predicate([=](const auto &val){return find(start, end, val) == end;});
+}
+
+/**
+ * Parser that consumes all items contained in the given array
  */
 template <typename ItemType, size_t N>
 inline constexpr auto while_in(const ItemType (&items)[N]) {
-    return parser([=](auto &s) {
-        constexpr auto contains = [&](auto &val) {
-            auto end = items + N - 1;
-            return find(items, end, val) != end;
-        };
-
-        auto i = s.position;
-        auto res = std::find_if_not(s.position, s.end, [](auto &i) {return contains(i);});
-        s.set_position(res);
-        return return_success(s.convert(res));
-    });
+    return while_in(items, items + N - 1);
 }
 
 // General matching algorithm with supplied equality functions.
@@ -320,7 +350,7 @@ inline constexpr auto parse_integer(Iterator begin, Iterator end) {
  */
 template <typename Integral = int>
 inline constexpr auto integer() {
-    return parser([=](auto &s) {
+    return parser([](auto &s) {
         bool negate = std::is_signed_v<Integral> && !s.empty() && s.front() == '-';
         auto start_iterator = s.position + (negate ? 1 : 0);
         auto [new_pos, result] = parse_integer<Integral>(start_iterator, s.end);

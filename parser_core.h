@@ -11,6 +11,12 @@
 
 namespace parse {
 
+template <typename Iterator>
+constexpr bool is_random_access_iterator() {
+    using category = typename std::iterator_traits<Iterator>::iterator_category;
+    return std::is_same_v<category, std::random_access_iterator_tag>;
+}
+
 template <typename T>
 using variant = std::variant<const char *, T>;
 
@@ -81,8 +87,7 @@ struct parser_state_simple {
     // If we have a random access iterator, just use std::distance, otherwise
     // iterate so that we don't have to go all the way to end
     constexpr auto has_at_least(long n) {
-        using category = typename std::iterator_traits<Iterator>::iterator_category;
-        if constexpr (std::is_same_v<category, std::random_access_iterator_tag>) {
+        if constexpr (is_random_access_iterator<Iterator>()) {
            return std::distance(position, end) >= n;
         } else {
             auto start = position;
@@ -91,6 +96,13 @@ struct parser_state_simple {
             return true;
         }
     }
+
+    template <typename Iterator2>
+    constexpr auto has_space_for(Iterator2 begin, Iterator2 end) {
+        auto distance = std::distance(begin, end);
+        return has_at_least(distance);
+    }
+
     constexpr auto empty() const {return position == end;}
     constexpr auto convert(Iterator begin, Iterator end) const {return conversion_function(begin, end);}
     constexpr auto convert(Iterator begin, size_t size) const {return convert(begin, begin+size);}

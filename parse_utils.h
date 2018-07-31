@@ -1,6 +1,9 @@
 #ifndef PARSE_UTILS_H
 #define PARSE_UTILS_H
 
+#include <algorithm>
+#include <functional>
+
 template <typename Iterator1, typename Iterator2>
 inline constexpr auto equal(Iterator1 begin1, Iterator1 end, Iterator2 begin2) {
     while (begin1 != end) {
@@ -9,28 +12,34 @@ inline constexpr auto equal(Iterator1 begin1, Iterator1 end, Iterator2 begin2) {
     return true;
 }
 
-template <typename Iterator, typename Element>
-inline constexpr auto find(Iterator begin, Iterator end, const Element &element) {
+template <typename Iterator, typename Predicate>
+inline constexpr auto find_if(Iterator begin, Iterator end, Predicate p) {
     for (;begin != end; ++begin) {
-        if ((*begin == element)) return begin;
+        if (p(*begin)) return begin;
     }
     return begin;
 }
 
+template <typename Iterator, typename Predicate>
+inline constexpr auto find_if_not(Iterator begin, Iterator end, Predicate p) {
+    return find_if(begin, end, p);
+}
+
+template <typename Iterator, typename Element>
+inline constexpr auto find(Iterator begin, Iterator end, const Element &element) {
+    return find_if(begin, end, [&](const auto &val){return val == element;});
+}
+
 template <typename Iterator1, typename Iterator2>
-inline constexpr auto search(Iterator1 begin1, Iterator1 end1, Iterator2 begin2, Iterator2 end2) {
-    while (begin1 != end1) {
+inline constexpr std::pair<Iterator1, Iterator1> search(Iterator1 begin1, Iterator1 end1, Iterator2 begin2, Iterator2 end2) {
+    for (;;++begin1) {
         Iterator1 b1 = begin1;
-        Iterator2 b2 = begin2;
-        for (;b2 != end2; ++b2, ++begin1) {
-            if (!(*begin1 == *b2)) {
-                break;
-            }
+        for (Iterator2 b2 = begin2; ; ++b1, ++b2) {
+            if (b2 == end2) return {begin1, b1};
+            if (b1 == end1) return {end1, end1};
+            if (!(*b1 == *b2)) break;
         }
-        if (b2 == end2) return b1;
-        else if (b1 == begin1) ++begin1;
     }
-    return begin1;
 }
 
 #endif // PARSE_UTILS_H
