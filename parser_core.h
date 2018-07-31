@@ -96,24 +96,15 @@ struct parser_state_simple {
     constexpr auto convert(Iterator begin, size_t size) const {return convert(begin, begin+size);}
     constexpr auto convert(Iterator end) const {return convert(position, end);}
     constexpr auto convert(size_t size) const {return convert(position+size);}
-    constexpr auto set_position(Iterator n) {position = n;}
-    constexpr auto advance(size_t n) {position += n;}
+    constexpr auto set_position(Iterator p) {position = p;}
+    constexpr auto advance(size_t n) {std::advance(position, n);}
 private:
     parser_state_simple(const parser_state_simple &other) = delete;
 };
 
-//template <typename T, typename Iterator>
-//std::basic_string_view<T> basic_string_view_convert(Iterator begin, Iterator end) {
-//    return std::basic_string_view<T>(begin, std::distance(begin, end));
-//}
-
 template <typename T>
 constexpr auto basic_string_view_convert = [](auto begin, auto end) {
     return std::basic_string_view<T>(begin, std::distance(begin, end));
-};
-
-constexpr auto string_view_convert = [](auto begin, auto end) {
-    return std::string_view(begin, std::distance(begin, end));
 };
 
 /**
@@ -204,7 +195,7 @@ struct parser {
      * element and the result of the parse as the second.
      */
     template <typename Iterator, typename State, typename ConversionFunction>
-    constexpr auto parse_with_state(Iterator begin, Iterator end, State &user_state, ConversionFunction convert = string_view_convert) const {
+    constexpr auto parse_with_state(Iterator begin, Iterator end, State &user_state, ConversionFunction convert) const {
         parser_state state(begin, end, user_state, convert);
         auto res = apply(p, state);
         return std::make_pair(state.position, std::move(res));
