@@ -20,53 +20,103 @@ constexpr bool is_random_access_iterator() {
 template <typename T>
 using variant = std::variant<const char *, T>;
 
-// Convenience function for returning a failed parse with state and type of result.
-template <typename Res>
-static constexpr auto return_fail(const char *error = "Parsing error") {
-    return variant<std::decay_t<Res>>(std::in_place_index_t<0>(), error);
-}
-
-// Convenience function for returning a succesful parse.
-template <typename Res>
-static constexpr auto return_success(Res&& res) {
-    return variant<std::decay_t<Res>>(std::in_place_index_t<1>(), std::forward<Res>(res));
-}
-
-// Convenience function for returning a succesful parse.
-template <typename T, typename... Res>
-static constexpr auto return_success_forward(Res&&... res) {
-    return variant<T>(std::in_place_index_t<1>(), std::forward<Res>(res)...);
-}
-
 /**
  * Check if the result is a successful one
  */
-template <typename Result>
-static constexpr bool has_result(const Result& r) {
-    return r.index() == 1;
-}
+//template <typename Result>
+//static constexpr bool has_result(const Result& r) {
+//    return r.operator bool();
+//}
 
 /**
  * Unpack the result to the underlying successful result.
  * Note: Has undefined behavior if the result is not successful. Check has_result() before.
  */
-template <typename Result>
-static constexpr decltype(auto) get_result(const Result& r) {
-    return std::get<1>(r);
-}
+//template <typename Result>
+//static constexpr decltype(auto) get_result(const Result& r) {
+//    return *r;
+//}
 
 /**
  * Unpack the result to the underlying error.
  * Note: Has undefined behavior if the result is successful. Check !has_result() before.
  */
-template <typename Result>
-static constexpr auto get_error(const Result& r) {
-    return std::get<0>(r);
-}
+//template <typename Result>
+//static constexpr auto get_error(const Result& r) {
+//    return std::get<0>(r);
+//}
 
 template <typename P>
 struct parser;
 
+
+template <typename R>
+struct result {
+//    constexpr static auto has_error_handling = true;
+
+//    typename std::conditional<has_error_handling, std::variant<char *, R>, std::optional<R>>::type res;
+    variant<R> res;
+
+    template <typename P, typename... V>
+    result(P p, V&&...v) : res{p, std::forward<V>(v)...} {}
+
+//    result(char *error) : res{std::in_place_index_t<0>(), error} {}
+
+    R const& operator*() {
+//        if constexpr (has_error_handling) {
+            return std::get<1>(res);
+//        } else {
+//            return *res;
+//        }
+    }
+
+    operator bool() {
+//        if constexpr (has_error_handling) {
+            return res.index() == 1;
+//        } else {
+//            return res.has_value();
+//        }
+    }
+
+    auto& error() {
+//        static_assert(!has_error_handling, "No error handling");
+        return std::get<1>(res);
+    }
+};
+//template <template<typename> typename Container, typename... Rs>
+//parse_result(Container<Rs...> &&c) ->
+//    parse_result<std::conditional_t<sizeof...(Rs) == 1, void, std::decay_t<decltype(std::get<0>(c))>>,
+//                 std::conditional_t<sizeof...(Rs) == 1, std::decay_t<decltype(*c)>, std::decay_t<decltype(std::get<1>(c))>>>;
+
+// Convenience function for returning a succesful parse.
+template <typename Res>
+static constexpr auto return_success(Res&& res) {
+//    if constexpr (std::is_void_v<ErrorType>) {
+//        return result<std::decay_t<Res>>(std::forward<Res>(res));
+//    } else {
+        return result<std::decay_t<Res>>(std::in_place_index_t<1>(), std::forward<Res>(res));
+//    }
+}
+
+// Convenience function for returning a succesful parse.
+template <typename T, typename... Res>
+static constexpr auto return_success_forward(Res&&... res) {
+//    if constexpr (std::is_void_v<ErrorType>) {
+//        return result<T>(std::optional<T>(std::forward<Res>(res)...));
+//    } else {
+        return result<T>(std::in_place_index_t<1>(), std::forward<Res>(res)...);
+//    }
+}
+
+// Convenience function for returning a failed parse with state and type of result.
+template <typename Res>
+static constexpr auto return_fail(const char *error = "Parsing error") {
+//    if constexpr (std::is_void_v<ErrorType>) {
+//        return result<Res>(std::optional<Res>());
+//    } else {
+        return result<Res>(variant<Res>(std::in_place_index_t<0>(), error));
+//    }
+}
 
 /**
  * Class for the parser state.
@@ -128,8 +178,8 @@ struct parser_state: public parser_state_simple<Iterator, StringResultConversion
         : parser_state_simple<Iterator, StringResultConversion>{begin, end, convert}, user_state{state} {}
 };
 
-template <typename T, typename Iterator, typename StringConversionFunction, typename S = void>
-using type = std::function<variant<T>(std::conditional_t<std::is_void<S>::value, parser_state_simple<Iterator, StringConversionFunction> &, parser_state<Iterator, StringConversionFunction, S> &>)>;
+//template <typename T, typename Iterator, typename StringConversionFunction, typename S = void>
+//using type = std::function<variant<T>(std::conditional_t<std::is_void<S>::value, parser_state_simple<Iterator, StringConversionFunction> &, parser_state<Iterator, StringConversionFunction, S> &>)>;
 
 /**
  * Apply a parser to a state and return the result.
@@ -151,10 +201,10 @@ constexpr auto apply(P p, S &s) {
 template <typename Parser, typename F>
 static constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto &s) {
-        if (auto result = apply(p, s); has_result(result)) {
-            return f(get_result(result))(s);
+        if (auto result = apply(p, s); result) {
+            return f(*result)(s);
         } else {
-            using new_return_type = std::decay_t<decltype(get_result(f(get_result(result))(s)))>;
+            using new_return_type = std::decay_t<decltype(*(f(*result)(s)))>;
             return return_fail<new_return_type>();
         }
     });
