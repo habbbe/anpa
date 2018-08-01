@@ -29,14 +29,14 @@ inline constexpr auto succeed(Parser p) {
 /**
  * Change the error to be returned upon a failed parse with the provided parser
  */
-template <typename Parser>
-inline constexpr auto change_error(Parser p, const char *error) {
+template <typename Parser, typename Error>
+inline constexpr auto change_error(Parser p, Error &&error) {
     return parser([=](auto &s) {
         if (auto result = apply(p, s); result) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(*result)>;
-            return return_fail<return_type>(error);
+            return return_fail<return_type>(std::forward<Error>(error));
         }
     });
 }
