@@ -60,7 +60,11 @@ inline constexpr auto not_empty(Parser p) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(*result)>;
-            return return_fail<return_type>();
+            if constexpr (std::decay_t<decltype(result)>::has_error_handling){
+                return return_fail<return_type>(result.error());
+            } else {
+                return return_fail<return_type>();
+            }
         }
     });
 }

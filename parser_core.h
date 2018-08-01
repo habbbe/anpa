@@ -49,38 +49,43 @@ using variant = std::variant<const char *, T>;
 template <typename P>
 struct parser;
 
+constexpr auto error_handling = false;
 
-template <typename R>
+template <typename R, bool ErrorHandling = error_handling>
 struct result {
-//    constexpr static auto has_error_handling = true;
 
-//    typename std::conditional<has_error_handling, std::variant<char *, R>, std::optional<R>>::type res;
-    variant<R> res;
+    constexpr static auto has_error_handling = ErrorHandling;
 
-    template <typename P, typename... V>
-    result(P p, V&&...v) : res{p, std::forward<V>(v)...} {}
+    typename std::conditional<has_error_handling, variant<R>, std::optional<R>>::type res;
 
-//    result(char *error) : res{std::in_place_index_t<0>(), error} {}
+    template <size_t N, typename... V>
+    result(std::in_place_index_t<N> p, V&&...v) : res{p, std::forward<V>(v)...} {}
 
-    R const& operator*() {
-//        if constexpr (has_error_handling) {
+    template <typename... V>
+    result(std::in_place_t t, V&&...v) : res{std::optional<R>(t, std::forward<V>(v)...)} {}
+
+    template <typename... V>
+    result(std::optional<R> o) : res{o} {}
+
+    auto const& operator*() {
+        if constexpr (has_error_handling) {
             return std::get<1>(res);
-//        } else {
-//            return *res;
-//        }
+        } else {
+            return *res;
+        }
     }
 
     operator bool() {
-//        if constexpr (has_error_handling) {
+        if constexpr (has_error_handling) {
             return res.index() == 1;
-//        } else {
-//            return res.has_value();
-//        }
+        } else {
+            return res.operator bool();
+        }
     }
 
-    auto& error() {
-//        static_assert(!has_error_handling, "No error handling");
-        return std::get<1>(res);
+    auto const& error() {
+        static_assert(has_error_handling, "No error handling");
+        return std::get<0>(res);
     }
 };
 //template <template<typename> typename Container, typename... Rs>
@@ -91,31 +96,31 @@ struct result {
 // Convenience function for returning a succesful parse.
 template <typename Res>
 static constexpr auto return_success(Res&& res) {
-//    if constexpr (std::is_void_v<ErrorType>) {
-//        return result<std::decay_t<Res>>(std::forward<Res>(res));
-//    } else {
+    if constexpr (error_handling) {
         return result<std::decay_t<Res>>(std::in_place_index_t<1>(), std::forward<Res>(res));
-//    }
+    } else {
+        return result<std::decay_t<Res>>(std::in_place_t(), std::forward<Res>(res));
+    }
 }
 
 // Convenience function for returning a succesful parse.
 template <typename T, typename... Res>
 static constexpr auto return_success_forward(Res&&... res) {
-//    if constexpr (std::is_void_v<ErrorType>) {
-//        return result<T>(std::optional<T>(std::forward<Res>(res)...));
-//    } else {
+    if constexpr (error_handling) {
         return result<T>(std::in_place_index_t<1>(), std::forward<Res>(res)...);
-//    }
+    } else {
+        return result<T>(std::in_place_t(), std::forward<Res>(res)...);
+    }
 }
 
 // Convenience function for returning a failed parse with state and type of result.
 template <typename Res>
 static constexpr auto return_fail(const char *error = "Parsing error") {
-//    if constexpr (std::is_void_v<ErrorType>) {
-//        return result<Res>(std::optional<Res>());
-//    } else {
-        return result<Res>(variant<Res>(std::in_place_index_t<0>(), error));
-//    }
+    if constexpr (error_handling) {
+        return result<Res>(std::in_place_index_t<0>(), error);
+    } else {
+        return result<Res>(std::optional<Res>());
+    }
 }
 
 /**
