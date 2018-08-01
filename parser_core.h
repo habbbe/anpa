@@ -13,7 +13,7 @@ namespace parse {
 
 template <typename Iterator>
 constexpr bool is_random_access_iterator() {
-    using category = typename std::iterator_traits<Iterator>::iterator_category;
+    using category = typename std::iterator_traits<std::decay_t<Iterator>>::iterator_category;
     return std::is_same_v<category, std::random_access_iterator_tag>;
 }
 
@@ -97,12 +97,6 @@ struct parser_state_simple {
         }
     }
 
-    template <typename Iterator2>
-    constexpr auto has_space_for(Iterator2 begin, Iterator2 end) {
-        auto distance = std::distance(begin, end);
-        return has_at_least(distance);
-    }
-
     constexpr auto empty() const {return position == end;}
     constexpr auto convert(Iterator begin, Iterator end) const {return conversion_function(begin, end);}
     constexpr auto convert(Iterator begin, size_t size) const {return convert(begin, begin+size);}
@@ -114,9 +108,12 @@ private:
     parser_state_simple(const parser_state_simple &other) = delete;
 };
 
-template <typename T>
-constexpr auto basic_string_view_convert = [](auto begin, auto end) {
-    return std::basic_string_view<T>(begin, std::distance(begin, end));
+constexpr auto string_view_convert = [](auto begin, auto end) {
+    using type = std::decay_t<decltype(*begin)>;
+    if constexpr (std::is_pointer_v<decltype(begin)>)
+        return std::basic_string_view<type>(begin, std::distance(begin, end));
+    else
+        return std::basic_string_view<type>(&*begin, std::distance(begin, end));
 };
 
 /**
@@ -168,8 +165,11 @@ static constexpr auto operator>>=(Parser p, F f) {
  */
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
-    return parser([tup = std::tuple(std::forward<Args>(args)...)](auto &) {
-        return std::apply(return_success_forward<T, Args...>, tup);
+    return parser([=](auto &) {
+        return return_success_forward<T>(args...);
+// The following doesn't compile with GCC
+//    return parser([tup = std::tuple(std::forward<Args>(args)...)](auto &) {
+//        return std::apply(return_success_forward<T, Args...>, tup);
     });
 }
 
@@ -201,8 +201,8 @@ struct parser {
     }
 
     /**
-     * Begin parsing between begin and end with a state, using the supplied conversion function when
-     * returning results from two iterators
+     * Begin parsing a sequence interpreted as [begin, end) with state,
+     * using the supplied conversion function when returning sequence results.
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
@@ -214,21 +214,38 @@ struct parser {
     }
 
     /**
-     * Begin parsing a string with a state.
+     * Begin parsing a sequence interpreted as [begin, end) with state,
+     * using basic_string_view for sequence results.
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename StringType, typename State>
-    constexpr auto parse_with_state(StringType &string, State &user_state) const {
-        return parse_with_state(string.data(),
-                                string.data() + string.length(),
+    template <typename Iterator, typename State>
+    constexpr auto parse_with_state(Iterator begin,
+                                    Iterator end,
+                                    State &user_state) const {
+        return parse_with_state(begin,
+                                end,
                                 user_state,
-                                basic_string_view_convert<std::decay_t<decltype(*string.data())>>);
+                                string_view_convert);
     }
 
     /**
-     * Begin parsing between begin and end, using the supplied conversion function when
-     * returning results from two iterators
+     * Begin parsing a sequence interpreted as [std::begin(sequence), std::end(sequence)) with state,
+     * using basic_string_view for sequence results.
+     * The result is a std::pair with the position of the first unparsed token as first
+     * element and the result of the parse as the second.
+     */
+    template <typename SequenceType, typename State>
+    constexpr auto parse_with_state(const SequenceType &sequence,
+                                    State &user_state) const {
+        return parse_with_state(std::begin(sequence),
+                                std::end(sequence),
+                                user_state);
+    }
+
+    /**
+     * Begin parsing the sequence described by [begin, end),
+     * using the supplied conversion function when returning sequence results.
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
@@ -240,15 +257,25 @@ struct parser {
     }
 
     /**
-     * Begin parsing a string type.
+     * Begin parsing the sequence described by [begin, end),
+     * using basic_string_view for sequence results.
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename StringType>
-    constexpr auto parse(const StringType &string) const {
-        return parse(string.data(),
-                     string.data() + string.length(),
-                     basic_string_view_convert<std::decay_t<decltype(*string.data())>>);
+    template <typename Iterator>
+    constexpr auto parse(Iterator begin, Iterator end) const {
+        return parse(begin, end, string_view_convert);
+    }
+
+    /**
+     * Begin parsing a sequence interpreted as [std::begin(sequence), std::end(sequence))
+     * using basic_string_view for sequence results.
+     * The result is a std::pair with the position of the first unparsed token as first
+     * element and the result of the parse as the second.
+     */
+    template <typename SequenceType>
+    constexpr auto parse(const SequenceType &sequence) const {
+        return parse(std::begin(sequence), std::end(sequence));
     }
 
     /**
