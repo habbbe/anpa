@@ -3,6 +3,8 @@
 
 #include "monad.h"
 #include "parser_core.h"
+#include "parser_result.h"
+#include "parse_utils.h"
 #include "parser_combinators.h"
 #include "parser_parsers.h"
 

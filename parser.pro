@@ -15,4 +15,7 @@ HEADERS += \
     parser_combinators.h \
     parser_parsers.h \
     json_parser.h \
-    parse_utils.h
+    parse_utils.h \
+    parser_result.h \
+    parser_state.h \
+    parser_settings.h

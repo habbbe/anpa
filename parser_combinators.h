@@ -19,9 +19,9 @@ template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto &s) {
         if (apply(p, s)) {
-            return return_success(true);
+            return s.return_success(true);
         } else {
-            return return_success(false);
+            return s.return_success(false);
         }
     });
 }
@@ -36,7 +36,7 @@ inline constexpr auto change_error(Parser p, Error &&error) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(*result)>;
-            return return_fail<return_type>(std::forward<Error>(error));
+            return s.template return_fail<return_type>(std::forward<Error>(error));
         }
     });
 }
@@ -61,9 +61,9 @@ inline constexpr auto not_empty(Parser p) {
         } else {
             using return_type = std::decay_t<decltype(*result)>;
             if constexpr (std::decay_t<decltype(result)>::has_error_handling){
-                return return_fail<return_type>(result.error());
+                return s.template return_fail<return_type>(result.error());
             } else {
-                return return_fail<return_type>();
+                return s.template return_fail<return_type>();
             }
         }
     });
@@ -108,7 +108,7 @@ inline constexpr auto constrain(Parser p, Predicate pred) {
         if (result && pred(*result)) {
             return result;
         } else {
-            return return_fail<decltype(*result)>();
+            return s.template return_fail<decltype(*result)>();
         }
     });
 }
@@ -125,7 +125,7 @@ static inline constexpr auto get_parsed_recursive(State &s, Iterator original_po
             return get_parsed_recursive(s, original_position, ps...);
         }
     } else {
-        return return_fail_default_error(s, get_error(res));
+        return s.template return_fail<decltype(s.convert(original_position, s.position))>(res.error());
     }
 }
 
@@ -167,10 +167,10 @@ inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
             }
         } else {
             if (apply(p1, s)) {
-                return return_success(true);
+                return s.return_success(true);
             } else {
                 s.position = original_position;
-                return apply(p2, s) ? return_success(true) : return_fail<bool>();
+                return apply(p2, s) ? s.return_success(true) : s.template return_fail<bool>();
             }
         }
     });
@@ -187,9 +187,9 @@ inline constexpr auto modify_state(Fun f) {
         using result_type = std::decay_t<decltype(f(s.user_state))>;
         if constexpr (std::is_void<result_type>::value) {
             f(s.user_state);
-            return return_success(true);
+            return s.return_success(true);
         } else {
-            return_success(f(s.user_state));
+            return s.return_success(f(s.user_state));
         }
     });
 }
@@ -310,7 +310,7 @@ inline constexpr auto many_simple(Parser p) {
     return parser([=](auto &s) {
         size_t successes = 0;
         while (apply(p, s)) { ++successes; }
-        return return_success(successes);
+        return s.return_success(successes);
     });
 }
 
@@ -331,7 +331,7 @@ inline constexpr auto many_to_state(Accessor acc, Parser p) {
             c.emplace_back(std::move(*result));
             ++number_of_results;
         }
-        return return_success(number_of_results);
+        return s.return_success(number_of_results);
     });
 }
 
@@ -349,14 +349,14 @@ inline constexpr auto many_to_state(Parser p) {
 template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     if (auto result = apply(p, s); result) {
-        return return_success(f(*result));
+        return s.return_success(f(*result));
     } else if constexpr (sizeof...(ps) > 0) {
         return lift_or_rec(s, f, ps...);
     } else {
         // All parsers failed
         using result_type = std::decay_t<decltype(f(*result))>;
 //TODO        return return_fail<result_type>(result.error());
-        return return_fail<result_type>();
+        return s.template return_fail<result_type>();
     }
 }
 
@@ -427,7 +427,7 @@ inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
             auto new_result = apply(p2, new_state);
             return new_result;
         } else {
-            return return_fail<decltype(*apply(p2, s))>(*result);
+            return s.template return_fail<decltype(*apply(p2, s))>(*result);
         }
     });
 }

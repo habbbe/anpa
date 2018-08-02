@@ -14,8 +14,8 @@ namespace parse {
  * Parser that always succeeds
  */
 inline constexpr auto success() {
-    return parser([](auto &) {
-        return return_success(true);
+    return parser([](auto &s) {
+        return s.return_success(true);
     });
 }
 
@@ -24,8 +24,8 @@ inline constexpr auto success() {
  */
 template <typename T = bool>
 inline constexpr auto fail() {
-    return parser([](auto &) {
-        return return_fail<T>();
+    return parser([](auto &s) {
+        return s.template return_fail<T>();
     });
 }
 
@@ -35,9 +35,9 @@ inline constexpr auto fail() {
 inline constexpr auto empty() {
     return parser([](auto &s) {
         if (s.empty()) {
-            return return_success(true);
+            return s.return_success(true);
         }
-        return return_fail<bool>();
+        return s.template return_fail<bool>();
     });
 }
 
@@ -47,10 +47,10 @@ inline constexpr auto empty() {
 inline constexpr auto any_item() {
     return parser([](auto &s) {
         if (s.empty())
-            return return_fail<decltype(s.front())>();
+            return s.template return_fail<decltype(s.front())>();
         auto front = s.front();
         s.advance(1);
-        return return_success(front);
+        return s.return_success(front);
     });
 }
 
@@ -63,10 +63,10 @@ inline constexpr auto item(const ItemType c) {
         if (!s.empty()) {
             if (auto front = s.front(); front == c) {
                 s.advance(1);
-                return return_success(front);
+                return s.return_success(front);
             }
         }
-        return return_fail<ItemType>();
+        return s.template return_fail<ItemType>();
     });
 }
 
@@ -82,9 +82,9 @@ inline constexpr auto custom(Parser custom_parser) {
     return parser([=](auto &s) {
         if (auto result = custom_parser(s.position, s.end); result) {
             s.set_position(result->first);
-            return return_success(result->second);
+            return s.return_success(result->second);
         } else {
-            return return_fail<decltype(result->second)>();
+            return s.template return_fail<decltype(result->second)>();
         }
     });
 }
@@ -101,9 +101,9 @@ inline constexpr auto custom_with_state(Parser custom_parser) {
     return parser([=](auto &s) {
         if (auto result = custom_parser(s.position, s.end, s.state); result) {
             s.set_position(result->first);
-            return return_success(result->second);
+            return s.return_success(result->second);
         } else {
-            return return_fail<decltype(result->second)>();
+            return s.template return_fail<decltype(result->second)>();
         }
     });
 }
@@ -118,9 +118,9 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
         auto orig_pos = s.position;
         if (s.has_at_least(size) && util::equal(begin, end, orig_pos)) {
             s.advance(size);
-            return return_success(s.convert(orig_pos, size));
+            return s.return_success(s.convert(orig_pos, size));
         } else {
-            return return_fail_default(s);
+            return s.template return_fail_default(s);
         }
     });
 }
@@ -141,9 +141,9 @@ inline constexpr auto consume(size_t n) {
         if (s.has_at_least(n)) {
             auto result = s.convert(n);
             s.advance(n);
-            return return_success(result);
+            return s.return_success(result);
         }
-        return return_fail_default(s);
+        return s.template return_fail_default(s);
     });
 }
 
@@ -159,9 +159,9 @@ inline constexpr auto until_item(ItemType &&c) {
             auto end_iterator_with_token = pos + 1;
             auto res = s.convert(Eat ? pos : end_iterator_with_token);
             s.set_position(end_iterator_with_token);
-            return return_success(res);
+            return s.return_success(res);
         } else {
-            return return_fail_default(s);
+            return s.template return_fail_default(s);
         }
     });
 }
@@ -178,9 +178,9 @@ inline constexpr auto until_sequence(Iterator begin, Iterator end) {
         if (auto [pos, new_end] = util::search(s.position, s.end, begin, end); pos != s.end) {
             auto res = s.convert(Eat ? pos : new_end);
             s.set_position(new_end);
-            return return_success(res);
+            return s.return_success(res);
         } else {
-            return return_fail_default(s);
+            return s.template return_fail_default(s);
         }
     });
 }
@@ -203,7 +203,7 @@ inline constexpr auto rest() {
     return parser([](auto &s) {
         auto res = s.convert(s.end);
         s.set_position(s.end);
-        return return_success(res);
+        return s.return_success(res);
     });
 }
 
@@ -230,7 +230,7 @@ inline constexpr auto while_predicate(Predicate predicate) {
         auto res = util::find_if_not(s.position, s.end, predicate);
         auto result = s.convert(res);
         s.set_position(res);
-        return return_success(result);
+        return s.return_success(result);
     });
 }
 
@@ -255,7 +255,7 @@ template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = 
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
         if (s.empty() || !equal_start(s.position, s.position + StartLength, start))
-            return return_fail_default(s);
+            return s.template return_fail_default(s);
 
         size_t to_match = 0;
         for (auto i = s.position + StartLength; i != s.end - EndLength;) {
@@ -264,7 +264,7 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
                     auto begin_iterator = s.position + (Eat ? StartLength : 0);
                     auto result_end = i + (Eat ? 0 : EndLength);
                     s.set_position(i + EndLength);
-                    return return_success(s.convert(begin_iterator, result_end));
+                    return s.return_success(s.convert(begin_iterator, result_end));
                 } else if (Nested) {
                     --to_match;
                     i += EndLength;
@@ -276,7 +276,7 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
                 ++i;
             }
         }
-        return return_fail_default(s);
+        return s.template return_fail_default(s);
     });
 }
 
@@ -356,9 +356,9 @@ inline constexpr auto integer() {
         auto [new_pos, result] = parse_integer<Integral>(start_iterator, s.end);
         if (new_pos != start_iterator) {
             s.set_position(new_pos);
-            return return_success(result * (negate ? -1 : 1));
+            return s.return_success(result * (negate ? -1 : 1));
         } else {
-            return return_fail<Integral>();
+            return s.template return_fail<Integral>();
         }
     });
 }
@@ -374,9 +374,9 @@ inline constexpr auto number() {
         auto res = std::from_chars<Number>(s.position, s.end, result);
         if (res.errc != std::errc()) {
             s.set_position(res.ptr);
-            return return_success(result);
+            return s.return_success(result);
         } else {
-            return return_fail<Number>();
+            return s.template return_fail<Number>();
         }
     });
 }
