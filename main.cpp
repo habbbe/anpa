@@ -12,20 +12,20 @@ struct row {
     template <typename StringType1, typename StringType2>
     row(StringType1 firstName, StringType2 lastName) : firstName{firstName}, lastName{lastName} {}
 
-    std::string firstName;
-    std::string lastName;
+    std::string_view firstName;
+    std::string_view lastName;
 };
 
 struct action {
-    std::string name;
-    std::string com;
+    std::string_view name;
+    std::string_view com;
     template <typename S1, typename S2>
     action(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
 };
 
 struct info {
-    std::string name;
-    std::string com;
+    std::string_view name;
+    std::string_view com;
     template <typename S1, typename S2>
     info(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
 };
@@ -35,7 +35,7 @@ struct space {};
 struct syntax_error {
     template <typename StringType>
     syntax_error(StringType s) : description{s} {}
-    std::string description;
+    std::string_view description;
 };
 
 using item = std::variant<
