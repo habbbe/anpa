@@ -12,14 +12,14 @@ struct result {
     typename std::conditional<has_error_handling, std::variant<ErrorType, R>, std::optional<R>>::type res;
 
     template <size_t N, typename... V>
-    result(std::in_place_index_t<N> p, V&&...v) : res{p, std::forward<V>(v)...} {}
+    constexpr result(std::in_place_index_t<N> p, V&&...v) : res{p, std::forward<V>(v)...} {}
 
     template <typename... V>
-    result(std::in_place_t t, V&&...v) : res{std::optional<R>(t, std::forward<V>(v)...)} {}
+    constexpr result(std::in_place_t t, V&&...v) : res{std::optional<R>(t, std::forward<V>(v)...)} {}
 
-    result() : res{std::nullopt} {}
+    constexpr result() : res{std::nullopt} {}
 
-    auto const& operator*() {
+    constexpr auto const& operator*() const {
         if constexpr (has_error_handling) {
             return std::get<1>(res);
         } else {
@@ -27,7 +27,10 @@ struct result {
         }
     }
 
-    operator bool() {
+    constexpr auto operator->() const {
+        return &operator*();
+    }
+    constexpr operator bool() const {
         if constexpr (has_error_handling) {
             return res.index() == 1;
         } else {
@@ -35,7 +38,7 @@ struct result {
         }
     }
 
-    auto const& error() {
+    constexpr auto const& error() const {
         static_assert(has_error_handling, "No error handling");
         return std::get<0>(res);
     }

@@ -139,7 +139,7 @@ struct parser {
      */
     template <typename Iterator, typename ConversionFunction>
     constexpr auto parse(Iterator begin, Iterator end, ConversionFunction convert) const {
-        auto state = parser_state_simple(begin, end, convert);
+        auto state = parser_state_simple(begin, end, convert, parser_settings());
         auto res = apply(p, state);
         return std::make_pair(state.position, std::move(res));
     }
