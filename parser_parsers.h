@@ -116,7 +116,7 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
     return parser([=](auto &s) {
         auto size = std::distance(begin, end);
         auto orig_pos = s.position;
-        if (s.has_at_least(size) && util::equal(begin, end, orig_pos)) {
+        if (s.has_at_least(size) && algorithm::equal(begin, end, orig_pos)) {
             s.advance(size);
             return s.return_success(s.convert(orig_pos, size));
         } else {
@@ -155,7 +155,7 @@ inline constexpr auto consume(size_t n) {
 template <typename ItemType, bool Eat = true>
 inline constexpr auto until_item(ItemType &&c) {
     return parser([c = std::forward<ItemType>(c)](auto &s) {
-        if (auto pos = util::find(s.position, s.end, c); pos != s.end) {
+        if (auto pos = algorithm::find(s.position, s.end, c); pos != s.end) {
             auto end_iterator_with_token = pos + 1;
             auto res = s.convert(Eat ? pos : end_iterator_with_token);
             s.set_position(end_iterator_with_token);
@@ -175,7 +175,7 @@ inline constexpr auto until_item(ItemType &&c) {
 template <bool Eat = true, typename Iterator>
 inline constexpr auto until_sequence(Iterator begin, Iterator end) {
     return parser([=](auto &s) {
-        if (auto [pos, new_end] = util::search(s.position, s.end, begin, end); pos != s.end) {
+        if (auto [pos, new_end] = algorithm::search(s.position, s.end, begin, end); pos != s.end) {
             auto res = s.convert(Eat ? pos : new_end);
             s.set_position(new_end);
             return s.return_success(res);
@@ -227,7 +227,7 @@ inline constexpr auto end_of_line() {
 template <typename Predicate>
 inline constexpr auto while_predicate(Predicate predicate) {
     return parser([=](auto &s) {
-        auto res = util::find_if_not(s.position, s.end, predicate);
+        auto res = algorithm::find_if_not(s.position, s.end, predicate);
         auto result = s.convert(res);
         s.set_position(res);
         return s.return_success(result);
@@ -239,7 +239,7 @@ inline constexpr auto while_predicate(Predicate predicate) {
  */
 template <typename Iterator>
 inline constexpr auto while_in(Iterator start, Iterator end) {
-    return while_predicate([=](const auto &val){return util::find(start, end, val) != end;});
+    return while_predicate([=](const auto &val){return algorithm::find(start, end, val) != end;});
 }
 
 /**
@@ -294,7 +294,7 @@ inline constexpr auto between_sequences(const ItemType (&start)[NStart], const I
         return *begin == *toCompare;
     };
     [[maybe_unused]] constexpr auto compare_seq = [](auto begin, auto end, auto toCompare) {
-        return util::equal(begin, end, toCompare) != end;
+        return algorithm::equal(begin, end, toCompare) != end;
     };
 
     constexpr auto compare_start = [=]() {

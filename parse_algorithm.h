@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-namespace parse::util {
+namespace parse::algorithm {
 
 template <typename Iterator1, typename Iterator2>
 inline constexpr auto equal(Iterator1 begin1, Iterator1 end1, Iterator2 begin2) {
@@ -23,12 +23,13 @@ inline constexpr auto find_if(Iterator begin, Iterator end, Predicate p) {
 
 template <typename Iterator, typename Predicate>
 inline constexpr auto find_if_not(Iterator begin, Iterator end, Predicate p) {
-    return util::find_if(begin, end, [=](const auto &val){return !p(val);});
+//    return algorithm::find_if(begin, end, [=](const auto &val){return !p(val);});
+    return algorithm::find_if(begin, end, [=](const auto &val){return !p(val);});
 }
 
 template <typename Iterator, typename Element>
 inline constexpr auto find(Iterator begin, Iterator end, const Element &element) {
-    return util::find_if(begin, end, [&](const auto &val){return val == element;});
+    return algorithm::find_if(begin, end, [&](const auto &val){return val == element;});
 }
 
 template <typename Iterator1, typename Iterator2>

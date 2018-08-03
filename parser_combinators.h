@@ -6,7 +6,7 @@
 #include <vector>
 #include "parser_core.h"
 #include "monad.h"
-#include "parse_utils.h"
+#include "parse_algorithm.h"
 
 namespace parse {
 
@@ -448,7 +448,7 @@ inline constexpr auto until(Parser p) {
             s.advance(1);
             position_end = s.position;
         }
-        return return_success(s.convert(position_start, Eat ? position_end : s.position));
+        return s.return_success(s.convert(position_start, Eat ? position_end : s.position));
     });
 }
 
