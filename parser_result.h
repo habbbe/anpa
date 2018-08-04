@@ -19,7 +19,7 @@ struct result {
 
     constexpr result() : res{std::nullopt} {}
 
-    constexpr decltype(auto) operator*() {
+    constexpr decltype(auto) get_value() {
         if constexpr (has_error_handling) {
             return std::get<1>(res);
         } else {
@@ -27,18 +27,26 @@ struct result {
         }
     }
 
-    constexpr decltype(auto) operator->() {
-        return &operator*();
+    constexpr decltype(auto) operator*() {
+        return get_value();
     }
-    constexpr operator bool() const {
+
+    constexpr decltype(auto) operator->() {
+        return &get_value();
+    }
+
+    constexpr bool has_value() const {
         if constexpr (has_error_handling) {
             return res.index() == 1;
         } else {
             return res.operator bool();
         }
     }
+    constexpr operator bool() const {
+        return has_value();
+    }
 
-    constexpr auto const& error() {
+    constexpr decltype(auto) error() {
         static_assert(has_error_handling, "No error handling");
         return std::get<0>(res);
     }
