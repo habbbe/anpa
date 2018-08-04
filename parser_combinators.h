@@ -349,14 +349,17 @@ inline constexpr auto many_to_state(Parser p) {
 template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     if (auto result = apply(p, s); result) {
-        return s.return_success(f(*result));
+        return s.return_success(f(std::move(*result)));
     } else if constexpr (sizeof...(ps) > 0) {
         return lift_or_rec(s, f, ps...);
     } else {
         // All parsers failed
         using result_type = std::decay_t<decltype(f(*result))>;
-//TODO        return return_fail<result_type>(result.error());
-        return s.template return_fail<result_type>();
+        if constexpr (State::error_handling) {
+            return s.template return_fail<result_type>(result.error());
+        } else {
+            return s.template return_fail<result_type>();
+        }
     }
 }
 
@@ -380,7 +383,7 @@ template <typename Fun, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
     return parser([=](auto &s) {
         auto to_apply = [f, &s] (auto &&val) {
-             return f(s.user_state, std::forward<decltype(val)>(val));
+            return f(s.user_state, std::forward<decltype(val)>(val));
         };
         return lift_or_rec(s, to_apply, p, ps...);
     });

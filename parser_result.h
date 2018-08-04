@@ -19,7 +19,7 @@ struct result {
 
     constexpr result() : res{std::nullopt} {}
 
-    constexpr auto const& operator*() const {
+    constexpr decltype(auto) operator*() {
         if constexpr (has_error_handling) {
             return std::get<1>(res);
         } else {
@@ -27,7 +27,7 @@ struct result {
         }
     }
 
-    constexpr auto operator->() const {
+    constexpr decltype(auto) operator->() {
         return &operator*();
     }
     constexpr operator bool() const {
@@ -38,7 +38,7 @@ struct result {
         }
     }
 
-    constexpr auto const& error() const {
+    constexpr auto const& error() {
         static_assert(has_error_handling, "No error handling");
         return std::get<0>(res);
     }

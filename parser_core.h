@@ -2,14 +2,9 @@
 #define PARSER_CORE_H
 
 #include <string_view>
-#include <functional>
-#include <type_traits>
 #include "parser_result.h"
 #include "parser_state.h"
 #include "parser_settings.h"
-
-#define return_fail_default(s) return_fail<typename std::decay_t<decltype(s)>::string_result_type>();
-#define return_fail_default_error(s, e) return_fail<typename std::decay_t<decltype(s)>::string_result_type>(e);
 
 namespace parse {
 
@@ -40,7 +35,7 @@ template <typename Parser, typename F>
 static constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto &s) {
         if (auto result = apply(p, s); result) {
-            return f(*result)(s);
+            return f(std::move(*result))(s);
         } else {
             using new_return_type = std::decay_t<decltype(*(f(*result)(s)))>;
             return s.template return_fail<new_return_type>();

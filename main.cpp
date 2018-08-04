@@ -5,6 +5,7 @@
 #include <memory>
 #include <variant>
 #include "parser.h"
+#include "time_measure.h"
 
 //using namespace std;
 
@@ -48,7 +49,7 @@ syntax_error
 
 int main()
 {
-    constexpr auto add_to_state = [] (auto &s, auto&&... args) {
+    constexpr auto add_to_state = [](auto &s, auto &&...args) {
         s.emplace_back(std::forward<decltype(args)>(args)...);
         return true;
     };
@@ -73,18 +74,20 @@ int main()
 //    constexpr auto entry_parser = parse::string("Entry:") >> parse::apply_to_state(add_to_state, parse::until_token(':'), parse::until_token(';'));
 //    std::vector<row> r;
 //    std::ifstream t("test");
-
-
+    std::vector<std::string> lines;
+    lines.reserve(1000000);
     std::string line;
     while (std::getline(t, line)) {
-        entry_parser.parse_with_state(line, r);
-//        auto result = entry_parser.parse(std::string_view(line));
-//        if (result.second) {
-//            r.emplace_back(std::move(*result.second));
-//        }
+        lines.push_back(line);
+    }
+
+    TICK
+    for (auto &l : lines) {
+        entry_parser.parse_with_state(l, r);
     }
 
     std::cout << "Size: " << r.size() << std::endl;
+    TOCK
 
     return 0;
 }

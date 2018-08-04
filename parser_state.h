@@ -23,7 +23,7 @@ struct parser_state_simple {
 
     constexpr static bool error_handling = Settings::error_handling;
 
-    using string_result_type = decltype(conversion_function(std::declval<Iterator>(), std::declval<Iterator>()));
+    using default_result_type = decltype(conversion_function(std::declval<Iterator>(), std::declval<Iterator>()));
 
     constexpr parser_state_simple(Iterator begin, Iterator end, StringResultConversion convert, Settings) :
         position{begin}, end{end}, conversion_function{convert} {}
@@ -51,45 +51,39 @@ struct parser_state_simple {
     constexpr auto set_position(Iterator p) {position = p;}
     constexpr auto advance(size_t n) {std::advance(position, n);}
 
-
-    // Convenience function for returning a succesful parse.
-    template <typename Res>
-    constexpr auto return_success(Res&& res) {
-        if constexpr (error_handling) {
-            return result<std::decay_t<Res>, default_error_type>(std::in_place_index_t<1>(), std::forward<Res>(res));
-        } else {
-            return result<std::decay_t<Res>, void>(std::in_place_t(), std::forward<Res>(res));
-        }
-    }
-
     // Convenience function for returning a succesful parse.
     template <typename T, typename... Res>
     constexpr auto return_success_forward(Res&&... res) {
         if constexpr (error_handling) {
-            return result<T, default_error_type>(std::in_place_index_t<1>(), std::forward<Res>(res)...);
+            return result<std::decay_t<T>, default_error_type>(std::in_place_index<1>, std::forward<Res>(res)...);
         } else {
-            return result<T, void>(std::in_place_t(), std::forward<Res>(res)...);
+            return result<std::decay_t<T>, void>(std::in_place, std::forward<Res>(res)...);
         }
+    }
+
+    // Convenience function for returning a succesful parse.
+    template <typename Res>
+    constexpr auto return_success(Res&& res) {
+        return return_success_forward<Res>(std::forward<Res>(res));
     }
 
     // Convenience function for returning a failed parse with state and type of result.
     template <typename Res, typename Error>
     constexpr auto return_fail(Error &&error) {
         if constexpr (error_handling) {
-            return result<Res, std::decay_t<decltype(error)>>(std::in_place_index_t<0>(), std::forward<Error>(error));
-        } else {
-            return result<Res, void>(std::optional<Res>());
-        }
-    }
-
-    template <typename Res>
-    constexpr auto return_fail() {
-        if constexpr (error_handling) {
-            return return_fail<Res>("Parsing error");
+            return result<Res, std::decay_t<decltype(error)>>(std::in_place_index<0>, std::forward<Error>(error));
         } else {
             return result<Res, void>();
         }
     }
+    template <typename Error>
+    constexpr auto return_fail(Error &&error) { return return_fail<default_result_type>(std::forward<Error>(error)); }
+
+    template <typename Res>
+    constexpr auto return_fail() { return return_fail<Res>("Parsing error"); }
+
+    constexpr auto return_fail() { return return_fail<default_result_type>(); }
+
 
 
 private:
@@ -107,8 +101,7 @@ constexpr auto string_view_convert = [](auto begin, auto end) {
 //parser_state_simple(Settings, Iterator begin, Iterator end, Fn f) -> parser_state_simple<Settings, Iterator, Fn>;
 
 /**
- * Class for the parser state. Contains the string to be parsed, along
- * with the user provided state
+ * Class for the parser state. Contains the user provided state
  */
 template <typename Iterator, typename StringResultConversion, typename Settings, typename UserState>
 struct parser_state: public parser_state_simple<Iterator, StringResultConversion, Settings> {

@@ -18,4 +18,5 @@ HEADERS += \
     parser_result.h \
     parser_state.h \
     parser_settings.h \
-    parse_algorithm.h
+    parse_algorithm.h \
+    time_measure.h

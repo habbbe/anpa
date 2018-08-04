@@ -1,10 +1,7 @@
 #ifndef PARSER_PARSERS_H
 #define PARSER_PARSERS_H
 
-#include <stdlib.h>
-#include <string>
 #include <charconv>
-#include <algorithm>
 #include "parser_core.h"
 #include "parser_combinators.h"
 
@@ -120,7 +117,7 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
             s.advance(size);
             return s.return_success(s.convert(orig_pos, size));
         } else {
-            return s.template return_fail_default(s);
+            return s.template return_fail();
         }
     });
 }
@@ -143,7 +140,7 @@ inline constexpr auto consume(size_t n) {
             s.advance(n);
             return s.return_success(result);
         }
-        return s.template return_fail_default(s);
+        return s.template return_fail(s);
     });
 }
 
@@ -161,7 +158,7 @@ inline constexpr auto until_item(ItemType &&c) {
             s.set_position(end_iterator_with_token);
             return s.return_success(res);
         } else {
-            return s.template return_fail_default(s);
+            return s.template return_fail();
         }
     });
 }
@@ -180,7 +177,7 @@ inline constexpr auto until_sequence(Iterator begin, Iterator end) {
             s.set_position(new_end);
             return s.return_success(res);
         } else {
-            return s.template return_fail_default(s);
+            return s.template return_fail();
         }
     });
 }
@@ -255,7 +252,7 @@ template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = 
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
         if (s.empty() || !equal_start(s.position, s.position + StartLength, start))
-            return s.template return_fail_default(s);
+            return s.template return_fail();
 
         size_t to_match = 0;
         for (auto i = s.position + StartLength; i != s.end - EndLength;) {
@@ -276,7 +273,7 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
                 ++i;
             }
         }
-        return s.template return_fail_default(s);
+        return s.template return_fail();
     });
 }
 
