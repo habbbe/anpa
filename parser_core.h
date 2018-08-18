@@ -34,7 +34,7 @@ struct parser;
 template <typename Parser, typename F>
 static constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto &s) {
-        if (auto result = apply(p, s); result) {
+        if (auto result = apply(p, s)) {
             return f(std::move(*result))(s);
         } else {
             using new_return_type = std::decay_t<decltype(*(f(*result)(s)))>;
@@ -76,7 +76,7 @@ struct parser {
     // This could also be a lazy value, i.e. a callable object that returns what is described above.
     P p;
 
-    constexpr parser(P p) : p{p} {}
+    constexpr parser(P &&p) : p{std::forward<P>(p)} {}
 
     template <typename State>
     constexpr auto operator()(State &s) const {
@@ -175,6 +175,14 @@ struct parser {
     template <typename T>
     static constexpr auto mreturn(T&& v) {
         return parse::mreturn(std::forward<T>(v));
+    }
+
+    template <typename T>
+    constexpr auto operator[](T &t) const {
+        return *this >>= [&](auto &&s) {
+            t = std::forward<decltype(s)>(s);
+            return mreturn_forward<bool>(true);
+        };
     }
 };
 

@@ -32,7 +32,7 @@ inline constexpr auto succeed(Parser p) {
 template <typename Parser, typename Error>
 inline constexpr auto change_error(Parser p, Error &&error) {
     return parser([=](auto &s) {
-        if (auto result = apply(p, s); result) {
+        if (auto result = apply(p, s)) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(*result)>;
@@ -104,8 +104,7 @@ inline constexpr auto no_consume(Parser p) {
 template <typename Parser, typename Predicate>
 inline constexpr auto constrain(Parser p, Predicate pred) {
     return parser([=](auto &s) {
-        auto result = apply(p, s);
-        if (result && pred(*result)) {
+        if (auto result = apply(p, s); result && pred(*result)) {
             return result;
         } else {
             return s.template return_fail<decltype(*result)>();
@@ -118,14 +117,18 @@ inline constexpr auto constrain(Parser p, Predicate pred) {
  */
 template <typename State, typename Iterator, typename Parser, typename... Parsers>
 static inline constexpr auto get_parsed_recursive(State &s, Iterator original_position, Parser p, Parsers... ps) {
-    if (const auto &res = apply(p, s); res) {
+    if (auto result = apply(p, s)) {
         if constexpr (sizeof...(Parsers) == 0) {
-            return return_success(s.convert(original_position, s.position));
+            return s.return_success(s.convert(original_position, s.position));
         } else {
             return get_parsed_recursive(s, original_position, ps...);
         }
     } else {
-        return s.template return_fail<decltype(s.convert(original_position, s.position))>(res.error());
+        if constexpr (State::error_handling) {
+            return s.template return_fail(result.error());
+        } else {
+            return s.template return_fail();
+        }
     }
 }
 
@@ -143,23 +146,23 @@ inline constexpr auto get_parsed(Parser p, Parsers ... ps) {
 /**
  * Make a parser that evaluates two parsers, and returns the successfully parsed text upon success.
  */
-//template <typename Parser1, typename Parser2>
-//inline constexpr auto operator+(Parser1 p1, Parser2 p2) {
-//    return get_parsed(p1, p2);
-//}
+template <typename P1, typename P2>
+inline constexpr auto operator+(parser<P1> p1, parser<P2> p2) {
+    return get_parsed(p1, p2);
+}
 
 /**
  * Combine two parsers so that the second will be tried before failing.
  * If the two parsers return different types the return value will instead be `true`.
  */
-template <typename Parser1, typename Parser2>
-inline constexpr auto operator||(Parser1 p1, Parser2 p2) {
+template <typename P1, typename P2>
+inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
     return parser([=](auto &s) {
         using R1 = decltype(*apply(p1, s));
         using R2 = decltype(*apply(p2, s));
         auto original_position = s.position;
         if constexpr (std::is_same_v<R1, R2>) {
-            if (auto result1 = apply(p1, s); result1) {
+            if (auto result1 = apply(p1, s)) {
                 return result1;
             } else {
                 s.position = original_position;
@@ -348,7 +351,7 @@ inline constexpr auto many_to_state(Parser p) {
 // Compile time recursive resolver for lifting of arbitrary number of parsers
 template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
-    if (auto result = apply(p, s); result) {
+    if (auto result = apply(p, s)) {
         return s.return_success(f(std::move(*result)));
     } else if constexpr (sizeof...(ps) > 0) {
         return lift_or_rec(s, f, ps...);
@@ -423,7 +426,7 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
 template <typename Parser1, typename Parser2>
 inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
     return parser([=](auto &s) {
-        if (auto result = apply(p1, s); result) {
+        if (auto result = apply(p1, s)) {
             auto result_text = *result;
             using state_type = std::decay_t<decltype(s)>;
             state_type new_state(result_text, s);

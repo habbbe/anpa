@@ -37,7 +37,7 @@ inline constexpr auto operator<<(Monad1 m1, Monad2 m2) {
 
 namespace monad {
 
-template <size_t num_args, typename F>
+template <std::size_t num_args, typename F>
 inline constexpr auto curry_n(F f) {
     if constexpr (num_args > 0) {
         return [=](auto &&v) {
@@ -72,7 +72,7 @@ inline constexpr auto lift_prepare(F f, Ms... ms) {
  */
 template <typename F, typename M, typename... Ms>
 inline constexpr auto lift(F&& f, M m, Ms... ms) {
-    constexpr auto fun = [=](auto &&...ps) {
+    auto fun = [=](auto &&...ps) {
         return M::mreturn(f(std::forward<decltype(ps)>(ps)...));
     };
     return lift_prepare(fun, m, ms...);

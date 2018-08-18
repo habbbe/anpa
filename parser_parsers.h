@@ -77,7 +77,7 @@ inline constexpr auto item(const ItemType c) {
 template <typename Parser>
 inline constexpr auto custom(Parser custom_parser) {
     return parser([=](auto &s) {
-        if (auto result = custom_parser(s.position, s.end); result) {
+        if (auto result = custom_parser(s.position, s.end)) {
             s.set_position(result->first);
             return s.return_success(result->second);
         } else {
@@ -96,7 +96,7 @@ inline constexpr auto custom(Parser custom_parser) {
 template <typename Parser>
 inline constexpr auto custom_with_state(Parser custom_parser) {
     return parser([=](auto &s) {
-        if (auto result = custom_parser(s.position, s.end, s.state); result) {
+        if (auto result = custom_parser(s.position, s.end, s.state)) {
             s.set_position(result->first);
             return s.return_success(result->second);
         } else {
