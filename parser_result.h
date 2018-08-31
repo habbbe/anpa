@@ -9,13 +9,13 @@ namespace parse {
 template <typename R, typename ErrorType>
 struct result {
     constexpr static auto has_error_handling = !std::is_void_v<ErrorType>;
-    typename std::conditional<has_error_handling, std::variant<ErrorType, R>, std::optional<R>>::type res;
+    typename std::conditional_t<has_error_handling, std::variant<ErrorType, R>, std::optional<R>> res;
 
     template <size_t N, typename... V>
     constexpr result(std::in_place_index_t<N> p, V&&...v) : res{p, std::forward<V>(v)...} {}
 
     template <typename... V>
-    constexpr result(std::in_place_t t, V&&...v) : res{std::optional<R>(t, std::forward<V>(v)...)} {}
+    constexpr result(std::in_place_t t, V&&...v) : res{t, std::forward<V>(v)...} {}
 
     constexpr result() : res{std::nullopt} {}
 

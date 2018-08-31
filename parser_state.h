@@ -52,13 +52,18 @@ struct parser_state_simple {
     constexpr auto advance(size_t n) {std::advance(position, n);}
 
     // Convenience function for returning a succesful parse.
-    template <typename T, typename... Res>
-    constexpr auto return_success_forward(Res&&... res) {
+    template <typename T, typename... Args>
+    static constexpr auto return_success_forward_static(Args&&... args) {
         if constexpr (error_handling) {
-            return result<std::decay_t<T>, default_error_type>(std::in_place_index<1>, std::forward<Res>(res)...);
+            return result<std::decay_t<T>, default_error_type>(std::in_place_index<1>, std::forward<Args>(args)...);
         } else {
-            return result<std::decay_t<T>, void>(std::in_place, std::forward<Res>(res)...);
+            return result<std::decay_t<T>, void>(std::in_place, std::forward<Args>(args)...);
         }
+    }
+
+    template <typename T, typename... Args>
+    constexpr auto return_success_forward(Args&&... args) {
+        return std::decay_t<decltype(*this)>::template return_success_forward_static<T>(std::forward<Args>(args)...);
     }
 
     // Convenience function for returning a succesful parse.
