@@ -340,15 +340,16 @@ inline constexpr auto integer() {
 
 /**
  * Parse a number. Template parameter indicates the type to be parsed. Uses std::from_chars.
+ * This parser only works when using a raw pointer as input.
  * For integers, consider using integer instead, as it is constexpr and slightly faster.
  */
 template <typename Number>
 inline constexpr auto number() {
     return parser([](auto &s) {
         Number result;
-        auto res = std::from_chars(s.position, s.end, result);
-        if (res.errc != std::errc()) {
-            s.set_position(res.ptr);
+        auto [ptr, ec] = std::from_chars(s.position, s.end, result);
+        if (ec == std::errc()) {
+            s.set_position(ptr);
             return s.return_success(result);
         } else {
             return s.template return_fail<Number>();
