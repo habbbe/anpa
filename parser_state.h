@@ -3,14 +3,9 @@
 
 #include <iterator>
 #include "parser_result.h"
+#include "parse_algorithm.h"
 
 namespace parse {
-
-template <typename Iterator>
-constexpr bool is_random_access_iterator() {
-    using category = typename std::iterator_traits<std::decay_t<Iterator>>::iterator_category;
-    return std::is_same_v<category, std::random_access_iterator_tag>;
-}
 
 /**
  * Class for the parser state.
@@ -33,14 +28,7 @@ struct parser_state_simple {
     // If we have a random access iterator, just use std::distance, otherwise
     // iterate so that we don't have to go all the way to end
     constexpr auto has_at_least(long n) {
-        if constexpr (is_random_access_iterator<Iterator>()) {
-           return std::distance(position, end) >= n;
-        } else {
-            auto start = position;
-            for (long i = 0; i<n; ++i, ++start)
-                if (start == end) return false;
-            return true;
-        }
+        return algorithm::contains_elements(position, end, n);
     }
 
     constexpr auto empty() const {return position == end;}

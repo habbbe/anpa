@@ -67,41 +67,41 @@ inline constexpr auto item(const ItemType c) {
     });
 }
 
+template <typename State, typename Result>
+inline constexpr auto custom_internal(State &s, Result &&result) {
+    s.set_position(result.first);
+    if (result.second) {
+        return s.return_success(*result.second);
+    } else {
+        return s.template return_fail<std::decay_t<decltype(*result.second)>>();
+    }
+}
+
 /**
  * Create a custom parser.
  * custom_parser should be a callable with the following signature
- * std::optional<std::pair<Iterator, Result>>(Iterator position, Iterator End)
- * where an empty optional signals a failed parse, and a value a successful parse; a pair with
- * the new iterator position and a result.
+ * std::pair<Iterator, std::optional<Result>>(Iterator position, Iterator End)
+ * where the first element is the new iterator position, and the second the result, where
+ * and empty optional signals a failed parse.
  */
 template <typename Parser>
 inline constexpr auto custom(Parser custom_parser) {
     return parser([=](auto &s) {
-        if (auto result = custom_parser(s.position, s.end)) {
-            s.set_position(result->first);
-            return s.return_success(result->second);
-        } else {
-            return s.template return_fail<decltype(result->second)>();
-        }
+        return custom_internal(s, custom_parser(s.position, s.end));
     });
 }
 
 /**
  * Create a custom parser.
  * custom_parser should be a callable with the following signature
- * std::optional<std::pair<Iterator, Result>>(Iterator position, Iterator End, State &state)
- * where an empty optional signals a failed parse, and a value a successful parse; a pair with
- * the new iterator position and a result.
+ * std::pair<Iterator, std::optional<Result>>(Iterator position, Iterator End, State &state)
+ * where the first element is the new iterator position, and the second the result, where
+ * and empty optional signals a failed parse.
  */
 template <typename Parser>
 inline constexpr auto custom_with_state(Parser custom_parser) {
     return parser([=](auto &s) {
-        if (auto result = custom_parser(s.position, s.end, s.state)) {
-            s.set_position(result->first);
-            return s.return_success(result->second);
-        } else {
-            return s.template return_fail<decltype(result->second)>();
-        }
+        return custom_internal(s, custom_parser(s.position, s.end, s.user_state));
     });
 }
 
@@ -149,7 +149,7 @@ inline constexpr auto consume(size_t n) {
  * Use boolean template parameter `Eat` to control whether or not to
  * include the matched item in the result.
  */
-template <typename ItemType, bool Eat = true>
+template <bool Eat = true, typename ItemType>
 inline constexpr auto until_item(ItemType &&c) {
     return parser([c = std::forward<ItemType>(c)](auto &s) {
         if (auto pos = algorithm::find(s.position, s.end, c); pos != s.end) {
@@ -177,7 +177,7 @@ inline constexpr auto until_sequence(Iterator begin, Iterator end) {
             s.set_position(new_end);
             return s.return_success(res);
         } else {
-            return s.template return_fail();
+            return s.return_fail();
         }
     });
 }
@@ -202,20 +202,6 @@ inline constexpr auto rest() {
         s.set_position(s.end);
         return s.return_success(res);
     });
-}
-
-/**
- * Parser for the rest of the line
- */
-inline constexpr auto rest_of_line() {
-    return parse::until_sequence("\r\n") || parse::until_item('\r') || parse::until_item('\n');
-}
-
-/**
- * Parser for the rest of the line
- */
-inline constexpr auto end_of_line() {
-    return parse::sequence("\r\n") || parse::item('\r') || parse::item('\n');
 }
 
 /**
@@ -252,10 +238,10 @@ template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = 
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
         if (s.empty() || !equal_start(s.position, std::next(s.position, StartLength), start))
-            return s.template return_fail();
+            return s.return_fail();
 
         size_t to_match = 0;
-        for (auto pos = std::next(s.position, StartLength); pos != s.end - EndLength;) {
+        for (auto pos = std::next(s.position, StartLength); algorithm::contains_elements(pos, s.end, EndLength);) {
             if (equal_end(pos, std::next(pos, EndLength), end)) {
                 if (to_match == 0) {
                     auto begin_iterator = std::next(s.position, (Eat ? StartLength : 0));
@@ -273,7 +259,7 @@ static inline constexpr auto between_general(Start start, End end, EqualStart eq
                 ++pos;
             }
         }
-        return s.template return_fail();
+        return s.return_fail();
     });
 }
 
@@ -291,17 +277,17 @@ inline constexpr auto between_sequences(const ItemType (&start)[NStart], const I
         return *begin == *toCompare;
     };
     [[maybe_unused]] constexpr auto compare_seq = [](auto begin, auto end, auto toCompare) {
-        return algorithm::equal(begin, end, toCompare) != end;
+        return algorithm::equal(begin, end, toCompare);
     };
 
-    constexpr auto compare_start = [=]() {
+    constexpr auto compar_start = [=]() {
         if constexpr (NStart - 1 == 1) return compare_single; else return compare_seq;
     }();
     constexpr auto compare_end = [=]() {
         if constexpr (NEnd - 1 == 1) return compare_single; else return compare_seq;
     }();
 
-    return between_general<NStart-1, NEnd-1, Nested, Eat>(start, end, compare_start, compare_end);
+    return between_general<NStart-1, NEnd-1, Nested, Eat>(start, end, compar_start, compare_end);
 }
 
 /**
@@ -309,18 +295,10 @@ inline constexpr auto between_sequences(const ItemType (&start)[NStart], const I
  */
 template <bool Nested = false, bool Eat = true, typename ItemType>
 inline constexpr auto between_items(const ItemType start, const ItemType end) {
-    constexpr auto compare_single = [](auto iterator, auto, auto toCompare) {
+    constexpr auto compare_single = [](auto iterator, auto, auto &toCompare) {
         return *iterator == toCompare;
     };
     return between_general<1, 1, Nested, Eat>(start, end, compare_single, compare_single);
-}
-
-/**
- * Parser that consumes all items between two of the supplied item
- */
-template <typename ItemType, bool Nested = false, bool Eat = true>
-inline constexpr auto between_item(const ItemType c) {
-    return between_items<Nested, Eat>(c, c);
 }
 
 // CONVENIENCE PARSERS
@@ -368,7 +346,7 @@ template <typename Number>
 inline constexpr auto number() {
     return parser([](auto &s) {
         Number result;
-        auto res = std::from_chars<Number>(s.position, s.end, result);
+        auto res = std::from_chars(s.position, s.end, result);
         if (res.errc != std::errc()) {
             s.set_position(res.ptr);
             return s.return_success(result);

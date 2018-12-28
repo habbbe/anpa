@@ -47,7 +47,7 @@ space,
 syntax_error
 >;
 
-int main()
+int test()
 {
     constexpr auto add_to_state = [](auto &s, auto &&...args) {
         s.emplace_back(std::forward<decltype(args)>(args)...);

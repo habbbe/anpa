@@ -93,7 +93,10 @@ struct parser {
      * element and the result of the parse as the second.
      */
     template <typename Iterator, typename State, typename ConversionFunction>
-    constexpr auto parse_with_state(Iterator begin, Iterator end, State &user_state, ConversionFunction convert) const {
+    constexpr auto parse_with_state(Iterator begin,
+                                    Iterator end,
+                                    State &user_state,
+                                    ConversionFunction convert) const {
         return parse_internal(parser_state(begin, end, user_state, convert, parser_settings()));
     }
 

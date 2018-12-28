@@ -2,6 +2,7 @@
 #define PARSE_UTILS_H
 
 #include <algorithm>
+#include <iterator>
 
 /**
  * constexpr variants of some algorithms
@@ -13,8 +14,9 @@ namespace parse::algorithm {
  */
 template <typename Iterator1, typename Iterator2>
 inline constexpr auto equal(Iterator1 begin1, Iterator1 end1, Iterator2 begin2) {
-    while (begin1 != end1) {
-        if (!(*begin1++ == *begin2++)) return false;
+    for (; begin1 != end1; ++begin1, ++begin2) {
+        if (!(*begin1 == *begin2))
+            return false;
     }
     return true;
 }
@@ -61,6 +63,26 @@ inline constexpr std::pair<Iterator1, Iterator1> search(Iterator1 begin1, Iterat
         }
     }
 }
+
+
+template <typename Iterator>
+constexpr bool is_random_access_iterator() {
+    using category = typename std::iterator_traits<std::decay_t<Iterator>>::iterator_category;
+    return std::is_same_v<category, std::random_access_iterator_tag>;
+}
+
+template <typename Iterator>
+inline constexpr auto contains_elements(Iterator begin, Iterator end, long n) {
+    if constexpr (is_random_access_iterator<Iterator>()) {
+        return std::distance(begin, end) >= n;
+    } else {
+        auto start = begin;
+        for (long i = 0; i<n; ++i, ++start)
+            if (start == end) return false;
+        return true;
+    }
+}
+
 }
 
 #endif // PARSE_UTILS_H
