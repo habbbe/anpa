@@ -11,7 +11,7 @@
 
 struct row {
     template <typename StringType1, typename StringType2>
-    row(StringType1 firstName, StringType2 lastName) : firstName{firstName}, lastName{lastName} {}
+    constexpr row(StringType1 firstName, StringType2 lastName) : firstName{firstName}, lastName{lastName} {}
 
     std::string_view firstName;
     std::string_view lastName;
@@ -21,21 +21,21 @@ struct action {
     std::string_view name;
     std::string_view com;
     template <typename S1, typename S2>
-    action(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
+    constexpr action(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
 };
 
 struct info {
     std::string_view name;
     std::string_view com;
     template <typename S1, typename S2>
-    info(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
+    constexpr info(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
 };
 
 struct separator {};
 struct space {};
 struct syntax_error {
     template <typename StringType>
-    syntax_error(StringType s) : description{s} {}
+    constexpr syntax_error(StringType s) : description{s} {}
     std::string_view description;
 };
 

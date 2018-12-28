@@ -18,7 +18,7 @@ namespace parse {
  */
 template <typename P, typename S>
 constexpr auto apply(P p, S &s) {
-    if constexpr (std::is_invocable<P>::value) {
+    if constexpr (std::is_invocable_v<P>) {
         return apply(p(), s);
     } else {
         return p(s);
@@ -48,8 +48,8 @@ static constexpr auto operator>>=(Parser p, F f) {
  */
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
-    return parser([=](auto &s) {
-        return s.template return_success_forward<T>(args...);
+    return parser([&](auto &s) {
+        return s.template return_success_forward<T>(std::forward<Args>(args)...);
 // The following doesn't compile with GCC
 //    return parser([tup = std::tuple(std::forward<Args>(args)...)](auto &) {
 //        return std::apply(return_success_forward<T, Args...>, tup);
@@ -61,8 +61,8 @@ constexpr auto mreturn_forward(Args&&... args) {
  */
 template <typename T>
 constexpr auto mreturn(T&& t) {
-    return parser([t = std::forward<T>(t)](auto &s) {
-        return s.return_success(t);
+    return parser([&](auto &s) {
+        return s.return_success(std::forward<T>(t));
     });
 }
 

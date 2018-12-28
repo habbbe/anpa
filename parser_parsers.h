@@ -117,7 +117,7 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
             s.advance(size);
             return s.return_success(s.convert(orig_pos, size));
         } else {
-            return s.template return_fail();
+            return s.return_fail();
         }
     });
 }
@@ -158,7 +158,7 @@ inline constexpr auto until_item(ItemType &&c) {
             s.set_position(end_iterator_with_token);
             return s.return_success(res);
         } else {
-            return s.template return_fail();
+            return s.return_fail();
         }
     });
 }
