@@ -50,9 +50,6 @@ template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
     return parser([&](auto &s) {
         return s.template return_success_forward<T>(std::forward<Args>(args)...);
-// The following doesn't compile with GCC
-//    return parser([tup = std::tuple(std::forward<Args>(args)...)](auto &) {
-//        return std::apply(return_success_forward<T, Args...>, tup);
     });
 }
 
@@ -83,6 +80,12 @@ struct parser {
         return apply(p, s);
     }
 
+    template <typename InternalState>
+    constexpr auto parse_internal(InternalState &&state) const {
+        auto res = apply(p, state);
+        return std::make_pair(state.position, res);
+    }
+
     /**
      * Begin parsing a sequence interpreted as [begin, end) with state,
      * using the supplied conversion function when returning sequence results.
@@ -91,9 +94,7 @@ struct parser {
      */
     template <typename Iterator, typename State, typename ConversionFunction>
     constexpr auto parse_with_state(Iterator begin, Iterator end, State &user_state, ConversionFunction convert) const {
-        parser_state state(begin, end, user_state, convert, parser_settings());
-        auto res = apply(p, state);
-        return std::make_pair(state.position, std::move(res));
+        return parse_internal(parser_state(begin, end, user_state, convert, parser_settings()));
     }
 
     /**
@@ -134,9 +135,7 @@ struct parser {
      */
     template <typename Iterator, typename ConversionFunction>
     constexpr auto parse(Iterator begin, Iterator end, ConversionFunction convert) const {
-        auto state = parser_state_simple(begin, end, convert, parser_settings());
-        auto res = apply(p, state);
-        return std::make_pair(state.position, std::move(res));
+        return parse_internal(parser_state_simple(begin, end, convert, parser_settings()));
     }
 
     /**

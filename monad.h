@@ -59,7 +59,6 @@ inline constexpr auto curry_n(F f) {
 template <typename F, typename M, typename... Ms>
 inline constexpr auto lift_internal(F f, M m, Ms... ms) {
     return m >>= [=](auto &&r) {
-//        auto res = f(std::forward<decltype(r)>(r));
         if constexpr (sizeof...(ms) == 0) {
             return f(std::forward<decltype(r)>(r));
         } else {

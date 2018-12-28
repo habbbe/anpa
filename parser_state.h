@@ -45,25 +45,20 @@ struct parser_state_simple {
 
     constexpr auto empty() const {return position == end;}
     constexpr auto convert(Iterator begin, Iterator end) const {return conversion_function(begin, end);}
-    constexpr auto convert(Iterator begin, size_t size) const {return convert(begin, begin+size);}
+    constexpr auto convert(Iterator begin, size_t size) const {return convert(begin, std::next(begin, size));}
     constexpr auto convert(Iterator end) const {return convert(position, end);}
-    constexpr auto convert(size_t size) const {return convert(position+size);}
+    constexpr auto convert(size_t size) const {return convert(std::next(position, size));}
     constexpr auto set_position(Iterator p) {position = p;}
     constexpr auto advance(size_t n) {std::advance(position, n);}
 
     // Convenience function for returning a succesful parse.
     template <typename T, typename... Args>
-    static constexpr auto return_success_forward_static(Args&&... args) {
+    constexpr auto return_success_forward(Args&&... args) {
         if constexpr (error_handling) {
             return result<std::decay_t<T>, default_error_type>(std::in_place_index<1>, std::forward<Args>(args)...);
         } else {
             return result<std::decay_t<T>, void>(std::in_place, std::forward<Args>(args)...);
         }
-    }
-
-    template <typename T, typename... Args>
-    constexpr auto return_success_forward(Args&&... args) {
-        return std::decay_t<decltype(*this)>::template return_success_forward_static<T>(std::forward<Args>(args)...);
     }
 
     // Convenience function for returning a succesful parse.
@@ -97,13 +92,13 @@ private:
 
 constexpr auto string_view_convert = [](auto begin, auto end) {
     using type = std::decay_t<decltype(*begin)>;
+    auto distance = std::distance(begin, end);
     if constexpr (std::is_pointer_v<decltype(begin)>)
-        return std::basic_string_view<type>(begin, std::distance(begin, end));
-    else
-        return std::basic_string_view<type>(&*begin, std::distance(begin, end));
+        return std::basic_string_view<type>(begin, distance);
+    else {
+        return std::basic_string_view<type>(begin.operator->(), distance);
+    }
 };
-//template <typename Settings, typename Iterator, typename Fn>
-//parser_state_simple(Settings, Iterator begin, Iterator end, Fn f) -> parser_state_simple<Settings, Iterator, Fn>;
 
 /**
  * Class for the parser state. Contains the user provided state

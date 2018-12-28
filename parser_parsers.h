@@ -153,7 +153,7 @@ template <typename ItemType, bool Eat = true>
 inline constexpr auto until_item(ItemType &&c) {
     return parser([c = std::forward<ItemType>(c)](auto &s) {
         if (auto pos = algorithm::find(s.position, s.end, c); pos != s.end) {
-            auto end_iterator_with_token = pos + 1;
+            auto end_iterator_with_token = std::next(pos);
             auto res = s.convert(Eat ? pos : end_iterator_with_token);
             s.set_position(end_iterator_with_token);
             return s.return_success(res);
@@ -251,26 +251,26 @@ inline constexpr auto while_in(const ItemType (&items)[N]) {
 template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = true, typename Start, typename End, typename EqualStart, typename EqualEnd>
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
-        if (s.empty() || !equal_start(s.position, s.position + StartLength, start))
+        if (s.empty() || !equal_start(s.position, std::next(s.position, StartLength), start))
             return s.template return_fail();
 
         size_t to_match = 0;
-        for (auto i = s.position + StartLength; i != s.end - EndLength;) {
-            if (equal_end(i, i + EndLength, end)) {
+        for (auto pos = std::next(s.position, StartLength); pos != s.end - EndLength;) {
+            if (equal_end(pos, std::next(pos, EndLength), end)) {
                 if (to_match == 0) {
-                    auto begin_iterator = s.position + (Eat ? StartLength : 0);
-                    auto result_end = i + (Eat ? 0 : EndLength);
-                    s.set_position(i + EndLength);
+                    auto begin_iterator = std::next(s.position, (Eat ? StartLength : 0));
+                    auto result_end = std::next(pos, (Eat ? 0 : EndLength));
+                    s.set_position(std::next(pos, EndLength));
                     return s.return_success(s.convert(begin_iterator, result_end));
                 } else if (Nested) {
                     --to_match;
-                    i += EndLength;
+                    std::advance(pos, EndLength);
                 }
-            } else if (Nested && equal_start(i, i+StartLength, start)) {
+            } else if (Nested && equal_start(pos, std::next(pos, StartLength), start)) {
                 ++to_match;
-                i += StartLength;
+                std::advance(pos, StartLength);
             } else {
-                ++i;
+                ++pos;
             }
         }
         return s.template return_fail();
@@ -349,7 +349,7 @@ template <typename Integral = int>
 inline constexpr auto integer() {
     return parser([](auto &s) {
         bool negate = std::is_signed_v<Integral> && !s.empty() && s.front() == '-';
-        auto start_iterator = s.position + (negate ? 1 : 0);
+        auto start_iterator = std::next(s.position, negate ? 1 : 0);
         auto [new_pos, result] = parse_integer<Integral>(start_iterator, s.end);
         if (new_pos != start_iterator) {
             s.set_position(new_pos);
