@@ -59,8 +59,10 @@ double test()
     constexpr auto parse_info = parse::try_parser(parse::sequence("Info:") >> monad::lift_value<info>(parse_name, parse_cmd));
     constexpr auto parse_separator = parse::sequence("Separator") >> parse::empty() >> parse::mreturn_forward<separator>();
     constexpr auto parse_space = parse::sequence("Space") >> parse::empty() >> parse::mreturn_forward<space>();
+    constexpr auto parse_comment = parse::item('#');
+
     constexpr auto parse_error = monad::lift_value<syntax_error>(parse::rest());
-    constexpr auto entry_parser = parse::lift_or_state(add_to_state, parse_action, parse_info, parse_separator, parse_space, parse_error);
+    constexpr auto entry_parser = parse_comment || parse::lift_or_state(add_to_state, parse_action, parse_info, parse_separator, parse_space, parse_error);
 
     std::vector<item> r;
     r.reserve(1000000);
