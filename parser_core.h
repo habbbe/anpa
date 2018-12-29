@@ -8,9 +8,6 @@
 
 namespace parse {
 
-//template <typename T, typename ErrorType, typename Iterator, typename StringConversionFunction, typename S = void>
-//using type = std::function<result<T, ErrorType>(std::conditional_t<std::is_void<S>::value, parser_state_simple<Iterator, StringConversionFunction> &, parser_state<Iterator, StringConversionFunction, S> &>)>;
-
 /**
  * Apply a parser to a state and return the result.
  * This application unwraps arbitrary layers of callables so that one can
@@ -37,8 +34,12 @@ static constexpr auto operator>>=(Parser p, F f) {
         if (auto result = apply(p, s)) {
             return f(std::move(*result))(s);
         } else {
-            using new_return_type = std::decay_t<decltype(*(f(*result)(s)))>;
-            return s.template return_fail<new_return_type>();
+            using new_return_type = std::decay_t<decltype(*f(*result)(s))>;
+            if constexpr (std::decay_t<decltype(s)>::error_handling) {
+                return s.template return_fail<new_return_type>(result.error());
+            } else {
+                return s.template return_fail<new_return_type>();
+            }
         }
     });
 }
@@ -58,8 +59,8 @@ constexpr auto mreturn_forward(Args&&... args) {
  */
 template <typename T>
 constexpr auto mreturn(T&& t) {
-    return parser([&](auto &s) {
-        return s.return_success(std::forward<T>(t));
+    return parser([=](auto &s) {
+        return s.return_success(t);
     });
 }
 
@@ -92,12 +93,12 @@ struct parser {
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename Iterator, typename State, typename ConversionFunction>
+    template <typename Settings = parser_settings, typename Iterator, typename State, typename ConversionFunction>
     constexpr auto parse_with_state(Iterator begin,
                                     Iterator end,
                                     State &user_state,
                                     ConversionFunction convert) const {
-        return parse_internal(parser_state(begin, end, user_state, convert, parser_settings()));
+        return parse_internal(parser_state(begin, end, user_state, convert, Settings()));
     }
 
     /**
@@ -106,11 +107,11 @@ struct parser {
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename Iterator, typename State>
+    template <typename Settings = parser_settings, typename Iterator, typename State>
     constexpr auto parse_with_state(Iterator begin,
                                     Iterator end,
                                     State &user_state) const {
-        return parse_with_state(begin,
+        return parse_with_state<Settings>(begin,
                                 end,
                                 user_state,
                                 string_view_convert);
@@ -122,11 +123,25 @@ struct parser {
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename SequenceType, typename State>
+    template <typename Settings = parser_settings, typename SequenceType, typename State>
     constexpr auto parse_with_state(const SequenceType &sequence,
                                     State &user_state) const {
-        return parse_with_state(std::begin(sequence),
+        return parse_with_state<Settings>(std::begin(sequence),
                                 std::end(sequence),
+                                user_state);
+    }
+
+    /**
+     * Begin parsing a null terminated string literal,
+     * using basic_string_view for sequence results.
+     * The result is a std::pair with the position of the first unparsed token as first
+     * element and the result of the parse as the second.
+     */
+    template <typename Settings = parser_settings, typename ItemType, size_t N, typename State>
+    constexpr auto parse_with_state(const ItemType (&sequence)[N],
+                                    State &user_state) const {
+        return parse_with_state<Settings>(sequence,
+                                sequence + N - 1,
                                 user_state);
     }
 
@@ -136,9 +151,9 @@ struct parser {
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename Iterator, typename ConversionFunction>
+    template <typename Settings = parser_settings, typename Iterator, typename ConversionFunction>
     constexpr auto parse(Iterator begin, Iterator end, ConversionFunction convert) const {
-        return parse_internal(parser_state_simple(begin, end, convert, parser_settings()));
+        return parse_internal(parser_state_simple(begin, end, convert, Settings()));
     }
 
     /**
@@ -147,9 +162,9 @@ struct parser {
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename Iterator>
+    template <typename Settings = parser_settings, typename Iterator>
     constexpr auto parse(Iterator begin, Iterator end) const {
-        return parse(begin, end, string_view_convert);
+        return parse<Settings>(begin, end, string_view_convert);
     }
 
     /**
@@ -158,9 +173,20 @@ struct parser {
      * The result is a std::pair with the position of the first unparsed token as first
      * element and the result of the parse as the second.
      */
-    template <typename SequenceType>
+    template <typename Settings = parser_settings, typename SequenceType>
     constexpr auto parse(const SequenceType &sequence) const {
-        return parse(std::begin(sequence), std::end(sequence));
+        return parse<Settings>(std::begin(sequence), std::end(sequence));
+    }
+
+    /**
+     * Begin parsing a null terminated string literal
+     * using basic_string_view for sequence results.
+     * The result is a std::pair with the position of the first unparsed token as first
+     * element and the result of the parse as the second.
+     */
+    template <typename Settings = parser_settings, typename ItemType, size_t N>
+    constexpr auto parse(const ItemType (&sequence)[N]) const {
+        return parse<Settings>(sequence, sequence + N - 1);
     }
 
     /**
@@ -175,7 +201,7 @@ struct parser {
      * Class member of mreturn. For general monad use.
      */
     template <typename T>
-    static constexpr auto mreturn(T&& v) {
+    static constexpr auto mreturn(T &&v) {
         return parse::mreturn(std::forward<T>(v));
     }
 

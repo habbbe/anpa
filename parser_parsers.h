@@ -7,6 +7,15 @@
 
 namespace parse {
 
+template <typename T, typename ... Ts>
+constexpr bool is_one_of = (std::is_same_v<T, Ts> || ...);
+
+template <typename T>
+constexpr bool is_string_literal_type = is_one_of<T, char, wchar_t, char16_t, char32_t>;
+
+template <typename T>
+using enable_if_string_literal_type = std::enable_if_t<is_one_of<T, char, wchar_t, char16_t, char32_t>>;
+
 /**
  * Parser that always succeeds
  */
@@ -123,9 +132,9 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
 }
 
 /**
- * Parser for a sequence
+ * Parser for a sequence described by a string literal
  */
-template <typename ItemType, size_t N>
+template <typename ItemType, size_t N, typename = enable_if_string_literal_type<ItemType>>
 inline constexpr auto sequence(const ItemType (&seq)[N]) {
     return sequence(seq, seq + N - 1);
 }
@@ -147,15 +156,16 @@ inline constexpr auto consume(size_t n) {
 /**
  * Parser for consuming all items up until a certain item
  * Use boolean template parameter `Eat` to control whether or not to
- * include the matched item in the result.
+ * consume the matched item, and `Include` to control whether to or not
+ * to include the matched item in the result.
  */
-template <bool Eat = true, typename ItemType>
+template <bool Eat = true, bool Include = false, typename ItemType>
 inline constexpr auto until_item(ItemType &&c) {
     return parser([c = std::forward<ItemType>(c)](auto &s) {
         if (auto pos = algorithm::find(s.position, s.end, c); pos != s.end) {
-            auto end_iterator_with_token = std::next(pos);
-            auto res = s.convert(Eat ? pos : end_iterator_with_token);
-            s.set_position(end_iterator_with_token);
+            auto end_iterator = Eat ? std::next(pos) : pos;
+            auto res = s.convert(Include ? std::next(pos) : pos);
+            s.set_position(end_iterator);
             return s.return_success(res);
         } else {
             return s.return_fail();
@@ -166,15 +176,16 @@ inline constexpr auto until_item(ItemType &&c) {
 /**
  * Parser for consuming all items up until a certain sequence described by [begin, end).
  * Use boolean template parameter `Eat` to control whether or not to
- * include the matched sequence in the result.
+ * consume the matched sequence, and `Include` to controler whether or not to include
+ * the matched sequence in the result.
  * This is much faster than using until(sequence()).
  */
-template <bool Eat = true, typename Iterator>
+template <bool Eat = true, bool Include = false, typename Iterator>
 inline constexpr auto until_sequence(Iterator begin, Iterator end) {
     return parser([=](auto &s) {
         if (auto [pos, new_end] = algorithm::search(s.position, s.end, begin, end); pos != s.end) {
-            auto res = s.convert(Eat ? pos : new_end);
-            s.set_position(new_end);
+            auto res = s.convert(Include ? new_end : pos);
+            s.set_position(Eat ? new_end : pos);
             return s.return_success(res);
         } else {
             return s.return_fail();
@@ -183,14 +194,18 @@ inline constexpr auto until_sequence(Iterator begin, Iterator end) {
 }
 
 /**
- * Parser for consuming all items up until a certain sequence
+ * Parser for consuming all items up until the given string literal.
  * Use boolean template parameter `Eat` to control whether or not to
- * include the matched sequence in the result.
+ * consume the matched sequence, and `Include` to controler whether or not to include
+ * the matched sequence in the result.
  * This is much faster than using until(sequence()).
  */
-template <bool Eat = true, typename ItemType, size_t N>
+template <bool Eat = true,
+          bool Include = false,
+          typename ItemType, size_t N,
+          typename = enable_if_string_literal_type<ItemType>>
 inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
-    return until_sequence<Eat>(seq, seq + N - 1);
+    return until_sequence<Eat, Include>(seq, seq + N - 1);
 }
 
 /**
@@ -205,7 +220,8 @@ inline constexpr auto rest() {
 }
 
 /**
- * Parser that consumes all items that matches the provided predicate
+ * Parser that consumes all items that matches the provided predicate.
+ * This parser will never fail.
  */
 template <typename Predicate>
 inline constexpr auto while_predicate(Predicate predicate) {
@@ -226,15 +242,22 @@ inline constexpr auto while_in(Iterator start, Iterator end) {
 }
 
 /**
- * Parser that consumes all items contained in the given array
+ * Parser that consumes all items contained in the given string literal
  */
-template <typename ItemType, size_t N>
+template <typename ItemType, size_t N, typename = enable_if_string_literal_type<ItemType>>
 inline constexpr auto while_in(const ItemType (&items)[N]) {
     return while_in(items, items + N - 1);
 }
 
 // General matching algorithm with supplied equality functions.
-template <size_t StartLength, size_t EndLength, bool Nested = false, bool Eat = true, typename Start, typename End, typename EqualStart, typename EqualEnd>
+template <size_t StartLength,
+          size_t EndLength,
+          bool Nested = false,
+          bool Eat = true,
+          typename Start,
+          typename End,
+          typename EqualStart,
+          typename EqualEnd>
 static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
         if (s.empty() || !equal_start(s.position, std::next(s.position, StartLength), start))

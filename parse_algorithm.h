@@ -73,6 +73,8 @@ constexpr bool is_random_access_iterator() {
 
 template <typename Iterator>
 inline constexpr auto contains_elements(Iterator begin, Iterator end, long n) {
+    // If we have a random access iterator, just use std::distance, otherwise
+    // iterate so that we don't have to go all the way to end
     if constexpr (is_random_access_iterator<Iterator>()) {
         return std::distance(begin, end) >= n;
     } else {

@@ -10,7 +10,7 @@
  */
 template <typename Monad1, typename Monad2>
 inline constexpr auto operator>>(Monad1 m1, Monad2 m2) {
-    return m1 >>= [=] (const auto &) {
+    return m1 >>= [=] (auto &&) {
         return m2;
     };
 }
@@ -80,7 +80,7 @@ inline constexpr auto lift_prepare(F f, Ms... ms) {
  * put the result in the monad
  */
 template <typename F, typename M, typename... Ms>
-inline constexpr auto lift(F&& f, M m, Ms... ms) {
+inline constexpr auto lift(F f, M m, Ms... ms) {
     auto fun = [=](auto &&...ps) {
         return M::mreturn(f(std::forward<decltype(ps)>(ps)...));
     };

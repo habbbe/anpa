@@ -53,7 +53,6 @@ struct result {
 };
 
 using default_error_type = const char*;
-constexpr auto error_handling = false;
 
 }
 

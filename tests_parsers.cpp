@@ -61,7 +61,7 @@ TEST_CASE("custom") {
 }
 
 TEST_CASE("custom_state") {
-    auto parser = [](auto begin, auto end, auto &state) {
+    auto parser = [](auto begin, auto, auto &state) {
         using type = std::pair<std::decay_t<decltype(begin)>, std::optional<int>>;
         state = 3;
         return type(begin, 3);
@@ -106,38 +106,72 @@ TEST_CASE("consume") {
     REQUIRE(resFail.first == str.begin());
 }
 
-TEST_CASE("until_item") {
+TEST_CASE("until_item eat no include") {
     std::string str("abcde");
-    auto resSuccessEat = parse::until_item('c').parse(str);
-    REQUIRE(resSuccessEat.second);
-    REQUIRE(*resSuccessEat.second == "ab");
-    REQUIRE(resSuccessEat.first == str.begin() + 3);
-
-    auto resSuccessNoEat = parse::until_item<false>('c').parse(str);
-    REQUIRE(resSuccessNoEat.second);
-    REQUIRE(*resSuccessNoEat.second == "abc");
-    REQUIRE(resSuccessNoEat.first == str.begin() + 3);
-
-    auto resFail = parse::until_item('f').parse(str);
-    REQUIRE(!resFail.second);
-    REQUIRE(resFail.first == str.begin());
+    auto res = parse::until_item('c').parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == "ab");
+    REQUIRE(res.first == str.begin() + 3);
 }
 
-TEST_CASE("until_sequence") {
+TEST_CASE("until_item no eat no include") {
     std::string str("abcde");
-    auto resSuccessEat = parse::until_sequence("cd").parse(str);
-    REQUIRE(resSuccessEat.second);
-    REQUIRE(*resSuccessEat.second == "ab");
-    REQUIRE(resSuccessEat.first == str.begin() + 4);
+    auto res = parse::until_item<false, false>('c').parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == "ab");
+    REQUIRE(res.first == str.begin() + 2);
+}
 
-    auto resSuccessNoEat = parse::until_sequence<false>("cd").parse(str);
-    REQUIRE(resSuccessNoEat.second);
-    REQUIRE(*resSuccessNoEat.second == "abcd");
-    REQUIRE(resSuccessNoEat.first == str.begin() + 4);
+TEST_CASE("until_item eat include") {
+    std::string str("abcde");
+    auto res = parse::until_item<true, true>('c').parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == "abc");
+    REQUIRE(res.first == str.begin() + 3);
+}
+
+TEST_CASE("until_item no eat include") {
+    std::string str("abcde");
+    auto res = parse::until_item<false, true>('c').parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == "abc");
+    REQUIRE(res.first == str.begin() + 2);
+}
+
+TEST_CASE("until_sequence eat no include") {
+    std::string str("abcde");
+    auto res = parse::until_sequence("cd").parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == "ab");
+    REQUIRE(res.first == str.begin() + 4);
 
     auto resFail = parse::until_sequence("cdf").parse(str);
     REQUIRE(!resFail.second);
     REQUIRE(resFail.first == str.begin());
+}
+
+TEST_CASE("until_sequence no eat no include") {
+    std::string str("abcde");
+    auto res = parse::until_sequence<false, false>("cd").parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == "ab");
+    REQUIRE(res.first == str.begin() + 2);
+}
+
+TEST_CASE("until_sequence eat include") {
+    std::string str("abcde");
+    auto res = parse::until_sequence<true, true>("cd").parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == "abcd");
+    REQUIRE(res.first == str.begin() + 4);
+}
+
+TEST_CASE("until_sequence no eat include") {
+    std::string str("abcde");
+    auto res = parse::until_sequence<false, true>("cd").parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == "abcd");
+    REQUIRE(res.first == str.begin() + 2);
 }
 
 TEST_CASE("rest") {

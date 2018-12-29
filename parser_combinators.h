@@ -30,13 +30,13 @@ inline constexpr auto succeed(Parser p) {
  * Change the error to be returned upon a failed parse with the provided parser
  */
 template <typename Parser, typename Error>
-inline constexpr auto change_error(Parser p, Error &&error) {
+inline constexpr auto change_error(Parser p, Error error) {
     return parser([=](auto &s) {
         if (auto result = apply(p, s)) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(*result)>;
-            return s.template return_fail<return_type>(std::forward<Error>(error));
+            return s.template return_fail<return_type>(error);
         }
     });
 }
@@ -56,15 +56,11 @@ inline constexpr auto not_empty(Parser p) {
                 return std::empty(t);
             }
         };
-        if (auto result = apply(p, s); result && !empty(*result)) {
+        if (auto result = apply(p, s); !result || !empty(*result)) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(*result)>;
-            if constexpr (std::decay_t<decltype(result)>::has_error_handling){
-                return s.template return_fail<return_type>(result.error());
-            } else {
-                return s.template return_fail<return_type>();
-            }
+            return s.template return_fail<return_type>();
         }
     });
 }
@@ -85,7 +81,7 @@ inline constexpr auto try_parser(Parser p) {
 }
 
 /**
- * Make a parser non consuming
+ * Make a parser non-consuming
  */
 template <typename Parser>
 inline constexpr auto no_consume(Parser p) {
@@ -104,10 +100,10 @@ inline constexpr auto no_consume(Parser p) {
 template <typename Parser, typename Predicate>
 inline constexpr auto constrain(Parser p, Predicate pred) {
     return parser([=](auto &s) {
-        if (auto result = apply(p, s); result && pred(*result)) {
+        if (auto result = apply(p, s); !result || pred(*result)) {
             return result;
         } else {
-            return s.template return_fail<decltype(*result)>();
+            return s.template return_fail<std::decay_t<decltype(*result)>>();
         }
     });
 }
@@ -124,11 +120,7 @@ static inline constexpr auto get_parsed_recursive(State &s, Iterator original_po
             return get_parsed_recursive(s, original_position, ps...);
         }
     } else {
-        if constexpr (State::error_handling) {
-            return s.template return_fail(result.error());
-        } else {
-            return s.template return_fail();
-        }
+        return s.return_fail(result);
     }
 }
 
@@ -177,6 +169,11 @@ inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
             }
         }
     });
+}
+
+template <typename ... Parsers>
+inline constexpr auto first(Parsers ... ps) {
+    return (ps || ...);
 }
 
 /**
@@ -268,12 +265,22 @@ inline constexpr auto emplace_back_to_state_direct(Parsers... ps) {
  * General helper for functions that saves the results in collections.
  */
 template <typename Container, typename State, typename Inserter, typename Parser>
-inline constexpr auto many_internal(State &s, Inserter insert, Parser p) {
+inline constexpr auto many_helper(State &s, Inserter insert, Parser p) {
     Container c;
     for (auto result = apply(p, s); result; result = apply(p, s)) {
         insert(c, std::move(*result));
     }
-    return return_success(c);
+    return s.return_success(c);
+}
+
+/**
+ * General helper for functions that saves the results in collections.
+ */
+template <typename Container, typename Inserter, typename Parser>
+inline constexpr auto many_general(Inserter insert, Parser p) {
+    return parser([=](auto &s) {
+        return many_helper<Container>(s, insert, p);
+    });
 }
 
 /**
@@ -283,7 +290,7 @@ template <typename Parser>
 inline constexpr auto many_to_vector(Parser p) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
-        return many_internal<std::vector<result_type>>(s, [](auto &v, auto &&r){
+        return many_helper<std::vector<result_type>>(s, [](auto &v, auto &&r) {
             v.emplace_back(std::forward<decltype(r)>(r));
         }, p);
     });
@@ -298,7 +305,7 @@ inline constexpr auto many_to_unordered_map(Parser p) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         using key = typename result_type::first_type;
         using value = typename result_type::second_type;
-        return many_internal<std::unordered_map<key, value>>(s, [](auto &m, auto &&r) {
+        return many_helper<std::unordered_map<key, value>>(s, [](auto &m, auto &&r) {
             m.insert(std::forward<decltype(r)>(r));
         }, p);
     });
@@ -309,7 +316,7 @@ inline constexpr auto many_to_unordered_map(Parser p) {
  * Useful when applying parses to state.
  */
 template <typename Parser>
-inline constexpr auto many_simple(Parser p) {
+inline constexpr auto many_count(Parser p) {
     return parser([=](auto &s) {
         size_t successes = 0;
         while (apply(p, s)) { ++successes; }
@@ -318,34 +325,20 @@ inline constexpr auto many_simple(Parser p) {
 }
 
 /**
- * Create a parser that applies a parser until it fails and stores the result in
- * a container in the user provided state which is accessed by the function `acc`.
- * The number of added elements is then returned.
- * Note that this parser always succeeds, so you need to check the resulting number whether a
- * parse succeeded or not (or use parse::not_empty).
- * Note: The container in the state must have an `emplace_back` function.
+ * Create a parser that applies a parser until it fails, and for each successful parse
+ * calls the provided callable `f` which should take the user state by reference as its
+ * first parameter, and the result of a successful parse as its second.
  */
-template <typename Accessor, typename Parser>
-inline constexpr auto many_to_state(Accessor acc, Parser p) {
+template <typename Fun, typename Parser>
+inline constexpr auto many_with_state(Fun f, Parser p) {
     return parser([=](auto &s) {
         size_t number_of_results = 0;
-        auto &c = acc(s.user_state);
         for (auto result = apply(p, s); result; result = apply(p, s)) {
-            c.emplace_back(std::move(*result));
+            f(s.user_state, std::move(*result));
             ++number_of_results;
         }
         return s.return_success(number_of_results);
     });
-}
-
-/**
- * Create a parser that applies a parser until it fails and stores the result in the user
- * provided state.
- * Note that the user provided state needs to be a container.
- */
-template <typename Parser>
-inline constexpr auto many_to_state(Parser p) {
-    return many_to_state([](auto &s) -> auto& {return s;}, p);
 }
 
 // Compile time recursive resolver for lifting of arbitrary number of parsers
@@ -379,8 +372,11 @@ inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
 }
 
 /**
- * Lift a type to the parser monad after applying the first successful parser's result to its constructor.
- * The constructor must provide an overload for every parser result type.
+ * Lift the result of a unary functor to the parser monad after applying it to the first successful
+ * parser's result.
+ * The lifted functor must provide an overload for every parser result type.
+ * This is similar to `lift_or` but also passes along the user state to the provided ´Fun` as
+ * its first argument. In addition, all `()` overloads in the functor must be marked `const`
  */
 template <typename Fun, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
@@ -398,10 +394,7 @@ inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
  */
 template <typename T, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_value(Parser p, Parsers... ps) {
-    return parser([=](auto &s) {
-        constexpr auto construct = [](auto&& arg) {return T(std::forward<decltype(arg)>(arg));};
-        return lift_or_rec(s, construct, p, ps...);
-    });
+    return lift_or([](auto&& arg) {return T(std::forward<decltype(arg)>(arg));}, p, ps...);
 }
 
 /**
@@ -422,6 +415,8 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
 /**
  * Create a parser that parses the result of `p1` with `p2`.
  * Useful for parsing the content between brackets.
+ * Currently only working if the return type from the provided conversion function
+ * has the same iterator type as what is provided when starting a parse.
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
@@ -429,32 +424,42 @@ inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
         if (auto result = apply(p1, s)) {
             auto result_text = *result;
             using state_type = std::decay_t<decltype(s)>;
-            state_type new_state(result_text, s);
+            state_type new_state(std::begin(result_text), std::end(result_text), s);
             auto new_result = apply(p2, new_state);
             return new_result;
         } else {
-            return s.template return_fail<decltype(*apply(p2, s))>(*result);
+            return s.template return_fail<std::decay_t<decltype(*apply(p2, s))>>(*result);
         }
     });
 }
 
 /**
  * Parse all items until the supplied parser succeeds.
- * Use template parameter `Eat` to specify whether to include the successful parse in
- * the result or not.
+ * Use template parameter `Eat` to specify whether or not to consume the successful parse,
+ * and `Include` to control whether to or not to include the successful parse in the result.
  * Note: For parsing until a certain sequence or item, use functions
  * `until_item` and `until_sequence` instead, as they are more efficient.
  */
-template <bool Eat = true, typename Parser>
+template <bool Eat = true, bool Include = false, typename Parser>
 inline constexpr auto until(Parser p) {
     return parser([=](auto &s) {
         auto position_start = s.position;
         auto position_end = position_start;
-        while (!apply(p, s)) {
+        for (auto result = apply(p, s); !result; result = apply(p, s)) {
             s.advance(1);
+            if (s.position == s.end) {
+                s.position = position_start;
+                return s.return_fail(result);
+            }
             position_end = s.position;
         }
-        return s.return_success(s.convert(position_start, Eat ? position_end : s.position));
+
+        auto end_pos = Include ? s.position : position_end;
+        if constexpr (!Eat) {
+            s.set_position(position_end);
+        }
+
+        return s.return_success(s.convert(position_start, end_pos));
     });
 }
 

@@ -7,9 +7,10 @@ QMAKE_CXXFLAGS_RELEASE -= -O2
 QMAKE_CXXFLAGS_RELEASE += -O3
 
 SOURCES += \
-    perf_test.cpp \
-    tests_parser.cpp \
-    tests_main.cpp
+    tests_main.cpp \
+    tests_parsers.cpp \
+    tests_combinators.cpp \
+    tests_perf.cpp
 
 HEADERS += \
     parser.h \

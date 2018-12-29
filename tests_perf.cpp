@@ -4,10 +4,9 @@
 #include <streambuf>
 #include <memory>
 #include <variant>
+#include "test/catch.hpp"
 #include "parser.h"
 #include "time_measure.h"
-
-//using namespace std;
 
 struct row {
     template <typename StringType1, typename StringType2>
@@ -47,7 +46,7 @@ space,
 syntax_error
 >;
 
-int test()
+double test()
 {
     constexpr auto add_to_state = [](auto &s, auto &&...args) {
         s.emplace_back(std::forward<decltype(args)>(args)...);
@@ -83,11 +82,15 @@ int test()
 
     TICK
     for (auto &l : lines) {
-        entry_parser.parse_with_state(l, r);
+        entry_parser.parse_with_state(l.begin(), l.end(), r);
     }
 
     std::cout << "Size: " << r.size() << std::endl;
     TOCK
 
-    return 0;
+    return fp_ms.count();
+}
+
+TEST_CASE("performance") {
+    test();
 }

@@ -16,17 +16,21 @@ struct parser_state_simple {
     const Iterator end;
     StringResultConversion conversion_function;
 
+    using settings = Settings;
     constexpr static bool error_handling = Settings::error_handling;
+
 
     using default_result_type = decltype(conversion_function(std::declval<Iterator>(), std::declval<Iterator>()));
 
     constexpr parser_state_simple(Iterator begin, Iterator end, StringResultConversion convert, Settings) :
         position{begin}, end{end}, conversion_function{convert} {}
 
+    template<typename State>
+    constexpr parser_state_simple(Iterator begin, Iterator end, const State &other) :
+        parser_state_simple(begin, end, other.conversion_function, typename State::settings()){}
+
     constexpr auto front() const {return *position;}
 
-    // If we have a random access iterator, just use std::distance, otherwise
-    // iterate so that we don't have to go all the way to end
     constexpr auto has_at_least(long n) {
         return algorithm::contains_elements(position, end, n);
     }
@@ -64,6 +68,7 @@ struct parser_state_simple {
             return result<Res, void>();
         }
     }
+
     template <typename Error>
     constexpr auto return_fail(Error &&error) { return return_fail<default_result_type>(std::forward<Error>(error)); }
 
@@ -71,6 +76,16 @@ struct parser_state_simple {
     constexpr auto return_fail() { return return_fail<Res>("Parsing error"); }
 
     constexpr auto return_fail() { return return_fail<default_result_type>(); }
+
+    template <typename Res, typename Error>
+    constexpr auto return_fail(const result<Res, Error> &res) {
+        if constexpr (error_handling) {
+            return result<Res, Error>(std::in_place_index<0>, std::forward<Error>(res.error));
+        } else {
+            return result<Res, void>();
+        }
+
+    }
 
 
 
@@ -97,6 +112,10 @@ struct parser_state: public parser_state_simple<Iterator, StringResultConversion
 
     constexpr parser_state(Iterator begin, Iterator end, UserState& state, StringResultConversion convert, Settings settings)
         : parser_state_simple<Iterator, StringResultConversion, Settings>{begin, end, convert, settings}, user_state{state} {}
+
+    template<typename State>
+    constexpr parser_state(Iterator begin, Iterator end, const State &other) :
+        parser_state(begin, end, other.user_state, other.conversion_function, typename State::settings()){}
 };
 
 
