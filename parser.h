@@ -1,6 +1,7 @@
 #ifndef PARSER_INCLUDE_H
 #define PARSER_INCLUDE_H
 
+#include "lazy.h"
 #include "monad.h"
 #include "parse_algorithm.h"
 #include "parser_result.h"
