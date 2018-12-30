@@ -261,66 +261,87 @@ inline constexpr auto emplace_back_to_state_direct(Parsers... ps) {
     return emplace_back_to_state([](auto &s) -> auto& {return s;}, ps...);
 }
 
-/**
- * General helper for functions that saves the results in collections.
- */
-template <typename Container, typename State, typename Inserter, typename Parser>
-inline constexpr auto many_helper(State &s, Inserter insert, Parser p) {
-    Container c;
-    for (auto result = apply(p, s); result; result = apply(p, s)) {
-        insert(c, std::move(*result));
+template <typename State, typename Fun, typename Parser, typename Sep = std::nullptr_t>
+inline constexpr auto many_internal(State &s, Fun f, Parser p, Sep sep = nullptr) {
+    size_t successful = 0;
+    for (auto res = apply(p, s); res; res = apply(p, s)) {
+        ++successful;
+        f(*res);
+        if constexpr (!std::is_same_v<Sep, std::nullptr_t>) {
+            if (!sep(s)) break;
+        }
     }
-    return s.return_success(c);
+    return successful;
 }
 
 /**
- * General helper for functions that saves the results in collections.
+ * General helper for evaluating a parser multiple times.
  */
-template <typename Container, typename Inserter, typename Parser>
-inline constexpr auto many_general(Inserter insert, Parser p) {
+template <typename State, typename Fun, typename Parser, typename Sep = std::nullptr_t>
+inline constexpr auto many_helper(State &s, Fun f, Parser p, Sep sep = nullptr) {
+    if constexpr (std::is_same_v<Sep, std::nullptr_t>) {
+        return many_internal(s, [f](auto &&res) {f(res);}, p, [](const auto &){return true;});
+    } else {
+        return many_internal(s, [f](auto &&res) {f(res);}, p, [sep](auto &s) {return apply(sep, s);});
+    }
+}
+
+/**
+ * General parser that saves results to collections.
+ * The template argument `Container` should be default constructible, and ´inserter´
+ * is a callable taking a `Container` as a reference as the first argument, and the
+ * result of the parse as the second.
+ */
+template <typename Container, typename Inserter, typename Parser, typename ParserSep = std::nullptr_t>
+inline constexpr auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
-        return many_helper<Container>(s, insert, p);
+        Container c;
+        many_helper(s, [=](auto &&res) {inserter(c, std::forward<decltype(res)>(res));}, p, sep);
+        return s.return_success(c);
     });
 }
 
 /**
  * Create a parser that applies a parser until it fails and returns the result in a vector.
  */
-template <typename Parser>
-inline constexpr auto many_to_vector(Parser p) {
+template <typename Parser, typename ParserSep = std::nullptr_t>
+inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
-        return many_helper<std::vector<result_type>>(s, [](auto &v, auto &&r) {
-            v.emplace_back(std::forward<decltype(r)>(r));
-        }, p);
+        std::vector<result_type> r;
+        many_helper(s, [&](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, p, sep);
+        return s.return_success(r);
     });
 }
 
 /**
- * Create a parser that applies a parser until it fails and returns the result in a vector.
+ * Create a parser that applies a parser until it fails and returns the result in an `unordered_map`.
+ * The parser must have a result type defining `first_type` and `second_type` (e.g. `std::pair`).
  */
-template <typename Parser>
-inline constexpr auto many_to_unordered_map(Parser p) {
+template <typename Parser, typename ParserSep = std::nullptr_t>
+inline constexpr auto many_to_unordered_map(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         using key = typename result_type::first_type;
         using value = typename result_type::second_type;
-        return many_helper<std::unordered_map<key, value>>(s, [](auto &m, auto &&r) {
+        std::unordered_map<key, value> m;
+        many_helper(s, [&](auto &&r) {
             m.insert(std::forward<decltype(r)>(r));
-        }, p);
+        }, p, sep);
+        return s.return_success(m);
     });
 }
 
 /**
- * Create a parser that applies a parser multiple times and returns the number it succeeds.
- * Useful when applying parses to state.
+ * Create a parser that applies a parser until it fails, and for each successful parse
+ * calls the provided callable `f` which should take the result of a successful parse with ´p´ as its
+ * argument.
+ * The parse result is the number of successful parses.
  */
-template <typename Parser>
-inline constexpr auto many_count(Parser p) {
+template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
+inline constexpr auto many(Fun f, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
-        size_t successes = 0;
-        while (apply(p, s)) { ++successes; }
-        return s.return_success(successes);
+        return s.return_success(many_helper(s, [f](auto &&res){f(std::forward<decltype(res)>(res));}, p, sep));
     });
 }
 
@@ -328,16 +349,12 @@ inline constexpr auto many_count(Parser p) {
  * Create a parser that applies a parser until it fails, and for each successful parse
  * calls the provided callable `f` which should take the user state by reference as its
  * first parameter, and the result of a successful parse as its second.
+ * The parse result is the number of successful parses.
  */
-template <typename Fun, typename Parser>
-inline constexpr auto many_with_state(Fun f, Parser p) {
+template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
+inline constexpr auto many_state(Fun f, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
-        size_t number_of_results = 0;
-        for (auto result = apply(p, s); result; result = apply(p, s)) {
-            f(s.user_state, std::move(*result));
-            ++number_of_results;
-        }
-        return s.return_success(number_of_results);
+        return s.return_success(many_helper(s, [f, &s](auto &&res){f(s.user_state, std::forward<decltype(res)>(res));}, p, sep));
     });
 }
 

@@ -1,4 +1,5 @@
 #include <stack>
+#include <iostream>
 #include "test/catch.hpp"
 #include "parser.h"
 
@@ -230,19 +231,9 @@ TEST_CASE("many_to_unordered_map") {
     REQUIRE(res.first == str.begin() + 12);
 }
 
-TEST_CASE("many_count") {
-    std::string str("#100#20#3def");
-    auto intParser = parse::item('#') >> parse::integer();
-    auto p = parse::many_count(intParser);
-    auto res = p.parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == 3);
-    REQUIRE(res.first == str.begin() + 9);
-}
-
 TEST_CASE("many_with_state") {
     auto intParser = parse::item('#') >> parse::integer();
-    auto p = parse::many_with_state([](auto &s, auto i) {
+    auto p = parse::many_state([](auto &s, auto i) {
         s.emplace_back(i);
     }, intParser);
 
@@ -437,4 +428,47 @@ TEST_CASE("until no eat include") {
     REQUIRE(res.second);
     REQUIRE(*res.second == "abc{123}");
     REQUIRE(res.first == str.begin() + 3);
+}
+
+TEST_CASE("many with separator") {
+    constexpr auto intParser = parse::integer();
+
+    int result = 0;
+    auto p = parse::many([&result](auto i) {
+        result += i;
+    }, intParser, parse::sequence("#%"));
+
+    auto res = p.parse("100#%20#%3");
+
+    REQUIRE(res.second);
+    REQUIRE(*res.second == 3);
+    REQUIRE(result == 123);
+}
+
+TEST_CASE("many_state with separator") {
+    constexpr auto intParser = parse::integer();
+
+    auto p = parse::many_state([](auto &s, auto i) {
+        s += i;
+    }, intParser, parse::sequence("#%"));
+
+    int state = 0;
+    auto res = p.parse_with_state("100#%20#%3", state);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == 3);
+    REQUIRE(state == 123);
+}
+
+TEST_CASE("many_to_vector with separator") {
+    constexpr auto intParser = parse::integer();
+
+    auto p = parse::many_to_vector(intParser, parse::sequence("#%"));
+
+    int state = 0;
+    auto res = p.parse_with_state("100#%20#%3", state);
+    REQUIRE(res.second);
+    REQUIRE(res.second->size() == 3);
+    REQUIRE(res.second->at(0) == 100);
+    REQUIRE(res.second->at(1) == 20);
+    REQUIRE(res.second->at(2) == 3);
 }

@@ -368,8 +368,15 @@ inline constexpr auto integer() {
 template <typename Number>
 inline constexpr auto number() {
     return parser([](auto &s) {
+        auto [start, end] = [&]() -> std::pair<const char*, const char*> {
+            if constexpr (std::is_pointer_v<decltype(s.position)>) {
+                return std::pair(s.position, s.end);
+            } else {
+                return std::pair(&*s.position, &*s.end);
+            }
+        }();
         Number result;
-        auto [ptr, ec] = std::from_chars(s.position, s.end, result);
+        auto [ptr, ec] = std::from_chars(start, end, result);
         if (ec == std::errc()) {
             s.set_position(ptr);
             return s.return_success(result);

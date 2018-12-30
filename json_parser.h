@@ -33,22 +33,25 @@ constexpr auto eat(Parser p) {
     return parse::whitespace() >> p;
 }
 
-constexpr auto string_parser = eat(monad::lift_value<std::string>(parse::between_token('"')));
+constexpr auto string_parser = eat(monad::lift_value<std::string>(parse::between_items('"', '"')));
 constexpr auto integer_parser = eat(parse::integer());
-constexpr auto double_parser = eat(parse::double_fast());
-constexpr auto bool_parser = eat((parse::string("true") >= true) || (parse::string("false") >= false));
-constexpr auto null_parser = eat(parse::string("null") >= std::monostate());
+constexpr auto double_parser = eat(parse::number<double>());
+constexpr auto bool_parser = eat((parse::sequence("true") >= true) || (parse::sequence("false") >= false));
+constexpr auto null_parser = eat(parse::sequence("null") >= std::monostate());
 
-parse::type<json_value> value_parser() {
-    auto array_parser = parse::parse_result(parse::between_tokens('[', ']'), value_parser);
-    return parse::lift_or_value<json_value>(string_parser, double_parser, integer_parser,
-                                                               bool_parser, null_parser,
-                                                               array_parser);
-}
+constexpr auto value_parser = []() {
+    constexpr auto value_parser_impl = [](auto &ref) {
+        auto array_parser = eat(parse::item('[') >> parse::many_to_vector(ref, parse::item(',')) << parse::item(']'));
+        return parse::lift_or_value<json_value>(string_parser, double_parser, integer_parser,
+                                                bool_parser, null_parser,
+                                                array_parser);
+    };
+    return value_parser_impl(value_parser_impl);
+}();
 
 template <typename T>
 auto get_pair_parser() {
-    monad::lift_value<std::pair<std::string, json_value>>(string_parser, eat(parse::token(':') >> eat(value_parser())));
+    monad::lift_value<std::pair<std::string, json_value>>(string_parser, eat(parse::item(':') >> eat(value_parser)));
 }
 
 //template <typename T>

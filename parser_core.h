@@ -1,12 +1,17 @@
 #ifndef PARSER_CORE_H
 #define PARSER_CORE_H
 
+#include <functional>
 #include <string_view>
 #include "parser_result.h"
 #include "parser_state.h"
 #include "parser_settings.h"
 
 namespace parse {
+
+template <typename Result, typename ErrorType, typename State, typename Iterator, typename StringConversionFunction, typename Settings>
+using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, StringConversionFunction, Settings> &, parser_state<Iterator, StringConversionFunction, State, Settings> &>)>;
+
 
 /**
  * Apply a parser to a state and return the result.

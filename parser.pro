@@ -10,7 +10,8 @@ SOURCES += \
     tests_main.cpp \
     tests_parsers.cpp \
     tests_combinators.cpp \
-    tests_perf.cpp
+    tests_perf.cpp \
+    tests_json.cpp
 
 HEADERS += \
     parser.h \
