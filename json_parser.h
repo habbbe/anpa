@@ -41,12 +41,8 @@ constexpr auto bool_parser = eat((parse::sequence("true") >= true) || (parse::se
 constexpr auto null_parser = eat(parse::sequence("null") >= nullptr);
 
 template <typename Iterator>
-parse::type<json_value, void, void, Iterator, std::remove_const_t<decltype(parse::string_view_convert)>> value_parser() {
-    auto lazy_recursive = parse::parser([]() {
-        return value_parser<Iterator>();
-    });
-
-    auto array_parser = eat(parse::item('[') >> parse::many_to_vector(lazy_recursive, parse::item(',')) << parse::item(']'));
+parse::type<json_value, void, void, Iterator> value_parser() {
+auto array_parser = eat(parse::item('[') >> parse::many_to_vector(eat(value_parser<Iterator>), parse::item(',')) << parse::item(']'));
     return monad::lift_value<json_value>(parse::first(string_parser, integer_parser,
                         bool_parser, null_parser,
                         array_parser));

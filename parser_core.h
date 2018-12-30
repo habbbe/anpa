@@ -9,7 +9,7 @@
 
 namespace parse {
 
-template <typename Result, typename ErrorType, typename State, typename Iterator, typename StringConversionFunction = decltype(string_view_convert), typename Settings = parser_settings>
+template <typename Result, typename ErrorType, typename State, typename Iterator, typename StringConversionFunction = std::remove_const_t<decltype(string_view_convert)>, typename Settings = parser_settings>
 using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, StringConversionFunction, Settings>, parser_state<Iterator, StringConversionFunction, State, Settings>> &)>;
 
 
@@ -37,9 +37,9 @@ template <typename Parser, typename F>
 static constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto &s) {
         if (auto result = apply(p, s)) {
-            return f(std::move(*result))(s);
+            return apply(f(std::move(*result)), s);
         } else {
-            using new_return_type = std::decay_t<decltype(*f(*result)(s))>;
+            using new_return_type = std::decay_t<decltype(*apply(f(*result), s))>;
             if constexpr (std::decay_t<decltype(s)>::error_handling) {
                 return s.template return_fail<new_return_type>(result.error());
             } else {
