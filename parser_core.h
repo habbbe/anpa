@@ -9,8 +9,8 @@
 
 namespace parse {
 
-template <typename Result, typename ErrorType, typename State, typename Iterator, typename StringConversionFunction, typename Settings>
-using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, StringConversionFunction, Settings> &, parser_state<Iterator, StringConversionFunction, State, Settings> &>)>;
+template <typename Result, typename ErrorType, typename State, typename Iterator, typename StringConversionFunction = decltype(string_view_convert), typename Settings = parser_settings>
+using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, StringConversionFunction, Settings>, parser_state<Iterator, StringConversionFunction, State, Settings>> &)>;
 
 
 /**
@@ -79,7 +79,7 @@ struct parser {
     // This could also be a lazy value, i.e. a callable object that returns what is described above.
     P p;
 
-    constexpr parser(P &&p) : p{std::forward<P>(p)} {}
+    constexpr parser(P p) : p{p} {}
 
     template <typename State>
     constexpr auto operator()(State &s) const {

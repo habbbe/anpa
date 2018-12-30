@@ -309,7 +309,7 @@ inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
-        many_helper(s, [&](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, p, sep);
+        many_helper(s, [&r](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, p, sep);
         return s.return_success(r);
     });
 }

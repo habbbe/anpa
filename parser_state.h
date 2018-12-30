@@ -14,7 +14,7 @@ template <typename Iterator, typename StringResultConversion, typename Settings>
 struct parser_state_simple {
     Iterator position;
     const Iterator end;
-    StringResultConversion conversion_function;
+    const StringResultConversion conversion_function;
 
     using settings = Settings;
     constexpr static bool error_handling = Settings::error_handling;
