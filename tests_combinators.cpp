@@ -430,11 +430,11 @@ TEST_CASE("until no eat include") {
     REQUIRE(res.first == str.begin() + 3);
 }
 
-TEST_CASE("many with separator") {
+TEST_CASE("many_f with separator") {
     constexpr auto intParser = parse::integer();
 
     int result = 0;
-    auto p = parse::many([&result](auto i) {
+    auto p = parse::many_f([&result](auto i) {
         result += i;
     }, intParser, parse::sequence("#%"));
 

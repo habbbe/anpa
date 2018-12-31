@@ -330,9 +330,22 @@ inline constexpr auto many_to_unordered_map(Parser p, ParserSep sep = nullptr) {
  * The parse result is the number of successful parses.
  */
 template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
-inline constexpr auto many(Fun f, Parser p, ParserSep sep = nullptr) {
+inline constexpr auto many_f(Fun f, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         return s.return_success(many_internal(s, [f](auto &&res){f(std::forward<decltype(res)>(res));}, p, sep));
+    });
+}
+
+/**
+ * Create a parser that applies a parser until it fails, and returns the parsed range as
+ * returned by the provided conversion function.
+ */
+template <typename Parser, typename ParserSep = std::nullptr_t>
+inline constexpr auto many(Parser p, ParserSep sep = nullptr) {
+    return parser([=](auto &s) {
+        auto start = s.position;
+        many_internal(s, [](auto &&){}, p, sep);
+        return s.return_success(s.convert(start, s.position));
     });
 }
 
