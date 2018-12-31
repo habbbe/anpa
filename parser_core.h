@@ -6,6 +6,7 @@
 #include "parser_result.h"
 #include "parser_state.h"
 #include "parser_settings.h"
+#include "parser_types.h"
 
 namespace parse {
 
@@ -210,10 +211,27 @@ struct parser {
         return parse::mreturn(std::forward<T>(v));
     }
 
+    /**
+     * Make this parser a parser that assigns its result to the provided reference
+     * upon success, as well as returning `true` as the result of the parse.
+     */
     template <typename T>
     constexpr auto operator[](T &t) const {
         return *this >>= [&](auto &&s) {
             t = std::forward<decltype(s)>(s);
+            return mreturn_forward<bool>(true);
+        };
+    }
+
+    /**
+     * Make this parser a parser that assigns its result to the provided output iterator
+     * upon success, as well as returning `true` as the result of the parse.
+     */
+    template <typename T,
+              typename = std::enable_if_t<parse::types::iterator_is_category_v<T, std::output_iterator_tag>>>
+    constexpr auto operator[](T t) const {
+        return *this >>= [=](auto &&s) {
+            *t = std::forward<decltype(s)>(s);
             return mreturn_forward<bool>(true);
         };
     }

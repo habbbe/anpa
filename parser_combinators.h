@@ -262,7 +262,7 @@ inline constexpr auto emplace_back_to_state_direct(Parsers... ps) {
 }
 
 /**
- * General helper for evaluating a parser multiple times.
+ * General helper for evaluating a parser multiple times with an optional separator.
  */
 template <typename State, typename Fun, typename Parser, typename Sep = std::nullptr_t>
 inline constexpr auto many_internal(State &s, Fun f, Parser p, Sep sep = nullptr) {

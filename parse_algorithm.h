@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include "parser_types.h"
 
 /**
  * constexpr variants of some algorithms
@@ -64,18 +65,11 @@ inline constexpr std::pair<Iterator1, Iterator1> search(Iterator1 begin1, Iterat
     }
 }
 
-
-template <typename Iterator>
-constexpr bool is_random_access_iterator() {
-    using category = typename std::iterator_traits<std::decay_t<Iterator>>::iterator_category;
-    return std::is_same_v<category, std::random_access_iterator_tag>;
-}
-
 template <typename Iterator>
 inline constexpr auto contains_elements(Iterator begin, Iterator end, long n) {
     // If we have a random access iterator, just use std::distance, otherwise
     // iterate so that we don't have to go all the way to end
-    if constexpr (is_random_access_iterator<Iterator>()) {
+    if constexpr (parse::types::iterator_is_category_v<Iterator, std::random_access_iterator_tag>) {
         return std::distance(begin, end) >= n;
     } else {
         auto start = begin;

@@ -50,4 +50,5 @@ HEADERS += \
     parser_result.h \
     parser_settings.h \
     parser_state.h \
-    time_measure.h
+    time_measure.h \
+    parser_types.h
