@@ -30,7 +30,7 @@ inline constexpr auto find_if(Iterator begin, Iterator end, Predicate p) {
     for (;begin != end; ++begin) {
         if (p(*begin)) return begin;
     }
-    return begin;
+    return end;
 }
 
 /**

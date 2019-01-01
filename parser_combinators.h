@@ -464,6 +464,12 @@ inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
 template <bool Eat = true, bool Include = false, typename Parser>
 inline constexpr auto until(Parser p) {
     return parser([=](auto &s) {
+        // Must check if we are at the end here, otherwise we would proceed past s.end
+        // if the parser fails (which is normal for this combinator).
+        if (s.position == s.end) {
+            return s.return_fail();
+        }
+
         auto position_start = s.position;
         auto position_end = position_start;
         for (auto result = apply(p, s); !result; result = apply(p, s)) {
