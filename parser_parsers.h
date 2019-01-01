@@ -3,17 +3,9 @@
 
 #include <charconv>
 #include "parser_core.h"
+#include "parser_types.h"
 
 namespace parse {
-
-template <typename T, typename ... Ts>
-constexpr bool is_one_of = (std::is_same_v<T, Ts> || ...);
-
-template <typename T>
-constexpr bool is_string_literal_type = is_one_of<T, char, wchar_t, char16_t, char32_t>;
-
-template <typename T>
-using enable_if_string_literal_type = std::enable_if_t<is_one_of<T, char, wchar_t, char16_t, char32_t>>;
 
 /**
  * Parser that always succeeds
@@ -133,7 +125,7 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
 /**
  * Parser for a sequence described by a string literal
  */
-template <typename ItemType, size_t N, typename = enable_if_string_literal_type<ItemType>>
+template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto sequence(const ItemType (&seq)[N]) {
     return sequence(seq, seq + N - 1);
 }
@@ -202,7 +194,7 @@ inline constexpr auto until_sequence(Iterator begin, Iterator end) {
 template <bool Eat = true,
           bool Include = false,
           typename ItemType, size_t N,
-          typename = enable_if_string_literal_type<ItemType>>
+          typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
     return until_sequence<Eat, Include>(seq, seq + N - 1);
 }
@@ -243,7 +235,7 @@ inline constexpr auto while_in(Iterator start, Iterator end) {
 /**
  * Parser that consumes all items contained in the given string literal
  */
-template <typename ItemType, size_t N, typename = enable_if_string_literal_type<ItemType>>
+template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto while_in(const ItemType (&items)[N]) {
     return while_in(items, items + N - 1);
 }

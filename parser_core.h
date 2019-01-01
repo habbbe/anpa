@@ -13,7 +13,6 @@ namespace parse {
 template <typename Result, typename ErrorType, typename State, typename Iterator, typename StringConversionFunction = std::remove_const_t<decltype(string_view_convert)>, typename Settings = parser_settings>
 using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, StringConversionFunction, Settings>, parser_state<Iterator, StringConversionFunction, State, Settings>> &)>;
 
-
 /**
  * Apply a parser to a state and return the result.
  * This application unwraps arbitrary layers of callables so that one can

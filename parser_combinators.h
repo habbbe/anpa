@@ -139,7 +139,7 @@ inline constexpr auto get_parsed(Parser p, Parsers ... ps) {
  * Make a parser that evaluates two parsers, and returns the successfully parsed text upon success.
  */
 template <typename P1, typename P2>
-inline constexpr auto operator+(parser<P1> p1, parser<P2> p2) {
+inline constexpr auto operator+(P1 p1, P2 p2) {
     return get_parsed(p1, p2);
 }
 
@@ -148,7 +148,7 @@ inline constexpr auto operator+(parser<P1> p1, parser<P2> p2) {
  * If the two parsers return different types the return value will instead be `true`.
  */
 template <typename P1, typename P2>
-inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
+inline constexpr auto operator||(P1 p1, P2 p2) {
     return parser([=](auto &s) {
         using R1 = decltype(*apply(p1, s));
         using R2 = decltype(*apply(p2, s));
@@ -221,7 +221,7 @@ inline constexpr auto apply_to_state(Fun f, Parsers...ps) {
         auto to_apply = [f, &state] (auto&&...vals) {
             return f(state, std::forward<decltype(vals)>(vals)...);
         };
-        return monad::lift(to_apply, ps...)(s);
+        return lift(to_apply, ps...)(s);
     });
 }
 
