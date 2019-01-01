@@ -386,19 +386,19 @@ inline constexpr auto floating() {
 
 /**
  * Parse a number. Template parameter indicates the type to be parsed. Uses std::from_chars.
- * This parser only works when using a raw pointer as input.
+ * This parser only works when using `const *ItemType` as iterator type.
  * For integers, consider using integer instead, as it is constexpr and slightly faster.
  */
 template <typename Number>
 inline constexpr auto number() {
     return parser([](auto &s) {
-        auto [start, end] = [&]() -> std::pair<const char*, const char*> {
-            if constexpr (std::is_pointer_v<decltype(s.position)>) {
-                return std::pair(s.position, s.end);
+        auto [start, end] = [](auto &state) {
+            if constexpr (std::is_pointer_v<decltype(state.position)>) {
+                return std::pair(state.position, state.end);
             } else {
-                return std::pair(&*s.position, &*s.end);
+                return std::pair(&*state.position, &*state.end);
             }
-        }();
+        }(s);
 
         Number result;
         auto [ptr, ec] = std::from_chars(start, end, result);
