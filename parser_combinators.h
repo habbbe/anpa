@@ -221,7 +221,7 @@ inline constexpr auto apply_to_state(Fun f, Parsers...ps) {
         auto to_apply = [f, &state] (auto&&...vals) {
             return f(state, std::forward<decltype(vals)>(vals)...);
         };
-        return monad::lift(to_apply, ps...)(s);
+        return apply(monad::lift(to_apply, ps...), s);
     });
 }
 
