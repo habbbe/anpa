@@ -2,8 +2,10 @@
 #define PARSER_PARSERS_H
 
 #include <charconv>
+#include <cmath>
 #include "parser_core.h"
 #include "parser_types.h"
+#include "parser_combinators.h"
 
 namespace parse {
 
@@ -322,6 +324,7 @@ inline constexpr auto parse_integer(Iterator begin, Iterator end) {
     constexpr auto is_digit = [](auto &c) {
         return c <= '9' && c >= '0';
     };
+
     Integral result = 0;
     while (begin != end) {
         if (is_digit(*begin)) {
@@ -353,6 +356,35 @@ inline constexpr auto integer() {
 }
 
 /**
+ * Parser for a floating number.
+ * Use template parameter AllowScientific to enable/disable support for scientific notation.
+ */
+template <bool AllowScientific = true>
+inline constexpr auto floating() {
+    constexpr auto to_double = [](auto i, auto d) {
+        return i + ((i < 0 ? -1 : 1) * (d == 0 ? 0 : (d / std::pow(10, 1 + int(std::log10(d))))));
+    };
+
+    constexpr auto dec = item('.') >> integer<unsigned int>();
+    constexpr auto floating_part = integer() >>= [=](auto n) {
+        return (dec >>= [=](auto d) {
+            return mreturn(to_double(n, d));
+        }) || mreturn(double(n));
+    };
+
+    if constexpr (AllowScientific) {
+        return floating_part >>= [=](auto d) {
+            constexpr auto exp = (item('e') || item('E')) >> (integer() || mreturn(1));
+            return (exp >>= [=](auto e) {
+                return mreturn(d * std::pow(10, e));
+            }) || mreturn(d);
+        };
+    } else {
+        return floating_part;
+    }
+}
+
+/**
  * Parse a number. Template parameter indicates the type to be parsed. Uses std::from_chars.
  * This parser only works when using a raw pointer as input.
  * For integers, consider using integer instead, as it is constexpr and slightly faster.
@@ -367,6 +399,7 @@ inline constexpr auto number() {
                 return std::pair(&*s.position, &*s.end);
             }
         }();
+
         Number result;
         auto [ptr, ec] = std::from_chars(start, end, result);
         if (ec == std::errc()) {

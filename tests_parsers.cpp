@@ -284,6 +284,32 @@ TEST_CASE("integer") {
     REQUIRE(res4.first == str4.begin() + 2);
 }
 
+TEST_CASE("floating") {
+    auto p = parse::floating();
+    auto test = [&](auto s, double r) {
+        std::string str(s);
+        auto res = p.parse(str);
+        REQUIRE(res.second);
+        REQUIRE(*res.second == r);
+        REQUIRE(res.first == str.end());
+    };
+
+    test("123", 123.0);
+    test("-123", -123.0);
+    test("123.321", 123.321);
+    test("-123.321", -123.321);
+    test("123.0", 123.0);
+    test("-123.0", -123.0);
+    test("123e3", 123e3);
+    test("-123e3", -123e3);
+    test("123e-3", 123e-3);
+    test("-123e-3", -123e-3);
+    test("123.321e3", 123.321e3);
+    test("-123.321e3", -123.321e3);
+    test("123.321e-3", 123.321e-3);
+    test("-123.321e-3", -123.321e-3);
+}
+
 TEST_CASE("number") {
     auto &str = "42abcde";
 
