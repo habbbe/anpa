@@ -16,13 +16,13 @@ using json_array = std::vector<json_value>;
 
 struct json_value {
     std::variant<
+    std::nullptr_t,
+    bool,
     std::string,
     int,
 //    double,
     json_object,
-    json_array,
-    bool,
-    std::nullptr_t
+    json_array
     > val;
     template <typename T>
     json_value(T &&t) : val(std::forward<T>(t)) {}
@@ -40,19 +40,51 @@ constexpr auto integer_parser = eat(parse::integer());
 constexpr auto bool_parser = eat((parse::sequence("true") >= true) || (parse::sequence("false") >= false));
 constexpr auto null_parser = eat(parse::sequence("null") >= nullptr);
 
-template <typename Iterator>
-parse::type<json_value, void, void, Iterator> value_parser() {
-auto array_parser = eat(parse::item('[') >> parse::many_to_vector(eat(value_parser<Iterator>), parse::item(',')) << parse::item(']'));
-    return monad::lift_value<json_value>(parse::first(string_parser, integer_parser,
-                        bool_parser, null_parser,
-                        array_parser));
-}
+//template <typename Iterator>
+//parse::type<json_value, void, void, Iterator> value_parser() {
+//auto array_parser = eat(parse::item('[') >> parse::many_to_vector(eat(value_parser<Iterator>), parse::item(',')) << parse::item(']'));
+//    return monad::lift_value<json_value>(parse::first(string_parser, integer_parser,
+//                        bool_parser, null_parser,
+//                        array_parser));
+//}
+
+constexpr auto value_parser = parse::parser([](auto &s) {
+    auto rec = [&s](auto self) {
+        auto res = parse::apply(parse::lift_or_value<json_value>(null_parser, bool_parser, string_parser), s);
+
+        auto return_it = [](auto r) {
+            return parse::parser([=](auto &) {
+                return r;
+            });
+        };
+        if (res) {
+            return return_it(res);
+        }
+
+        auto p = parse::item('[') >>= [=](auto &) {
+            return monad::lift_value<json_value>(parse::many_to_vector(self(self), parse::item(','))) << parse::item(']');
+        };
+        res = apply(p, s);
+        return return_it(res);
+    };
+    return apply(rec(rec), s);
+});
 
 template <typename Iterator>
 auto parse_json(Iterator begin, Iterator end) {
-    auto p = parse::parser(value_parser<Iterator>());
+    auto p = value_parser;
     return p.parse(begin, end);
 }
+
+auto value_parser2 = parse::recurse<json_value, void>([](auto p) {
+        auto array_parser = eat(parse::item('[') >> parse::many_to_vector(eat(p), parse::item(',')) << parse::item(']'));
+        return monad::lift_value<json_value>(parse::first(string_parser, integer_parser,
+                                                          bool_parser, null_parser,
+                                                          array_parser));
+    });
+//    parse::recurse<int, void>([](auto r) {
+//        return parse::integer() || (parse::item('#') >> r);
+//    });
 
 //template <typename T>
 //auto get_pair_parser() {

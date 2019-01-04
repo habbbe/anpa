@@ -374,7 +374,7 @@ inline constexpr auto floating() {
 
     if constexpr (AllowScientific) {
         return floating_part >>= [=](auto d) {
-            constexpr auto exp = (item('e') || item('E')) >> (integer() || mreturn(1));
+            auto exp = (item('e') || item('E')) >> (integer() || mreturn(1));
             return (exp >>= [=](auto e) {
                 return mreturn(d * std::pow(10, e));
             }) || mreturn(d);

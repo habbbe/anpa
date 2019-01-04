@@ -490,6 +490,26 @@ inline constexpr auto until(Parser p) {
     });
 }
 
+template <typename ReturnType, typename ErrorType = void, typename F>
+constexpr auto recurse(F f) {
+    return parser([f](auto &s) {
+        constexpr auto return_it = [](auto &&r) {
+            return parser([=](auto &) {
+                return r;
+            });
+        };
+
+        auto rec = [f, return_it](auto self, auto &s) -> decltype(return_it(std::declval<parse::result<ReturnType, ErrorType>>())) {
+            auto r = parser([self](auto &s) {
+                return apply(self(self, s), s);
+            });
+            return return_it(apply(f(r), s));
+        };
+        return apply(rec(rec, s), s);
+    });
+}
+
+
 }
 
 #endif // PARSER_COMBINATORS_H
