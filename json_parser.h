@@ -76,12 +76,12 @@ auto parse_json(Iterator begin, Iterator end) {
     return p.parse(begin, end);
 }
 
-auto value_parser2 = parse::recurse<json_value, void>([](auto p) {
-        auto array_parser = eat(parse::item('[') >> parse::many_to_vector(eat(p), parse::item(',')) << parse::item(']'));
+auto value_parser2 = parse::recursive<json_value, void>([](auto parser) {
+        auto array_parser = eat(parse::item('[') >> parse::many_to_vector(eat(parser), parse::item(',')) << parse::item(']'));
         return monad::lift_value<json_value>(parse::first(string_parser, integer_parser,
                                                           bool_parser, null_parser,
                                                           array_parser));
-    });
+});
 //    parse::recurse<int, void>([](auto r) {
 //        return parse::integer() || (parse::item('#') >> r);
 //    });

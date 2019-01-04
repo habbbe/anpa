@@ -4,7 +4,7 @@
 #include "parser_settings.h"
 
 TEST_CASE("test") {
-    std::string_view str("[null,null,true]");
+    std::string_view str("[null,null,[false,[null]]]");
 //    auto &str = "asdf";
 //    parse::type<int, void, void, const char *, std::remove_const_t<decltype(parse::string_view_convert)>> p = parse::integer();
 //    auto p2 = parse::parser(p);
@@ -14,7 +14,6 @@ TEST_CASE("test") {
     auto p = value_parser2;
     auto res = p.parse(str);
     REQUIRE(res.second);
-    REQUIRE(res.second->val.index() == 1);
 //    REQUIRE(res.second->val.index() == 0);
 //    REQUIRE(std::holds_alternative<std::string>(res.second->val));
 }

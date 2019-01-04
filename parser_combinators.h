@@ -491,7 +491,7 @@ inline constexpr auto until(Parser p) {
 }
 
 template <typename ReturnType, typename ErrorType = void, typename F>
-constexpr auto recurse(F f) {
+constexpr auto recursive(F f) {
     return parser([f](auto &s) {
         constexpr auto return_it = [](auto &&r) {
             return parser([=](auto &) {
