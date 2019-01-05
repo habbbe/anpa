@@ -326,31 +326,44 @@ inline constexpr auto parse_integer(Iterator begin, Iterator end) {
     };
 
     Integral result = 0;
+    int count = 1; // For double conversion
     while (begin != end) {
         if (is_digit(*begin)) {
+            count *= 10;
             result = (*begin++ - '0') + result * 10;
         } else {
             break;
         }
     }
-    return std::pair{begin, result};
+    return std::tuple{begin, result, count};
 }
 
 /**
  * Parser for an integer.
  * Parses negative numbers if the template argument is signed.
  */
-template <typename Integral = int>
+template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
     return parser([](auto &s) {
         bool negate = std::is_signed_v<Integral> && !s.empty() && s.front() == '-';
         auto start_iterator = std::next(s.position, negate ? 1 : 0);
-        auto [new_pos, result] = parse_integer<Integral>(start_iterator, s.end);
+        auto res = parse_integer<Integral>(start_iterator, s.end);
+        auto new_pos = std::get<0>(res);
+        auto result = std::get<1>(res);
         if (new_pos != start_iterator) {
             s.set_position(new_pos);
-            return s.return_success(result * (negate ? -1 : 1));
+            auto n = result * (negate ? -1 : 1);
+            if constexpr (IncludeDoubleDivisor) {
+                return s.return_success(std::make_pair(n, std::get<2>(res)));
+            } else {
+                return s.return_success(n);
+            }
         } else {
-            return s.template return_fail<Integral>();
+            if constexpr (IncludeDoubleDivisor) {
+                return s.template return_fail<std::pair<Integral, int>>();
+            } else {
+                return s.template return_fail<Integral>();
+            }
         }
     });
 }
@@ -361,14 +374,14 @@ inline constexpr auto integer() {
  */
 template <bool AllowScientific = true>
 inline constexpr auto floating() {
-    constexpr auto to_double = [](auto i, auto d) {
-        return i + ((i < 0 ? -1 : 1) * (d == 0 ? 0 : (d / std::pow(10, 1 + int(std::log10(d))))));
+    constexpr auto to_double = [](auto i, auto d, auto c) {
+        return i + ((i < 0 ? -1 : 1) * (d / double(c)));
     };
 
-    constexpr auto dec = item('.') >> integer<unsigned int>();
+    constexpr auto dec = item('.') >> integer<unsigned int, true>();
     constexpr auto floating_part = integer() >>= [=](auto n) {
-        return (dec >>= [=](auto d) {
-            return mreturn(to_double(n, d));
+        return (dec >>= [=](auto p) {
+            return mreturn(to_double(n, p.first, p.second));
         }) || mreturn(double(n));
     };
 
