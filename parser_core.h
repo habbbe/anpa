@@ -64,7 +64,7 @@ constexpr auto mreturn_forward(Args&&... args) {
  */
 template <typename T>
 constexpr auto mreturn(T&& t) {
-    return parser([=](auto &s) {
+    return parser([t = std::forward<T>(t)](auto &s) {
         return s.return_success(t);
     });
 }

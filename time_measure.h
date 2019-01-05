@@ -2,6 +2,7 @@
 #define TIME_MEASURE_H
 
 #include <chrono>
+#include <iostream>
 
 #define TICK auto t1 = std::chrono::high_resolution_clock::now();
 

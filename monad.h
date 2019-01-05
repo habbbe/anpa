@@ -5,6 +5,8 @@
 #include <utility>
 #include "lazy.h"
 
+namespace parse {
+
 /*
  * Combine two monads, ignoring the result of the first one
  */
@@ -35,12 +37,10 @@ inline constexpr auto operator<<(Monad1 m1, Monad2 m2) {
     };
 }
 
-namespace monad {
-
 /**
  * Currying of an arbitrary function
  */
-template <size_t num_args, typename F>
+template <std::size_t num_args, typename F>
 inline constexpr auto curry_n(F f) {
     if constexpr (num_args > 0) {
         return [=](auto &&v) {

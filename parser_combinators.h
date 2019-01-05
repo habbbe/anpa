@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <map>
 #include <vector>
+#include <memory>
 #include "parser_core.h"
 #include "monad.h"
 #include "parse_algorithm.h"
@@ -222,7 +223,7 @@ inline constexpr auto apply_to_state(Fun f, Parsers...ps) {
         auto to_apply = [f, &state] (auto&&...vals) {
             return f(state, std::forward<decltype(vals)>(vals)...);
         };
-        return apply(monad::lift(to_apply, ps...), s);
+        return apply(lift(to_apply, ps...), s);
     });
 }
 
@@ -285,10 +286,10 @@ inline constexpr auto many_internal(State &s, Fun f, Parser p, Sep sep = nullptr
  * result of the parse as the second.
  */
 template <typename Container, typename Inserter, typename Parser, typename ParserSep = std::nullptr_t>
-inline constexpr auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr) {
+inline auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         Container c;
-        many_internal(s, [=](auto &&res) {inserter(c, std::forward<decltype(res)>(res));}, p, sep);
+        many_internal(s, [&c, inserter](auto &&res) mutable {inserter(c, std::forward<decltype(res)>(res));}, p, sep);
         return s.return_success(c);
     });
 }
@@ -321,7 +322,7 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
 
         map_type m;
         many_internal(s, [&](auto &&r) {
-            m.insert(std::forward<decltype(r)>(r));
+            m.emplace(std::forward<decltype(r)>(r));
         }, p, sep);
         return s.return_success(m);
     });
@@ -513,6 +514,13 @@ constexpr auto recursive(F f) {
     });
 }
 
+template <typename Parser>
+inline constexpr auto shared(Parser p) {
+    return lift([](auto &&s){
+        using type = std::decay_t<decltype(s)>;
+        return std::make_shared<type>(std::forward<decltype(s)>(s));
+    }, p);
+}
 
 }
 

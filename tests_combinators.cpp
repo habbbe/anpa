@@ -219,9 +219,25 @@ TEST_CASE("many_to_vector") {
 
 TEST_CASE("many_to_map") {
     std::string str("#1=a#2=b#3=c");
-    auto pairParser = monad::lift_value<std::pair<int, char>>(parse::item('#') >> parse::integer(),
+    auto pairParser = parse::lift_value<std::pair<int, char>>(parse::item('#') >> parse::integer(),
                                                               parse::item('=') >> parse::any_item());
     auto p = parse::many_to_map(pairParser);
+    auto res = p.parse(str);
+    REQUIRE(res.second);
+    REQUIRE(res.second->size() == 3);
+    REQUIRE(res.second->at(1) == 'a');
+    REQUIRE(res.second->at(2) == 'b');
+    REQUIRE(res.second->at(3) == 'c');
+    REQUIRE(res.first == str.begin() + 12);
+}
+
+TEST_CASE("many_general") {
+    std::string str("#1=a#2=b#3=c");
+    auto pairParser = parse::lift_value<std::pair<int, char>>(parse::item('#') >> parse::integer(),
+                                                              parse::item('=') >> parse::any_item());
+    auto p = parse::many_general<std::unordered_map<int, char>>([](auto &m, auto &&r) {
+        m.insert(r);
+    }, pairParser);
     auto res = p.parse(str);
     REQUIRE(res.second);
     REQUIRE(res.second->size() == 3);
@@ -326,7 +342,7 @@ TEST_CASE("lift_or_state") {
 
 TEST_CASE("lift_or_value") {
     auto atParser = parse::item('@') >> parse::rest(); // Conversion from string_view
-    auto hashParser = parse::item('#') >> monad::lift_value<std::string>(parse::while_in("abc")); // Copy constructor
+    auto hashParser = parse::item('#') >> parse::lift_value<std::string>(parse::while_in("abc")); // Copy constructor
 
     auto p = parse::lift_or_value<std::string>(atParser, hashParser);
 

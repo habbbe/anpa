@@ -1,7 +1,9 @@
+#include <fstream>
 #include "test/catch.hpp"
 #include "json/json_parser.h"
 #include "parser_state.h"
 #include "parser_settings.h"
+#include "time_measure.h"
 
 template <typename T, typename Str>
 auto test_json_type(Str &&s, T val) {
@@ -66,4 +68,19 @@ TEST_CASE("json_general") {
     REQUIRE(json.contains("second"));
     REQUIRE(json.at("second").is_a<bool>());
     REQUIRE(json.at("second").get<bool>() == true);
+}
+
+TEST_CASE("performance_json") {
+    std::ifstream t("canada.json");
+    std::string str((std::istreambuf_iterator<char>(t)),
+                     std::istreambuf_iterator<char>());
+
+    TICK
+    auto res = json_parser.parse(str);
+    TOCK
+    if (res.second) {
+        std::cout << res.second->size() << std::endl;
+    } else {
+        std::cout << "No parse" << std::endl;
+    }
 }

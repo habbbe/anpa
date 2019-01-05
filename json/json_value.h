@@ -2,14 +2,16 @@
 #define JSON_VALUE_H
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include <variant>
+#include <memory>
 #include "parser_types.h"
 
 struct json_value;
 
-using json_object = std::map<std::string, json_value>;
-using json_object_pair = std::pair<std::string, json_value>;
+using json_object = std::unordered_map<std::string, std::shared_ptr<json_value>>;
+using json_object_pair = std::pair<std::string, std::shared_ptr<json_value>>;
 using json_array = std::vector<json_value>;
 
 using json_value_variant = std::variant<
@@ -37,7 +39,7 @@ struct json_value {
     decltype(auto) operator[](size_t i) {return std::get<json_array>(val)[i];}
 
     template <typename Key>
-    decltype(auto) at(Key &&key) {return std::get<json_object>(val).at(key);}
+    decltype(auto) at(Key &&key) {return *std::get<json_object>(val).at(key);}
 
     size_t size() const {
         return std::visit([](const auto &v) {
