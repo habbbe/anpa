@@ -10,9 +10,9 @@
 
 struct json_value;
 
-using json_object = std::unordered_map<std::string, std::shared_ptr<json_value>>;
-using json_object_pair = std::pair<std::string, std::shared_ptr<json_value>>;
-using json_array = std::vector<std::shared_ptr<json_value>>;
+using json_object = std::unordered_map<std::string, json_value>;
+using json_object_pair = std::pair<std::string, json_value>;
+using json_array = std::vector<json_value>;
 
 using json_value_variant = std::variant<
 std::nullptr_t,
@@ -23,30 +23,30 @@ json_object,
 json_array>;
 
 struct json_value {
-    json_value_variant val;
+    std::shared_ptr<json_value_variant> val;
 
     template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, json_value>>>
-    json_value(T &&t) : val(std::forward<T>(t)) {}
+    json_value(T &&t) : val(std::make_shared<json_value_variant>(std::forward<T>(t))) {}
 
     json_value(const json_value &other): val(other.val) {}
 
     template <typename T>
-    decltype(auto) get() {return std::get<T>(val);}
+    decltype(auto) get() {return std::get<T>(*val);}
 
     template <typename T>
-    decltype(auto) is_a() {return std::holds_alternative<T>(val);}
+    decltype(auto) is_a() {return std::holds_alternative<T>(*val);}
 
-    decltype(auto) operator[](size_t i) {return *std::get<json_array>(val)[i];}
+    decltype(auto) operator[](size_t i) {return std::get<json_array>(*val)[i];}
 
     template <typename Key>
-    decltype(auto) at(Key &&key) {return *std::get<json_object>(val).at(key);}
+    decltype(auto) at(Key &&key) {return std::get<json_object>(*val).at(key);}
 
     size_t size() const {
         return std::visit([](const auto &v) {
             using type = std::decay_t<decltype(v)>;
             if constexpr (parse::types::is_one_of<type, json_array, json_object, std::string>) return v.size();
             else return size_t(0);
-        }, val);
+        }, *val);
     }
 
     template <typename Key>
