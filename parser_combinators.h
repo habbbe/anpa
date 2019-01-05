@@ -514,14 +514,6 @@ constexpr auto recursive(F f) {
     });
 }
 
-template <typename Parser>
-inline constexpr auto shared(Parser p) {
-    return lift([](auto &&s){
-        using type = std::decay_t<decltype(s)>;
-        return std::make_shared<type>(std::forward<decltype(s)>(s));
-    }, p);
-}
-
 }
 
 #endif // PARSER_COMBINATORS_H

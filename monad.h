@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <utility>
+#include <memory>
 #include "lazy.h"
 
 namespace parse {
@@ -126,6 +127,21 @@ inline constexpr auto lift_value_lazy(Monads&&... monads) {
 template <typename T, typename... Monads>
 inline constexpr auto lift_value_lazy_raw(Monads&&... monads) {
     return lift(lazy::make_lazy_value_forward_fun_raw<T>(), std::forward<Monads>(monads)...);
+}
+
+template <typename Parser>
+inline constexpr auto lift_shared(Parser p) {
+    return lift([](auto &&s){
+        using type = std::decay_t<decltype(s)>;
+        return std::make_shared<type>(std::forward<decltype(s)>(s));
+    }, p);
+}
+
+template <typename Parser>
+inline constexpr auto lift_lazy(Parser p) {
+    return lift([](auto &&s){
+        return lazy::make_lazy(std::forward<decltype(s)>(s));
+    }, p);
 }
 
 }

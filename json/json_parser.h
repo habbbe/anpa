@@ -7,6 +7,7 @@
 #include "parser.h"
 #include "parser_state.h"
 #include "parser_types.h"
+#include "lazy.h"
 
 template <typename Parser>
 constexpr auto eat(Parser p) {
@@ -20,13 +21,13 @@ constexpr auto null_parser = eat(parse::sequence("null") >= nullptr);
 
 template <typename F>
 constexpr auto get_object_parser(F value_parser) {
-    auto pair_parser = parse::lift_value<json_object_pair>(string_parser, eat(parse::item(':') >> parse::shared(value_parser)));
+    auto pair_parser = parse::lift_value<json_object_pair>(string_parser, eat(parse::item(':') >> parse::lift_shared(value_parser)));
     return eat(parse::item('{')) >> parse::many_to_map<true>(pair_parser, eat(parse::item(','))) << eat(parse::item('}'));
 }
 
 template <typename F>
 constexpr auto get_array_parser(F value_parser) {
-    return eat(parse::item('[')) >> parse::many_to_vector(parse::shared(value_parser), eat(parse::item(','))) << eat(parse::item(']'));
+    return eat(parse::item('[')) >> parse::many_to_vector(parse::lift_shared(value_parser), eat(parse::item(','))) << eat(parse::item(']'));
 }
 
 constexpr auto json_parser = parse::recursive<json_value, void>([](auto val_parser) {

@@ -50,8 +50,8 @@ struct value {
 };
 
 template <typename T>
-inline auto constexpr make_lazy(T t) {
-    return value([=]() {
+inline auto constexpr make_lazy(T&& t) {
+    return value([t = std::forward<T>(t)]() {
         return t;
     });
 }
