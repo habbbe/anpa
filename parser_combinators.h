@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <unordered_map>
+#include <map>
 #include <vector>
 #include "parser_core.h"
 #include "monad.h"
@@ -307,15 +308,18 @@ inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
 
 /**
  * Create a parser that applies a parser until it fails and returns the result in an `unordered_map`.
- * The parser must have a result type defining `first_type` and `second_type` (e.g. `std::pair`).
+ * Key and value are retrieved from the result using std::tuple_element.
  */
-template <typename Parser, typename ParserSep = std::nullptr_t>
-inline constexpr auto many_to_unordered_map(Parser p, ParserSep sep = nullptr) {
+template <bool Unordered = false, typename Parser, typename ParserSep = std::nullptr_t>
+inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
-        using key = typename result_type::first_type;
-        using value = typename result_type::second_type;
-        std::unordered_map<key, value> m;
+        using key = std::tuple_element_t<0, result_type>;
+        using value = std::tuple_element_t<1, result_type>;
+
+        using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
+
+        map_type m;
         many_internal(s, [&](auto &&r) {
             m.insert(std::forward<decltype(r)>(r));
         }, p, sep);

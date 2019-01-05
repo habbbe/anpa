@@ -13,7 +13,7 @@ template <typename T>
 constexpr bool is_string_literal_type = is_one_of<T, char, wchar_t, char16_t, char32_t>;
 
 template <typename T>
-using enable_if_string_literal_type = std::enable_if_t<is_one_of<T, char, wchar_t, char16_t, char32_t>>;
+using enable_if_string_literal_type = std::enable_if_t<is_string_literal_type<T>>;
 
 template <typename Iterator, typename Tag>
 constexpr bool iterator_is_category_v =

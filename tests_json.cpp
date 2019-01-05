@@ -3,17 +3,49 @@
 #include "parser_state.h"
 #include "parser_settings.h"
 
-TEST_CASE("test") {
-    std::string_view str("[null,null,[false,[null]]]");
-//    auto &str = "asdf";
-//    parse::type<int, void, void, const char *, std::remove_const_t<decltype(parse::string_view_convert)>> p = parse::integer();
-//    auto p2 = parse::parser(p);
-//    p2.parse(str);
-//    auto res = parse::parser(p).parse(str);
-//    auto res = parse_json(str.begin(), str.end());
-    auto p = value_parser2;
+template <typename T, typename Str>
+auto test_json_type(Str &&s, T val) {
+    std::string_view str(s);
+    auto p = value_parser;
     auto res = p.parse(str);
     REQUIRE(res.second);
-//    REQUIRE(res.second->val.index() == 0);
-//    REQUIRE(std::holds_alternative<std::string>(res.second->val));
+    REQUIRE(res.second->is_a<T>());
+    REQUIRE(res.second->get<T>() == val);
+}
+
+TEST_CASE("json_number") {
+    test_json_type<double>("-123.20", -123.20);
+}
+
+TEST_CASE("json_null") {
+    test_json_type<std::nullptr_t>("null", nullptr);
+}
+
+TEST_CASE("json_bool") {
+    test_json_type<bool>("true", true);
+    test_json_type<bool>("false", false);
+}
+
+TEST_CASE("json_string") {
+    test_json_type<std::string>("\"abc\"", "abc");
+}
+
+TEST_CASE("json_general") {
+    std::string_view str("{\"abc\"  :  [3e5 ,[ \"cba\" ,null], {\"ef\":false}], \"second\":true}");
+    auto res = value_parser.parse(str);
+    REQUIRE(res.second);
+    auto &json = *res.second;
+    REQUIRE(json.is_a<json_object>());
+
+    REQUIRE(json.contains("abc"));
+
+//    auto &element1 = json["abc"];
+
+//    REQUIRE(element1.is_a<json_array>());
+
+//    REQUIRE(element1.get<json_array>().size() == 3);
+
+//    REQUIRE(element1[0].is_a<double>());
+//    REQUIRE(element1[0].get<double>() == 3e5);
+
 }

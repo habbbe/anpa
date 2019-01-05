@@ -217,11 +217,11 @@ TEST_CASE("many_to_vector") {
     REQUIRE(res.first == str.begin() + 9);
 }
 
-TEST_CASE("many_to_unordered_map") {
+TEST_CASE("many_to_map") {
     std::string str("#1=a#2=b#3=c");
     auto pairParser = monad::lift_value<std::pair<int, char>>(parse::item('#') >> parse::integer(),
                                                               parse::item('=') >> parse::any_item());
-    auto p = parse::many_to_unordered_map(pairParser);
+    auto p = parse::many_to_map(pairParser);
     auto res = p.parse(str);
     REQUIRE(res.second);
     REQUIRE(res.second->size() == 3);

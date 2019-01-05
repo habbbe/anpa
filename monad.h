@@ -40,7 +40,7 @@ namespace monad {
 /**
  * Currying of an arbitrary function
  */
-template <std::size_t num_args, typename F>
+template <size_t num_args, typename F>
 inline constexpr auto curry_n(F f) {
     if constexpr (num_args > 0) {
         return [=](auto &&v) {
