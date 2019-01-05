@@ -12,7 +12,7 @@ struct json_value;
 
 using json_object = std::unordered_map<std::string, std::shared_ptr<json_value>>;
 using json_object_pair = std::pair<std::string, std::shared_ptr<json_value>>;
-using json_array = std::vector<json_value>;
+using json_array = std::vector<std::shared_ptr<json_value>>;
 
 using json_value_variant = std::variant<
 std::nullptr_t,
@@ -36,7 +36,7 @@ struct json_value {
     template <typename T>
     decltype(auto) is_a() {return std::holds_alternative<T>(val);}
 
-    decltype(auto) operator[](size_t i) {return std::get<json_array>(val)[i];}
+    decltype(auto) operator[](size_t i) {return *std::get<json_array>(val)[i];}
 
     template <typename Key>
     decltype(auto) at(Key &&key) {return *std::get<json_object>(val).at(key);}

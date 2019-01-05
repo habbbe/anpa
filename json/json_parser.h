@@ -26,7 +26,7 @@ constexpr auto get_object_parser(F value_parser) {
 
 template <typename F>
 constexpr auto get_array_parser(F value_parser) {
-    return eat(parse::item('[')) >> parse::many_to_vector(value_parser, eat(parse::item(','))) << eat(parse::item(']'));
+    return eat(parse::item('[')) >> parse::many_to_vector(parse::shared(value_parser), eat(parse::item(','))) << eat(parse::item(']'));
 }
 
 constexpr auto json_parser = parse::recursive<json_value, void>([](auto val_parser) {
