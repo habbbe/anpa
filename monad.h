@@ -5,37 +5,47 @@
 #include <utility>
 #include <memory>
 #include "lazy.h"
+#include "parser_core.h"
 
 namespace parse {
 
 /*
  * Combine two monads, ignoring the result of the first one
  */
-template <typename Monad1, typename Monad2>
-inline constexpr auto operator>>(Monad1 m1, Monad2 m2) {
-    return m1 >>= [=] (auto &&) {
-        return m2;
+template <typename Parser1, typename Parser2>
+inline constexpr auto operator>>(Parser1 p1, Parser2 p2) {
+    return p1 >>= [=] (const auto &) {
+        return p2;
     };
 }
 
 /*
- * Put the provided value in the monad on successful computation
+ * Put the provided value in the parser monad on successful computation
  */
-template <typename Monad, typename Value>
-inline constexpr auto operator>=(Monad m, Value &&v) {
-    return m >> Monad::mreturn(std::forward<Value>(v));
+template <typename Parser, typename Value>
+inline constexpr auto operator>=(Parser p, Value &&v) {
+    return p >> Parser::mreturn(std::forward<Value>(v));
 }
 
 /*
- * Combine two monads, ignoring the result of the second one
+ * Combine two parser, ignoring the result of the second one.
+ * This is an optimized version. Using
+ * `m1 >>= [](auto &&r) { return m2 >> Parser1::mreturn(r); }`
+ * works, but does unecessary copying.
  */
-template <typename Monad1, typename Monad2>
-inline constexpr auto operator<<(Monad1 m1, Monad2 m2) {
-    return m1 >>= [=] (auto&& r) {
-        return m2 >>= [=](const auto &) {
-            return std::decay_t<Monad1>::mreturn(r);
-        };
-    };
+template <typename Parser1, typename Parser2>
+inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
+    return parse::parser([=](auto &s) {
+        auto res = apply(p1, s);
+        if (res) {
+            if (apply(p2, s)) {
+                return res;
+            } else {
+                s.return_fail(res);
+            }
+        }
+        return res;
+    });
 }
 
 /**
@@ -57,13 +67,13 @@ inline constexpr auto curry_n(F f) {
 /**
  * Recursive lifting of functions
  */
-template <typename F, typename M, typename... Ms>
-inline constexpr auto lift_internal(F f, M m, Ms... ms) {
-    return m >>= [=](auto &&r) {
-        if constexpr (sizeof...(ms) == 0) {
+template <typename F, typename P, typename... Ps>
+inline constexpr auto lift_internal(F f, P p, Ps... ps) {
+    return p >>= [=](auto &&r) {
+        if constexpr (sizeof...(ps) == 0) {
             return f(std::forward<decltype(r)>(r));
         } else {
-            return lift_internal(f(std::forward<decltype(r)>(r)), ms...);
+            return lift_internal(f(std::forward<decltype(r)>(r)), ps...);
         }
     };
 }
@@ -71,30 +81,30 @@ inline constexpr auto lift_internal(F f, M m, Ms... ms) {
 /**
  * Intermediate step for lifting
  */
-template <typename F, typename... Ms>
-inline constexpr auto lift_prepare(F f, Ms... ms) {
-    return lift_internal(curry_n<sizeof...(Ms)>(f), ms...);
+template <typename F, typename... Ps>
+inline constexpr auto lift_prepare(F f, Ps... ps) {
+    return lift_internal(curry_n<sizeof...(Ps)>(f), ps...);
 }
 
 /**
  * Apply a function f to the results of the monads (evaluated left to right) and
  * put the result in the monad
  */
-template <typename F, typename M, typename... Ms>
-inline constexpr auto lift(F f, M m, Ms... ms) {
+template <typename F, typename Parser, typename... Parsers>
+inline constexpr auto lift(F f, Parser p, Parsers... ps) {
     auto fun = [=](auto &&...ps) {
-        return M::mreturn(f(std::forward<decltype(ps)>(ps)...));
+        return Parser::mreturn(f(std::forward<decltype(ps)>(ps)...));
     };
-    return lift_prepare(fun, m, ms...);
+    return lift_prepare(fun, p, ps...);
 }
 
 /**
- * Apply a function f to the results of the monads (evaluated left to right) and
- * put the result as a lazy value in the monad
+ * Apply a function f to the results of the parsers (evaluated left to right) and
+ * put the result as a lazy value in the parser monad
  */
-template <typename F, typename... Monads>
-inline constexpr auto lift_lazy(F f, Monads&&... monads) {
-    return lift(lazy::make_lazy_forward_fun(f), std::forward<Monads>(monads)...);
+template <typename F, typename... Parsers>
+inline constexpr auto lift_lazy(F f, Parsers... ps) {
+    return lift(lazy::make_lazy_forward_fun(f), std::forward<Parsers>(ps)...);
 }
 
 /**
@@ -103,30 +113,30 @@ inline constexpr auto lift_lazy(F f, Monads&&... monads) {
  * This is a specialized version of lift that avoids unnecessary copying by constructing
  * the object in place.
  */
-template <typename T, typename M, typename... Ms>
-inline constexpr auto lift_value(M m, Ms... ms) {
+template <typename T, typename Parser, typename... Parsers>
+inline constexpr auto lift_value(Parser p, Parsers... ps) {
     constexpr auto fun = [](auto &&...ps) {
-        return M::template mreturn_forward<T>(std::forward<decltype(ps)>(ps)...);
+        return Parser::template mreturn_forward<T>(std::forward<decltype(ps)>(ps)...);
     };
-    return lift_prepare(fun, m, ms...);
+    return lift_prepare(fun, p, ps...);
 }
 
 /**
  * Create an object by passing the lazy results of the monads (evaluated left to right)
  * to its constructor, then put it as a lazy value in the monad.
  */
-template <typename T, typename... Monads>
-inline constexpr auto lift_value_lazy(Monads&&... monads) {
-    return lift(lazy::make_lazy_value_forward_fun<T>(), std::forward<Monads>(monads)...);
+template <typename T, typename... Parsers>
+inline constexpr auto lift_value_lazy(Parsers... ps) {
+    return lift(lazy::make_lazy_value_forward_fun<T>(), std::forward<Parsers>(ps)...);
 }
 
 /**
  * Create an object by passing the non-lazy results of the monads (evaluated left to right)
  * to its constructer, then put it as a lazy value in the monad.
  */
-template <typename T, typename... Monads>
-inline constexpr auto lift_value_lazy_raw(Monads&&... monads) {
-    return lift(lazy::make_lazy_value_forward_fun_raw<T>(), std::forward<Monads>(monads)...);
+template <typename T, typename... Parsers>
+inline constexpr auto lift_value_lazy_raw(Parsers... ps) {
+    return lift(lazy::make_lazy_value_forward_fun_raw<T>(), std::forward<Parsers>(ps)...);
 }
 
 template <typename Parser>

@@ -42,9 +42,8 @@ struct result {
             return res.operator bool();
         }
     }
-    constexpr operator bool() const {
-        return has_value();
-    }
+
+    constexpr operator bool() const { return has_value(); }
 
     constexpr decltype(auto) error() {
         static_assert(has_error_handling, "No error handling");
