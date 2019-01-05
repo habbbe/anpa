@@ -14,7 +14,7 @@ constexpr auto eat(Parser p) {
     return parse::whitespace() >> p;
 }
 
-constexpr auto string_parser = eat(parse::lift_value<std::string>(parse::between_items('"', '"')));
+constexpr auto string_parser = eat(parse::lift_value<json_string>(parse::between_items('"', '"')));
 constexpr auto number_parser = eat(parse::floating());
 constexpr auto bool_parser = eat((parse::sequence("true") >= true) || (parse::sequence("false") >= false));
 constexpr auto null_parser = eat(parse::sequence("null") >= nullptr);
@@ -22,7 +22,7 @@ constexpr auto null_parser = eat(parse::sequence("null") >= nullptr);
 template <typename F>
 constexpr auto get_object_parser(F value_parser) {
     auto pair_parser = parse::lift_value<json_object_pair>(string_parser, eat(parse::item(':') >> value_parser));
-    return eat(parse::item('{')) >> parse::many_to_map<true>(pair_parser, eat(parse::item(','))) << eat(parse::item('}'));
+    return eat(parse::item('{')) >> parse::many_to_map(pair_parser, eat(parse::item(','))) << eat(parse::item('}'));
 }
 
 template <typename F>

@@ -311,7 +311,7 @@ inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
  * Create a parser that applies a parser until it fails and returns the result in an `unordered_map`.
  * Key and value are retrieved from the result using std::tuple_element.
  */
-template <bool Unordered = false, typename Parser, typename ParserSep = std::nullptr_t>
+template <bool Unordered = true, typename Parser, typename ParserSep = std::nullptr_t>
 inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
@@ -504,13 +504,13 @@ constexpr auto recursive(F f) {
             });
         };
 
-        auto rec = [f, return_it](auto self, auto &s) -> decltype(return_it(std::declval<parse::result<ReturnType, ErrorType>>())) {
+        auto rec = [f, return_it, &s](auto self) -> decltype(return_it(std::declval<parse::result<ReturnType, ErrorType>>())) {
             auto r = parser([self](auto &s) {
-                return apply(self(self, s), s);
+                return apply(self(self), s);
             });
             return return_it(apply(f(r), s));
         };
-        return apply(rec(rec, s), s);
+        return apply(rec(rec), s);
     });
 }
 

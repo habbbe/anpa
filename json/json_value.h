@@ -1,7 +1,6 @@
 #ifndef JSON_VALUE_H
 #define JSON_VALUE_H
 
-#include <map>
 #include <unordered_map>
 #include <vector>
 #include <variant>
@@ -10,14 +9,15 @@
 
 struct json_value;
 
-using json_object = std::unordered_map<std::string, json_value>;
-using json_object_pair = std::pair<std::string, json_value>;
+using json_string = std::string;
+using json_object = std::unordered_map<json_string, json_value>;
+using json_object_pair = std::pair<json_string, json_value>;
 using json_array = std::vector<json_value>;
 
 using json_value_variant = std::variant<
 std::nullptr_t,
 bool,
-std::string,
+json_string,
 double,
 json_object,
 json_array>;
@@ -44,7 +44,7 @@ struct json_value {
     size_t size() const {
         return std::visit([](const auto &v) {
             using type = std::decay_t<decltype(v)>;
-            if constexpr (parse::types::is_one_of<type, json_array, json_object, std::string>) return v.size();
+            if constexpr (parse::types::is_one_of<type, json_array, json_object, json_string>) return v.size();
             else return size_t(0);
         }, *val);
     }

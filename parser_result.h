@@ -27,13 +27,13 @@ struct result {
         }
     }
 
-    constexpr decltype(auto) operator*() {
-        return get_value();
-    }
+    constexpr decltype(auto) get_value() const { return const_cast<result *>(this)->get_value(); }
 
-    constexpr decltype(auto) operator->() {
-        return &get_value();
-    }
+    constexpr decltype(auto) operator*() { return get_value(); }
+    constexpr decltype(auto) operator*() const { return get_value(); }
+
+    constexpr decltype(auto) operator->() { return &get_value(); }
+    constexpr decltype(auto) operator->() const { return &get_value(); }
 
     constexpr bool has_value() const {
         if constexpr (has_error_handling) {
@@ -50,6 +50,8 @@ struct result {
         static_assert(has_error_handling, "No error handling");
         return std::get<0>(res);
     }
+
+    constexpr decltype(auto) error() const { return const_cast<result *>(this)->error(); }
 };
 
 using default_error_type = const char*;

@@ -29,7 +29,7 @@ TEST_CASE("json_bool") {
 }
 
 TEST_CASE("json_string") {
-    test_json_type<std::string>("\"abc\"", "abc");
+    test_json_type<json_string>("\"abc\"", "abc");
 }
 
 TEST_CASE("json_general") {
@@ -52,8 +52,8 @@ TEST_CASE("json_general") {
 
     REQUIRE(element1[1].is_a<json_array>());
     REQUIRE(element1[1].size() == 2);
-    REQUIRE(element1[1][0].is_a<std::string>());
-    REQUIRE(element1[1][0].get<std::string>() == "cba");
+    REQUIRE(element1[1][0].is_a<json_string>());
+    REQUIRE(element1[1][0].get<json_string>() == "cba");
     REQUIRE(element1[1][1].is_a<std::nullptr_t>());
     REQUIRE(element1[1][1].get<std::nullptr_t>() == nullptr);
 
