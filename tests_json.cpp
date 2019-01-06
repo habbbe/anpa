@@ -70,18 +70,47 @@ TEST_CASE("json_general") {
 }
 
 TEST_CASE("performance_json") {
-    std::ifstream t("canada.json");
-    std::string str((std::istreambuf_iterator<char>(t)),
+    std::ifstream t1("canada.json");
+    std::string str1((std::istreambuf_iterator<char>(t1)),
                      std::istreambuf_iterator<char>());
 
-    TICK
+    std::ifstream t2("citm_catalog.json");
+    std::string str2((std::istreambuf_iterator<char>(t2)),
+                     std::istreambuf_iterator<char>());
+
+    TICK;
     CALLGRIND_START_INSTRUMENTATION;
-    auto res = json_parser.parse(str);
+    auto res1 = json_parser.parse(str1);
+    auto res2 = json_parser.parse(str2);
     CALLGRIND_STOP_INSTRUMENTATION;
-    TOCK
-    if (res.second) {
-        std::cout << res.second->size() << std::endl;
+    TOCK("own parser");
+    if (res1.second) {
+        std::cout << res1.second->size() << std::endl;
     } else {
-        std::cout << "No parse" << std::endl;
+        std::cout << "No parse canada.json" << std::endl;
+    }
+    if (res2.second) {
+        std::cout << res2.second->size() << std::endl;
+    } else {
+        std::cout << "No parse citm_catalog.json" << std::endl;
     }
 }
+
+//#include <rapidjson/document.h>
+//TEST_CASE("performance_rapid") {
+//    std::ifstream t1("canada.json");
+//    std::string str1((std::istreambuf_iterator<char>(t1)),
+//                     std::istreambuf_iterator<char>());
+
+//    std::ifstream t2("citm_catalog.json");
+//    std::string str2((std::istreambuf_iterator<char>(t2)),
+//                     std::istreambuf_iterator<char>());
+
+//    rapidjson::Document d1;
+//    rapidjson::Document d2;
+
+//    TICK;
+//    d1.Parse(str1.data());
+//    d2.Parse(str2.data());
+//    TOCK("rapid json");
+//}

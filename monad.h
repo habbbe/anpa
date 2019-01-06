@@ -41,7 +41,7 @@ inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
             if (apply(p2, s)) {
                 return res;
             } else {
-                s.return_fail(res);
+                return s.return_fail_result(res);
             }
         }
         return res;

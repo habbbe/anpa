@@ -114,7 +114,7 @@ inline constexpr auto consume(size_t n) {
             s.advance(n);
             return s.return_success(s.convert(start_pos, s.position));
         }
-        return s.template return_fail(s);
+        return s.return_fail();
     });
 }
 

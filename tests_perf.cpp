@@ -82,13 +82,13 @@ double test()
         lines.push_back(line);
     }
 
-    TICK
+    TICK;
     for (auto &l : lines) {
         entry_parser.parse_with_state(l.begin(), l.end(), r);
     }
 
     std::cout << "Size: " << r.size() << std::endl;
-    TOCK
+    TOCK("hub");
 
     return fp_ms.count();
 }

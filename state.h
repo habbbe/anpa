@@ -62,7 +62,7 @@ struct parser_state_simple {
 
     // Convenience function for returning a failed parse with state and type of result.
     template <typename Res, typename Error>
-    constexpr auto return_fail(Error &&error) {
+    constexpr auto return_fail_error(Error &&error) {
         if constexpr (error_handling) {
             return result<Res, std::decay_t<decltype(error)>>(std::in_place_index<0>, std::forward<Error>(error));
         } else {
@@ -70,25 +70,36 @@ struct parser_state_simple {
         }
     }
 
-    template <typename Error>
-    constexpr auto return_fail(Error &&error) { return return_fail<default_result_type>(std::forward<Error>(error)); }
-
-    template <typename Res>
-    constexpr auto return_fail() { return return_fail<Res>("Parsing error"); }
-
-    constexpr auto return_fail() { return return_fail<default_result_type>(); }
-
-    template <typename Res, typename Error>
-    constexpr auto return_fail(const result<Res, Error> &res) {
+    template <typename Res, typename Res2, typename Error>
+    constexpr auto return_fail_change_result(const result<Res2, Error> &res) {
         if constexpr (error_handling) {
-            return result<Res, Error>(std::in_place_index<0>, std::forward<Error>(res.error));
+            return result<Res, Error>(std::in_place_index<0>, res.error());
         } else {
             return result<Res, void>();
         }
-
     }
 
+    template <typename Res, typename Error>
+    constexpr auto return_fail_result_default(const result<Res, Error> &res) {
+        return return_fail_change_result<default_result_type>(res);
+    }
 
+    template <typename Res, typename Error>
+    constexpr auto return_fail_result(const result<Res, Error> &res) {
+        if constexpr (error_handling) {
+            return result<Res, Error>(std::in_place_index<0>, res.error());
+        } else {
+            return result<Res, void>();
+        }
+    }
+
+    template <typename Error>
+    constexpr auto return_fail_error(Error &&error) { return return_fail_error<default_result_type>(std::forward<Error>(error)); }
+
+    template <typename Res>
+    constexpr auto return_fail() { return return_fail_error<Res>("Parsing error"); }
+
+    constexpr auto return_fail() { return return_fail<default_result_type>(); }
 
 private:
     parser_state_simple(const parser_state_simple &other) = delete;

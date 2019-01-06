@@ -39,7 +39,7 @@ inline constexpr auto change_error(Parser p, Error error) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(*result)>;
-            return s.template return_fail<return_type>(error);
+            return s.template return_fail_error<return_type>(error);
         }
     });
 }
@@ -152,7 +152,8 @@ inline constexpr auto operator||(P1 p1, P2 p2) {
                 return s.return_success(true);
             } else {
                 s.position = original_position;
-                return apply(p2, s) ? s.return_success(true) : s.template return_fail<bool>();
+                return apply(p2, s) ? s.return_success(true) :
+                                      s.template return_fail<bool>();
             }
         }
     });
@@ -286,9 +287,7 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         using key = std::tuple_element_t<0, result_type>;
         using value = std::tuple_element_t<1, result_type>;
-
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
-
         map_type m;
         internal::many(s, [&](auto &&r) {
             m.emplace(std::forward<decltype(r)>(r));
@@ -405,7 +404,7 @@ inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
             auto new_result = apply(p2, new_state);
             return new_result;
         } else {
-            return s.template return_fail<std::decay_t<decltype(*apply(p2, s))>>(*result);
+            return s.template return_fail_change_result<std::decay_t<decltype(*apply(p2, s))>>(result);
         }
     });
 }
@@ -432,7 +431,7 @@ inline constexpr auto until(Parser p) {
             s.advance(1);
             if (s.position == s.end) {
                 s.position = position_start;
-                return s.return_fail(result);
+                return s.return_fail_result_default(result);
             }
             position_end = s.position;
         }

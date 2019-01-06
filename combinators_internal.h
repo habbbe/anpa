@@ -34,7 +34,7 @@ static inline constexpr auto get_parsed_recursive(State &s, Iterator original_po
             return get_parsed_recursive(s, original_position, ps...);
         }
     } else {
-        return s.return_fail(result);
+        return s.template return_fail_change_result<typename std::decay_t<decltype(s)>::default_result_type>(result);
     }
 }
 
