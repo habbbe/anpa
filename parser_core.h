@@ -70,6 +70,19 @@ constexpr auto mreturn(T&& t) {
 }
 
 /**
+ * Lift a value to the parser monad. Templated general version. The returned value must be in global scope.
+ */
+template <auto &T>
+constexpr auto mreturn() { return parser([](auto &s) { return s.return_success(T); }); }
+
+/**
+ * Lift a value to the parser monad. Templated general version. Use this for literal types you know at
+ * compile time.
+ */
+template <auto T>
+constexpr auto mreturn() { return parser([](auto &s) { return s.return_success(T); }); }
+
+/**
  * Monadic parser
  */
 template <typename P>

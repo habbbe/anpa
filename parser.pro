@@ -53,4 +53,6 @@ HEADERS += \
     time_measure.h \
     parser_types.h \
     json/json_value.h \
-    json/json_parser.h
+    json/json_parser.h \
+    parser_parsers_internal.h \
+    parser_combinators_internal.h

@@ -9,6 +9,7 @@
 #include "parser_core.h"
 #include "monad.h"
 #include "parse_algorithm.h"
+#include "parser_combinators_internal.h"
 
 namespace parse {
 
@@ -111,29 +112,13 @@ inline constexpr auto constrain(Parser p, Predicate pred) {
 }
 
 /**
- * Recursive helper for `get_parsed`
- */
-template <typename State, typename Iterator, typename Parser, typename... Parsers>
-static inline constexpr auto get_parsed_recursive(State &s, Iterator original_position, Parser p, Parsers... ps) {
-    if (auto result = apply(p, s)) {
-        if constexpr (sizeof...(Parsers) == 0) {
-            return s.return_success(s.convert(original_position, s.position));
-        } else {
-            return get_parsed_recursive(s, original_position, ps...);
-        }
-    } else {
-        return s.return_fail(result);
-    }
-}
-
-/**
  * Make a parser that evaluates an arbitrary number of parsers, and returns the successfully parsed text upon
  * success.
  */
 template <typename Parser, typename ... Parsers>
 inline constexpr auto get_parsed(Parser p, Parsers ... ps) {
     return parser([=](auto &s) {
-        return get_parsed_recursive(s, s.position, p, ps...);
+        return internal::get_parsed_recursive(s, s.position, p, ps...);
     });
 }
 
@@ -264,22 +249,6 @@ inline constexpr auto emplace_back_to_state_direct(Parsers... ps) {
 }
 
 /**
- * General helper for evaluating a parser multiple times with an optional separator.
- */
-template <typename State, typename Fun, typename Parser, typename Sep = std::nullptr_t>
-inline constexpr auto many_internal(State &s, Fun f, Parser p, Sep sep = nullptr) {
-    size_t successful = 0;
-    for (auto res = apply(p, s); res; res = apply(p, s)) {
-        ++successful;
-        f(*res);
-        if constexpr (!std::is_null_pointer_v<Sep>) {
-            if (!apply(sep, s)) break;
-        }
-    }
-    return successful;
-}
-
-/**
  * General parser that saves results to collections.
  * The template argument `Container` should be default constructible, and ´inserter´
  * is a callable taking a `Container` as a reference as the first argument, and the
@@ -289,7 +258,7 @@ template <typename Container, typename Inserter, typename Parser, typename Parse
 inline auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         Container c;
-        many_internal(s, [&c, inserter](auto &&res) mutable {inserter(c, std::forward<decltype(res)>(res));}, p, sep);
+        internal::many(s, [&c, inserter](auto &&res) mutable {inserter(c, std::forward<decltype(res)>(res));}, p, sep);
         return s.return_success(std::move(c));
     });
 }
@@ -302,7 +271,7 @@ inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
-        many_internal(s, [&r](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, p, sep);
+        internal::many(s, [&r](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, p, sep);
         return s.return_success(std::move(r));
     });
 }
@@ -321,7 +290,7 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
 
         map_type m;
-        many_internal(s, [&](auto &&r) {
+        internal::many(s, [&](auto &&r) {
             m.emplace(std::forward<decltype(r)>(r));
         }, p, sep);
         return s.return_success(std::move(m));
@@ -337,7 +306,7 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
 template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
 inline constexpr auto many_f(Fun f, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
-        return s.return_success(many_internal(s, [f](auto &&res){f(std::forward<decltype(res)>(res));}, p, sep));
+        return s.return_success(internal::many(s, [f](auto &&res){f(std::forward<decltype(res)>(res));}, p, sep));
     });
 }
 
@@ -349,7 +318,7 @@ template <typename Parser, typename ParserSep = std::nullptr_t>
 inline constexpr auto many(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         auto start = s.position;
-        many_internal(s, [](auto &&){}, p, sep);
+        internal::many(s, [](auto &&){}, p, sep);
         return s.return_success(s.convert(start, s.position));
     });
 }
@@ -363,26 +332,8 @@ inline constexpr auto many(Parser p, ParserSep sep = nullptr) {
 template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
 inline constexpr auto many_state(Fun f, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
-        return s.return_success(many_internal(s, [f, &s](auto &&res){f(s.user_state, std::forward<decltype(res)>(res));}, p, sep));
+        return s.return_success(internal::many(s, [f, &s](auto &&res){f(s.user_state, std::forward<decltype(res)>(res));}, p, sep));
     });
-}
-
-// Compile time recursive resolver for lifting of arbitrary number of parsers
-template <typename State, typename F, typename Parser, typename... Parsers>
-static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
-    if (auto result = apply(p, s)) {
-        return s.return_success(f(std::move(*result)));
-    } else if constexpr (sizeof...(ps) > 0) {
-        return lift_or_rec(s, f, ps...);
-    } else {
-        // All parsers failed
-        using result_type = std::decay_t<decltype(f(*result))>;
-        if constexpr (State::error_handling) {
-            return s.template return_fail<result_type>(result.error());
-        } else {
-            return s.template return_fail<result_type>();
-        }
-    }
 }
 
 /**
@@ -393,7 +344,7 @@ static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps)
 template <typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
     return parser([=](auto &s) {
-        return lift_or_rec(s, f, p, ps...);
+        return internal::lift_or_rec(s, f, p, ps...);
     });
 }
 
@@ -410,7 +361,7 @@ inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
         auto to_apply = [f, &s] (auto &&val) {
             return f(s.user_state, std::forward<decltype(val)>(val));
         };
-        return lift_or_rec(s, to_apply, p, ps...);
+        return internal::lift_or_rec(s, to_apply, p, ps...);
     });
 }
 
@@ -434,7 +385,7 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
         constexpr auto construct = [](auto arg) {
             return T(arg());
         };
-        return lift_or_rec(s, construct, p, ps...);
+        return internal::lift_or_rec(s, construct, p, ps...);
     });
 }
 
@@ -495,20 +446,31 @@ inline constexpr auto until(Parser p) {
     });
 }
 
+/**
+ * Create a recursive parser.
+ * Provide a callable taking an `auto` as its parameter, and returning
+ * a parser. The passed parser is functionally identical to the returned parser,
+ * and can be used recursively within that.
+ * You must provide the `ReturnType` of the parsers as the first template argument
+ * (this enables the recursive behavior), and optionally an ErrorType if the parser
+ * has error handling.
+ */
 template <typename ReturnType, typename ErrorType = void, typename F>
 constexpr auto recursive(F f) {
     return parser([f](auto &s) {
-        constexpr auto return_it = [](auto &&r) {
+        constexpr auto return_p = [](auto &&r) { // For type inference on return type of rec.
             return parser([=](auto &) {
                 return r;
             });
         };
 
-        auto rec = [f, return_it, &s](auto self) -> decltype(return_it(std::declval<parse::result<ReturnType, ErrorType>>())) {
-            auto r = parser([self](auto &s) {
+        // Recursive lambda doing the work for us.
+        auto rec = [f, return_p, &s](auto self)
+                -> decltype(return_p(std::declval<parse::result<ReturnType, ErrorType>>())) {
+            auto r = parser([self](auto &s) { // The actual parser sent to the caller.
                 return apply(self(self), s);
             });
-            return return_it(apply(f(r), s));
+            return return_p(apply(f(r), s));
         };
         return apply(rec(rec), s);
     });

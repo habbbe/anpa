@@ -2,8 +2,6 @@
 #include <valgrind/callgrind.h>
 #include "test/catch.hpp"
 #include "json/json_parser.h"
-#include "parser_state.h"
-#include "parser_settings.h"
 #include "time_measure.h"
 
 template <typename T, typename Str>

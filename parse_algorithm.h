@@ -11,7 +11,7 @@
 namespace parse::algorithm {
 
 /**
- * constexpr version of std::equal (1)
+ * constexpr version of `std::equal` (1)
  */
 template <typename Iterator1, typename Iterator2>
 inline constexpr auto equal(Iterator1 begin1, Iterator1 end1, Iterator2 begin2) {
@@ -23,7 +23,26 @@ inline constexpr auto equal(Iterator1 begin1, Iterator1 end1, Iterator2 begin2) 
 }
 
 /**
- * constexpr version of std::find_if
+ * Like the other `equal` (1) but the first range is given by the template parameters.
+ */
+template <auto... vs, typename Iterator>
+inline constexpr auto equal(Iterator begin) {
+    return ((*begin++ == vs) && ...);
+}
+
+/**
+ * Like the other `equal` (5) but the first range is given by the template parameters.
+ */
+template <auto... vs, typename Iterator>
+inline constexpr auto equal(Iterator begin, Iterator end) {
+    auto op = [&](const auto &x, const auto &v) {
+        return x != end && *x == v;
+    };
+    return (op(begin++, vs) && ...);
+}
+
+/**
+ * constexpr version of `std::find_if`
  */
 template <typename Iterator, typename Predicate>
 inline constexpr auto find_if(Iterator begin, Iterator end, Predicate p) {
@@ -34,7 +53,7 @@ inline constexpr auto find_if(Iterator begin, Iterator end, Predicate p) {
 }
 
 /**
- * constexpr version of std::find_if_not
+ * constexpr version of `std::find_if_not`
  */
 template <typename Iterator, typename Predicate>
 inline constexpr auto find_if_not(Iterator begin, Iterator end, Predicate p) {
@@ -42,7 +61,7 @@ inline constexpr auto find_if_not(Iterator begin, Iterator end, Predicate p) {
 }
 
 /**
- * constexpr version of std::find
+ * constexpr version of `std::find`
  */
 template <typename Iterator, typename Element>
 inline constexpr auto find(Iterator begin, Iterator end, const Element &element) {
@@ -52,9 +71,9 @@ inline constexpr auto find(Iterator begin, Iterator end, const Element &element)
 /**
  * Check if the supplied value is contained within the given template parameters.
  */
-template <auto...vs, typename V>
+template <auto... vs, typename V>
 inline constexpr auto contains(const V &sought) {
-    return ((sought == vs) || ... || false);
+    return ((sought == vs) || ...);
 }
 
 /**
@@ -73,6 +92,9 @@ inline constexpr std::pair<Iterator1, Iterator1> search(Iterator1 begin1, Iterat
     }
 }
 
+/**
+ * Check if a range contains at least `n` elements.
+ */
 template <typename Iterator>
 inline constexpr auto contains_elements(Iterator begin, Iterator end, long n) {
     // If we have a random access iterator, just use std::distance, otherwise
