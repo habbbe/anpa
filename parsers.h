@@ -3,11 +3,11 @@
 
 #include <charconv>
 #include <cmath>
-#include "parse_algorithm.h"
-#include "parser_core.h"
-#include "parser_types.h"
-#include "parser_combinators.h"
-#include "parser_parsers_internal.h"
+#include "algorithm.h"
+#include "core.h"
+#include "types.h"
+#include "combinators.h"
+#include "parsers_internal.h"
 
 namespace parse {
 

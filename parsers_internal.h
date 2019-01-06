@@ -2,7 +2,7 @@
 #define PARSER_PARSERS_INTERNAL_H
 
 #include <tuple>
-#include "parse_algorithm.h"
+#include "algorithm.h"
 
 namespace parse::internal {
 

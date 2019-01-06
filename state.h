@@ -2,8 +2,8 @@
 #define PARSER_STATE_H
 
 #include <iterator>
-#include "parser_result.h"
-#include "parse_algorithm.h"
+#include "result.h"
+#include "algorithm.h"
 
 namespace parse {
 

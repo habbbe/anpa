@@ -3,12 +3,12 @@
 
 #include "lazy.h"
 #include "monad.h"
-#include "parse_algorithm.h"
-#include "parser_result.h"
-#include "parser_state.h"
-#include "parser_settings.h"
-#include "parser_core.h"
-#include "parser_combinators.h"
-#include "parser_parsers.h"
+#include "algorithm.h"
+#include "result.h"
+#include "state.h"
+#include "settings.h"
+#include "core.h"
+#include "combinators.h"
+#include "parsers.h"
 
 #endif // TOKEN_PARSER_H

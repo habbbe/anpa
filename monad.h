@@ -5,7 +5,7 @@
 #include <utility>
 #include <memory>
 #include "lazy.h"
-#include "parser_core.h"
+#include "core.h"
 
 namespace parse {
 

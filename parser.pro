@@ -15,44 +15,28 @@ SOURCES += \
 
 HEADERS += \
     parser.h \
-    monad.h \
     lazy.h \
-    parser_core.h \
-    parser_combinators.h \
-    parser_parsers.h \
     json_parser.h \
-    parser_result.h \
-    parser_state.h \
-    parser_settings.h \
-    parse_algorithm.h \
     time_measure.h \
     json_parser.h \
     lazy.h \
-    monad.h \
-    parse_algorithm.h \
     parser.h \
-    parser_combinators.h \
-    parser_core.h \
-    parser_parsers.h \
-    parser_result.h \
-    parser_settings.h \
-    parser_state.h \
     time_measure.h \
     test/catch.hpp \
     json_parser.h \
     lazy.h \
-    monad.h \
-    parse_algorithm.h \
     parser.h \
-    parser_combinators.h \
-    parser_core.h \
-    parser_parsers.h \
-    parser_result.h \
-    parser_settings.h \
-    parser_state.h \
     time_measure.h \
-    parser_types.h \
     json/json_value.h \
     json/json_parser.h \
-    parser_parsers_internal.h \
-    parser_combinators_internal.h
+    algorithm.h \
+    combinators.h \
+    core.h \
+    monad.h \
+    parsers.h \
+    combinators_internal.h \
+    result.h \
+    settings.h \
+    state.h \
+    types.h \
+    parsers_internal.h

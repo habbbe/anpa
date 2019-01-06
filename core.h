@@ -3,10 +3,10 @@
 
 #include <functional>
 #include <string_view>
-#include "parser_result.h"
-#include "parser_state.h"
-#include "parser_settings.h"
-#include "parser_types.h"
+#include "result.h"
+#include "state.h"
+#include "settings.h"
+#include "types.h"
 
 namespace parse {
 

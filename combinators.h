@@ -6,10 +6,10 @@
 #include <map>
 #include <vector>
 #include <memory>
-#include "parser_core.h"
+#include "core.h"
 #include "monad.h"
-#include "parse_algorithm.h"
-#include "parser_combinators_internal.h"
+#include "algorithm.h"
+#include "combinators_internal.h"
 
 namespace parse {
 

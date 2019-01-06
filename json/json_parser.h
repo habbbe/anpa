@@ -5,8 +5,8 @@
 #include <functional>
 #include "json_value.h"
 #include "parser.h"
-#include "parser_state.h"
-#include "parser_types.h"
+#include "state.h"
+#include "types.h"
 #include "lazy.h"
 
 template <typename Parser>
