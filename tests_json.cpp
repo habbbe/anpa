@@ -1,4 +1,5 @@
 #include <fstream>
+#include <valgrind/callgrind.h>
 #include "test/catch.hpp"
 #include "json/json_parser.h"
 #include "parser_state.h"
@@ -76,7 +77,9 @@ TEST_CASE("performance_json") {
                      std::istreambuf_iterator<char>());
 
     TICK
+    CALLGRIND_START_INSTRUMENTATION;
     auto res = json_parser.parse(str);
+    CALLGRIND_STOP_INSTRUMENTATION;
     TOCK
     if (res.second) {
         std::cout << res.second->size() << std::endl;

@@ -3,6 +3,7 @@
 
 #include <charconv>
 #include <cmath>
+#include "parse_algorithm.h"
 #include "parser_core.h"
 #include "parser_types.h"
 #include "parser_combinators.h"
@@ -220,9 +221,9 @@ template <typename Predicate>
 inline constexpr auto while_predicate(Predicate predicate) {
     return parser([=](auto &s) {
         auto res = algorithm::find_if_not(s.position, s.end, predicate);
-        auto result = s.convert(res);
+        auto start_pos = s.position;
         s.set_position(res);
-        return s.return_success(result);
+        return s.return_success(s.convert(start_pos, res));
     });
 }
 
@@ -240,6 +241,17 @@ inline constexpr auto while_in(Iterator start, Iterator end) {
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto while_in(const ItemType (&items)[N]) {
     return while_in(items, items + N - 1);
+}
+
+/**
+ * Parser that consumes all items contained in set described by the template parameters.
+ * This is faster than the above due to less copying.
+ */
+template <auto v, auto... vs>
+inline constexpr auto while_in() {
+    return while_predicate([](const auto &val){
+        return algorithm::contains<v, vs...>(val);
+    });
 }
 
 // General matching algorithm with supplied equality functions.
@@ -428,7 +440,7 @@ inline constexpr auto number() {
  * Parser for whitespace
  */
 inline constexpr auto whitespace() {
-    return while_in(" \t\n\r\f");
+    return while_in<' ', '\n', '\t', '\r', '\f'>();
 }
 
 }

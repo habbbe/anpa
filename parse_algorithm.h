@@ -50,6 +50,14 @@ inline constexpr auto find(Iterator begin, Iterator end, const Element &element)
 }
 
 /**
+ * Check if the supplied value is contained within the given template parameters.
+ */
+template <auto...vs, typename V>
+inline constexpr auto contains(const V &sought) {
+    return ((sought == vs) || ... || false);
+}
+
+/**
  * Find a sub-sequence. Returns a pair of iterators, with (begin, end) if the sequence is found,
  * otherwise (end1, end1).
  */

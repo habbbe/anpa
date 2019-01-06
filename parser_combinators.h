@@ -290,7 +290,7 @@ inline auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         Container c;
         many_internal(s, [&c, inserter](auto &&res) mutable {inserter(c, std::forward<decltype(res)>(res));}, p, sep);
-        return s.return_success(c);
+        return s.return_success(std::move(c));
     });
 }
 
@@ -303,7 +303,7 @@ inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
         many_internal(s, [&r](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, p, sep);
-        return s.return_success(r);
+        return s.return_success(std::move(r));
     });
 }
 
@@ -324,7 +324,7 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
         many_internal(s, [&](auto &&r) {
             m.emplace(std::forward<decltype(r)>(r));
         }, p, sep);
-        return s.return_success(m);
+        return s.return_success(std::move(m));
     });
 }
 
