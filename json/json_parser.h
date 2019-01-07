@@ -37,4 +37,7 @@ constexpr auto json_parser = parse::recursive<json_value, void>([](auto val_pars
                             get_array_parser(val_parser), get_object_parser(val_parser));
 });
 
+constexpr auto array_parser = get_array_parser(json_parser);
+constexpr auto object_parser = get_object_parser(json_parser);
+
 #endif // JSON_PARSER_H
