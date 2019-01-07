@@ -9,10 +9,11 @@ namespace parse::internal {
 /**
  * Parser for a single item
  */
-template <typename State, typename ItemType>
+template <bool Not = false,typename State, typename ItemType>
 inline constexpr auto item(State &s, const ItemType &c) {
     if (!s.empty()) {
-        if (s.front() == c) {
+        auto res = Not ? s.front() != c : s.front() == c;
+        if (res) {
             s.advance(1);
             return s.return_success(c);
         }

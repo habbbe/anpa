@@ -71,6 +71,16 @@ inline constexpr auto find(Iterator begin, Iterator end, const Element &element)
 /**
  * Check if the supplied value is contained within the given template parameters.
  */
+template <typename Iterator, typename V>
+inline constexpr auto contains(Iterator begin, Iterator end, const V &needle) {
+    for (;begin != end;)
+        if (*begin++ == needle) return true;
+    return false;
+}
+
+/**
+ * Check if the supplied value is contained within the given template parameters.
+ */
 template <auto... vs, typename V>
 inline constexpr auto contains(const V &sought) {
     return ((sought == vs) || ...);

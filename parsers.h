@@ -78,6 +78,36 @@ inline constexpr auto item() {
 }
 
 /**
+ * Parser for a single item
+ */
+template <typename ItemType>
+inline constexpr auto not_item(const ItemType &i) {
+    return parser([=](auto &s) {
+        return internal::item<true>(s, i);
+    });
+}
+
+/**
+ * Parser for a single item. Templated version.
+ * This is faster than the above due to less copying.
+ */
+template <auto i>
+inline constexpr auto not_item() {
+    return parser([](auto &s) {
+        return internal::item<true>(s, i);
+    });
+}
+
+/**
+ * Parser for a single item. Templated version.
+ * This is faster than the above due to less copying.
+ */
+template <typename Pred>
+inline constexpr auto item_if(Pred pred) {
+    return constrain(any_item(), pred);
+}
+
+/**
  * Parser for the sequence described by [begin, end)
  */
 template <typename Iterator>
@@ -102,6 +132,16 @@ inline constexpr auto sequence() {
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto sequence(const ItemType (&seq)[N]) {
     return sequence(seq, seq + N - 1);
+}
+
+/**
+ * Parser for a sequence described by a string literal
+ */
+template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
+inline constexpr auto any_of(const ItemType (&seq)[N]) {
+    return parse::item_if([=](const auto &c) {
+        return algorithm::contains(seq, seq + N - 1, c);
+    });
 }
 
 /**

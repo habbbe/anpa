@@ -2,7 +2,7 @@ TEMPLATE = app
 CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
-#CONFIG += force_debug_info
+CONFIG += force_debug_info
 QMAKE_CXXFLAGS += -std=c++17
 QMAKE_CXXFLAGS_RELEASE -= -O2
 QMAKE_CXXFLAGS_RELEASE += -O3

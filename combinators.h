@@ -30,6 +30,20 @@ inline constexpr auto succeed(Parser p) {
 }
 
 /**
+ * Apply a parser `n` times and return the parsed result.
+ */
+template <typename Parser>
+inline constexpr auto times(size_t n, Parser p) {
+    return parser([=](auto &s) {
+        auto start = s.position;
+        for (size_t i = n; i > 0; --i) {
+            if (auto res = apply(p, s)) return s.return_fail_result_default(res);
+        }
+        return s.return_success(s.convert(start, s.position));
+    });
+}
+
+/**
  * Change the error to be returned upon a failed parse with the provided parser
  */
 template <typename Parser, typename Error>
@@ -302,10 +316,10 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
  * argument.
  * The parse result is the number of successful parses.
  */
-template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
-inline constexpr auto many_f(Fun f, Parser p, ParserSep sep = nullptr) {
+template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t, typename Until = std::nullptr_t>
+inline constexpr auto many_f(Fun f, Parser p, ParserSep sep = nullptr, Until until = nullptr) {
     return parser([=](auto &s) {
-        return s.return_success(internal::many(s, [f](auto &&res){f(std::forward<decltype(res)>(res));}, p, sep));
+        return internal::many(s, [f](auto &&res){f(std::forward<decltype(res)>(res));}, p, sep, until);
     });
 }
 
@@ -313,12 +327,10 @@ inline constexpr auto many_f(Fun f, Parser p, ParserSep sep = nullptr) {
  * Create a parser that applies a parser until it fails, and returns the parsed range as
  * returned by the provided conversion function.
  */
-template <typename Parser, typename ParserSep = std::nullptr_t>
-inline constexpr auto many(Parser p, ParserSep sep = nullptr) {
+template <typename Parser, typename ParserSep = std::nullptr_t, typename Until = std::nullptr_t>
+inline constexpr auto many(Parser p, ParserSep sep = nullptr, Until until = nullptr) {
     return parser([=](auto &s) {
-        auto start = s.position;
-        internal::many(s, [](auto &&){}, p, sep);
-        return s.return_success(s.convert(start, s.position));
+        return internal::many(s, [](auto &&){}, p, sep, until);
     });
 }
 
@@ -331,7 +343,7 @@ inline constexpr auto many(Parser p, ParserSep sep = nullptr) {
 template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
 inline constexpr auto many_state(Fun f, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
-        return s.return_success(internal::many(s, [f, &s](auto &&res){f(s.user_state, std::forward<decltype(res)>(res));}, p, sep));
+        return internal::many(s, [f, &s](auto &&res){f(s.user_state, std::forward<decltype(res)>(res));}, p, sep);
     });
 }
 

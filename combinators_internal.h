@@ -9,17 +9,37 @@ namespace parse::internal {
 /**
  * General helper for evaluating a parser multiple times with an optional separator.
  */
-template <typename State, typename Fun, typename Parser, typename Sep = std::nullptr_t>
-inline constexpr auto many(State &s, Fun f, Parser p, Sep sep = nullptr) {
-    std::size_t successful = 0;
+template <typename State,
+          typename Fun,
+          typename Parser,
+          typename Sep = std::nullptr_t,
+          typename Until = std::nullptr_t,
+          bool Eat = true,
+          bool Include = false>
+inline constexpr auto many(State &s,
+                           Fun f,
+                           Parser p,
+                           Sep sep = nullptr,
+                           Until until = nullptr) {
+    auto start = s.position;
     for (auto res = apply(p, s); res; res = apply(p, s)) {
-        ++successful;
+
+        if constexpr (!std::is_null_pointer_v<Until>) {
+            auto p = s.position;
+            if (apply(until, s)) {
+                auto new_end = Eat ? s.position : p;
+                auto res_end = Include ? s.position : p;
+                s.set_position(new_end);
+                return s.return_success(s.convert(start, res_end));
+            }
+        }
+
         f(*res);
         if constexpr (!std::is_null_pointer_v<Sep>) {
             if (!apply(sep, s)) break;
         }
     }
-    return successful;
+    return s.return_success(s.convert(start, s.position));
 }
 
 /**

@@ -258,7 +258,7 @@ TEST_CASE("many_with_state") {
 
     REQUIRE(state.size() == 3);
     REQUIRE(res.second);
-    REQUIRE(*res.second == 3);
+    REQUIRE(*res.second == "#100#20#3");
     REQUIRE(state[0] == 100);
     REQUIRE(state[1] == 20);
     REQUIRE(state[2] == 3);
@@ -457,7 +457,7 @@ TEST_CASE("many_f with separator") {
     auto res = p.parse("100#%20#%3");
 
     REQUIRE(res.second);
-    REQUIRE(*res.second == 3);
+    REQUIRE(*res.second == "100#%20#%3");
     REQUIRE(result == 123);
 }
 
@@ -471,7 +471,7 @@ TEST_CASE("many_state with separator") {
     int state = 0;
     auto res = p.parse_with_state("100#%20#%3", state);
     REQUIRE(res.second);
-    REQUIRE(*res.second == 3);
+    REQUIRE(*res.second == "100#%20#%3");
     REQUIRE(state == 123);
 }
 
