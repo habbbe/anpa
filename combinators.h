@@ -273,7 +273,7 @@ template <typename Container, typename Inserter, typename Parser, typename Parse
 inline auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         Container c;
-        internal::many(s, [&c, inserter](auto &&res) mutable {inserter(c, std::forward<decltype(res)>(res));}, p, sep);
+        internal::many(s, p, [&c, inserter](auto &&res) mutable {inserter(c, std::forward<decltype(res)>(res));}, sep);
         return s.return_success(std::move(c));
     });
 }
@@ -286,7 +286,7 @@ inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
-        internal::many(s, [&r](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, p, sep);
+        internal::many(s, p, [&r](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, sep);
         return s.return_success(std::move(r));
     });
 }
@@ -303,9 +303,9 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
         using value = std::tuple_element_t<1, result_type>;
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
         map_type m;
-        internal::many(s, [&](auto &&r) {
+        internal::many(s, p, [&](auto &&r) {
             m.emplace(std::forward<decltype(r)>(r));
-        }, p, sep);
+        }, sep);
         return s.return_success(std::move(m));
     });
 }
@@ -316,10 +316,10 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
  * argument.
  * The parse result is the number of successful parses.
  */
-template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t, typename Until = std::nullptr_t>
-inline constexpr auto many_f(Fun f, Parser p, ParserSep sep = nullptr, Until until = nullptr) {
+template <typename Parser, typename Fun, typename ParserSep = std::nullptr_t, typename Until = std::nullptr_t>
+inline constexpr auto many_f(Parser p, Fun f, ParserSep sep = nullptr, Until until = nullptr) {
     return parser([=](auto &s) {
-        return internal::many(s, [f](auto &&res){f(std::forward<decltype(res)>(res));}, p, sep, until);
+        return internal::many(s, p, f, sep, until);
     });
 }
 
@@ -330,7 +330,7 @@ inline constexpr auto many_f(Fun f, Parser p, ParserSep sep = nullptr, Until unt
 template <typename Parser, typename ParserSep = std::nullptr_t, typename Until = std::nullptr_t>
 inline constexpr auto many(Parser p, ParserSep sep = nullptr, Until until = nullptr) {
     return parser([=](auto &s) {
-        return internal::many(s, [](auto &&){}, p, sep, until);
+        return internal::many(s, p, nullptr, sep, until);
     });
 }
 
@@ -343,7 +343,7 @@ inline constexpr auto many(Parser p, ParserSep sep = nullptr, Until until = null
 template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
 inline constexpr auto many_state(Fun f, Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
-        return internal::many(s, [f, &s](auto &&res){f(s.user_state, std::forward<decltype(res)>(res));}, p, sep);
+        return internal::many(s, p, [f, &s](auto &&res){f(s.user_state, std::forward<decltype(res)>(res));}, sep);
     });
 }
 

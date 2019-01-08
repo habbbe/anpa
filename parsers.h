@@ -112,8 +112,10 @@ inline constexpr auto item_if(Pred pred) {
  */
 template <typename Iterator>
 inline constexpr auto sequence(Iterator begin, Iterator end) {
-    return internal::sequence(std::distance(begin, end),
-                              [=](auto &i) {return algorithm::equal(begin, end, i);});
+    return parser([=](auto &s) {
+        return internal::sequence(s, std::distance(begin, end),
+                                  [=](auto &i) {return algorithm::equal(begin, end, i);});
+    });
 }
 
 /**
@@ -122,8 +124,10 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
  */
 template <auto v, auto... vs>
 inline constexpr auto sequence() {
-    return internal::sequence(sizeof...(vs) + 1,
-                              [](auto &i){return algorithm::equal<v, vs...>(i);});
+    return parser([](auto &s) {
+        return internal::sequence(s, sizeof...(vs) + 1,
+                                  [](auto &i){return algorithm::equal<v, vs...>(i);});
+    });
 }
 
 /**
@@ -141,6 +145,16 @@ template <typename ItemType, size_t N, typename = types::enable_if_string_litera
 inline constexpr auto any_of(const ItemType (&seq)[N]) {
     return parse::item_if([=](const auto &c) {
         return algorithm::contains(seq, seq + N - 1, c);
+    });
+}
+
+/**
+ * Parser for a sequence described by a string literal
+ */
+template <auto v, auto... vs>
+inline constexpr auto any_of() {
+    return parse::item_if([](const auto &c) {
+        return algorithm::contains<v, vs...>(c);
     });
 }
 
@@ -187,8 +201,10 @@ inline constexpr auto until_item(ItemType &&c) {
  */
 template <bool Eat = true, bool Include = false, typename Iterator>
 inline constexpr auto until_sequence(Iterator begin, Iterator end) {
-    return internal::until_sequence<Eat, Include>(
-                [=](auto &b, auto &e) {return algorithm::search(b, e, begin, end);});
+    return parser([=](auto &s) {
+        return internal::until_sequence<Eat, Include>(s,
+                    [=](auto &b, auto &e) {return algorithm::search(b, e, begin, end);});
+    });
 }
 
 /**

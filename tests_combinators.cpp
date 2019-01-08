@@ -450,9 +450,9 @@ TEST_CASE("many_f with separator") {
     constexpr auto intParser = parse::integer();
 
     int result = 0;
-    auto p = parse::many_f([&result](auto i) {
+    auto p = parse::many_f(intParser, [&result](auto i) {
         result += i;
-    }, intParser, parse::sequence("#%"));
+    }, parse::sequence("#%"));
 
     auto res = p.parse("100#%20#%3");
 

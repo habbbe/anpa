@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <utility>
+#include <valgrind/callgrind.h>
 
 namespace parse::internal {
 
@@ -10,32 +11,34 @@ namespace parse::internal {
  * General helper for evaluating a parser multiple times with an optional separator.
  */
 template <typename State,
-          typename Fun,
           typename Parser,
+          typename Fun = std::nullptr_t,
           typename Sep = std::nullptr_t,
           typename Until = std::nullptr_t,
           bool Eat = true,
           bool Include = false>
 inline constexpr auto many(State &s,
-                           Fun f,
-                           Parser p,
-                           Sep sep = nullptr,
-                           Until until = nullptr) {
+                           Parser &&p,
+                           Fun &&f = nullptr,
+                           Sep &&sep = nullptr,
+                           Until &&until = nullptr) {
     auto start = s.position;
+
     for (auto res = apply(p, s); res; res = apply(p, s)) {
 
-        if constexpr (!std::is_null_pointer_v<Until>) {
+        if constexpr (!std::is_null_pointer_v<std::decay_t<Until>>) {
             auto p = s.position;
             if (apply(until, s)) {
-                auto new_end = Eat ? s.position : p;
-                auto res_end = Include ? s.position : p;
-                s.set_position(new_end);
-                return s.return_success(s.convert(start, res_end));
+                if constexpr (!Eat) s.set_position(p);
+                return s.return_success(s.convert(start, Include ? s.position : p));
             }
         }
 
-        f(*res);
-        if constexpr (!std::is_null_pointer_v<Sep>) {
+        if constexpr (!std::is_null_pointer_v<std::decay_t<Fun>>) {
+            f(*res);
+        }
+
+        if constexpr (!std::is_null_pointer_v<std::decay_t<Sep>>) {
             if (!apply(sep, s)) break;
         }
     }

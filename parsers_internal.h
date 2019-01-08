@@ -24,34 +24,30 @@ inline constexpr auto item(State &s, const ItemType &c) {
 /**
  * Helper for parsing of sequences
  */
-template <typename Eq>
-inline constexpr auto sequence(size_t size, Eq equal) {
-    return parser([=](auto &s) {
-        auto orig_pos = s.position;
-        if (s.has_at_least(size) && equal(orig_pos)) {
-            s.advance(size);
-            return s.return_success(s.convert(orig_pos, size));
-        } else {
-            return s.return_fail();
-        }
-    });
+template <typename State, typename Eq>
+inline constexpr auto sequence(State &s, const size_t &size, Eq equal) {
+    auto orig_pos = s.position;
+    if (s.has_at_least(size) && equal(orig_pos)) {
+        s.advance(size);
+        return s.return_success(s.convert(orig_pos, size));
+    } else {
+        return s.return_fail();
+    }
 }
 
 /**
  * Helper for parsing until a sequence
  */
-template <bool Eat = true, bool Include = false, typename Search>
-inline constexpr auto until_sequence(Search search) {
-    return parser([=](auto &s) {
-        if (auto [pos, new_end] = search(s.position, s.end); pos != s.end) {
-            auto res_start = s.position;
-            auto res_end = Include ? new_end : pos;
-            s.set_position(Eat ? new_end : pos);
-            return s.return_success(s.convert(res_start, res_end));
-        } else {
-            return s.return_fail();
-        }
-    });
+template <bool Eat = true, bool Include = false, typename State, typename Search>
+inline constexpr auto until_sequence(State &s, Search search) {
+    if (auto [pos, new_end] = search(s.position, s.end); pos != s.end) {
+        auto res_start = s.position;
+        auto res_end = Include ? new_end : pos;
+        s.set_position(Eat ? new_end : pos);
+        return s.return_success(s.convert(res_start, res_end));
+    } else {
+        return s.return_fail();
+    }
 }
 
 template <typename Integral, bool IncludeDoubleDivisor, typename Iterator>
