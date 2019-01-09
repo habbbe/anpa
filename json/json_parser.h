@@ -68,10 +68,10 @@ constexpr auto string_parser2 = parse::lift_value<json_string>(eat(parse::parser
 })));
 
 constexpr auto string_parser = []() {
-    constexpr auto unicode = parse::item('u') >> parse::times(4, parse::item_if([](auto &f) {return std::isxdigit(f);}));
-    constexpr auto escaped = parse::item('\\') >> (unicode || parse::any_of("\"\\bfnrt"));
+    constexpr auto unicode = parse::item<'u'>() >> parse::times(4, parse::item_if([](auto &f) {return std::isxdigit(f);}));
+    constexpr auto escaped = parse::item<'\\'>() >> (unicode || parse::any_of<'"','\\','b','f','n','r','t'>());
     constexpr auto notEnd = parse::any_item() || escaped;
-    return parse::lift_value<json_string>(eat(parse::item('"')) >> parse::many(notEnd, nullptr, parse::item('"')));
+    return parse::lift_value<json_string>(eat(parse::item<'"'>()) >> parse::many(notEnd, nullptr, parse::item<'"'>()));
 }();
 
 constexpr auto string_parser5 = eat(parse::lift_value<json_string>(parse::between_items('"', '"')));
