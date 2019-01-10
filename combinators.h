@@ -251,7 +251,9 @@ inline constexpr auto emplace_to_state_direct(Parsers... ps) {
  */
 template <typename Accessor, typename... Parsers>
 inline constexpr auto emplace_back_to_state(Accessor acc, Parsers... ps) {
-    return apply_to_state([acc](auto &s, auto&&...args) {return acc(s).emplace_back(std::forward<decltype(args)>(args)...);}, ps...);
+    return apply_to_state([acc](auto &s, auto&&...args) {
+        return acc(s).emplace_back(std::forward<decltype(args)>(args)...);
+    }, ps...);
 }
 
 /**
@@ -269,11 +271,14 @@ inline constexpr auto emplace_back_to_state_direct(Parsers... ps) {
  * is a callable taking a `Container` as a reference as the first argument, and the
  * result of the parse as the second.
  */
-template <typename Container, typename Inserter, typename Parser, typename ParserSep = std::nullptr_t>
-inline auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr) {
+template <typename Container, typename Inserter, typename Parser,
+          typename ParserSep = std::nullptr_t, typename Break = std::nullptr_t>
+inline auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr, Break breakOn = nullptr) {
     return parser([=](auto &s) {
         Container c;
-        internal::many(s, p, [&c, inserter](auto &&res) mutable {inserter(c, std::forward<decltype(res)>(res));}, sep);
+        internal::many(s, p, [&c, inserter](auto &&res) {
+            inserter(c, std::forward<decltype(res)>(res));
+        }, sep, breakOn);
         return s.return_success(std::move(c));
     });
 }
@@ -281,12 +286,14 @@ inline auto many_general(Inserter inserter, Parser p, ParserSep sep = nullptr) {
 /**
  * Create a parser that applies a parser until it fails and returns the result in a vector.
  */
-template <typename Parser, typename ParserSep = std::nullptr_t>
-inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
+template <typename Parser, typename ParserSep = std::nullptr_t, typename Break = std::nullptr_t>
+inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr, Break breakOn = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
-        internal::many(s, p, [&r](auto &&res) {r.emplace_back(std::forward<decltype(res)>(res));}, sep);
+        internal::many(s, p, [&r](auto &&res) {
+            r.emplace_back(std::forward<decltype(res)>(res));
+        }, sep, breakOn);
         return s.return_success(std::move(r));
     });
 }
@@ -295,7 +302,10 @@ inline constexpr auto many_to_vector(Parser p, ParserSep sep = nullptr) {
  * Create a parser that applies a parser until it fails and returns the result in an `unordered_map`.
  * Key and value are retrieved from the result using std::tuple_element.
  */
-template <bool Unordered = true, typename Parser, typename ParserSep = std::nullptr_t>
+template <bool Unordered = true,
+          typename Parser,
+          typename ParserSep = std::nullptr_t,
+          typename Break = std::nullptr_t>
 inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
@@ -316,22 +326,20 @@ inline constexpr auto many_to_map(Parser p, ParserSep sep = nullptr) {
  * argument.
  * The parse result is the number of successful parses.
  */
-template <typename Parser, typename Fun, typename ParserSep = std::nullptr_t, typename Until = std::nullptr_t>
-inline constexpr auto many_f(Parser p, Fun f, ParserSep sep = nullptr, Until until = nullptr) {
-    return parser([=](auto &s) {
-        return internal::many(s, p, f, sep, until);
-    });
+template <typename Parser, typename Fun, typename ParserSep = std::nullptr_t, typename Break = std::nullptr_t>
+inline constexpr auto many_f(Parser p, Fun f, ParserSep sep = nullptr, Break until = nullptr) {
+    return internal::many_2(p, [f](auto &, auto &&r) {
+        f(std::forward<decltype(r)>(r));
+    }, sep, until);
 }
 
 /**
  * Create a parser that applies a parser until it fails, and returns the parsed range as
  * returned by the provided conversion function.
  */
-template <typename Parser, typename ParserSep = std::nullptr_t, typename Until = std::nullptr_t>
-inline constexpr auto many(Parser p, ParserSep sep = nullptr, Until until = nullptr) {
-    return parser([=](auto &s) {
-        return internal::many(s, p, nullptr, sep, until);
-    });
+template <typename Parser, typename ParserSep = std::nullptr_t, typename Break = std::nullptr_t>
+inline constexpr auto many(Parser p, ParserSep sep = nullptr, Break until = nullptr) {
+    return internal::many_2(p, nullptr, sep, until);
 }
 
 /**
@@ -342,9 +350,9 @@ inline constexpr auto many(Parser p, ParserSep sep = nullptr, Until until = null
  */
 template <typename Fun, typename Parser, typename ParserSep = std::nullptr_t>
 inline constexpr auto many_state(Fun f, Parser p, ParserSep sep = nullptr) {
-    return parser([=](auto &s) {
-        return internal::many(s, p, [f, &s](auto &&res){f(s.user_state, std::forward<decltype(res)>(res));}, sep);
-    });
+    return internal::many_2(p, [f](auto &&s, auto &&res) {
+        f(s.user_state, std::forward<decltype(res)>(res));
+    }, sep);
 }
 
 /**
