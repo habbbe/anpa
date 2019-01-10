@@ -135,7 +135,7 @@ inline constexpr auto sequence() {
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto sequence(const ItemType (&seq)[N]) {
-    return sequence(seq, seq + N - 1);
+    return sequence(std::begin(seq), std::end(seq) - 1);
 }
 
 /**
@@ -143,8 +143,8 @@ inline constexpr auto sequence(const ItemType (&seq)[N]) {
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto any_of(const ItemType (&seq)[N]) {
-    return parse::item_if([=](const auto &c) {
-        return algorithm::contains(seq, seq + N - 1, c);
+    return parse::item_if([b = std::begin(seq), e = std::end(seq) - 1](const auto &c) {
+        return algorithm::contains(b, e, c);
     });
 }
 
@@ -234,7 +234,7 @@ template <bool Eat = true,
           typename ItemType, size_t N,
           typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
-    return until_sequence<Eat, Include>(seq, seq + N - 1);
+    return until_sequence<Eat, Include>(std::begin(seq), std::end(seq) - 1);
 }
 
 /**
@@ -275,7 +275,7 @@ inline constexpr auto while_in(Iterator start, Iterator end) {
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto while_in(const ItemType (&items)[N]) {
-    return while_in(items, items + N - 1);
+    return while_in(std::begin(items), std::end(items) - 1);
 }
 
 /**
