@@ -488,3 +488,15 @@ TEST_CASE("many_to_vector with separator") {
     REQUIRE(res.second->at(1) == 20);
     REQUIRE(res.second->at(2) == 3);
 }
+
+TEST_CASE("recursive") {
+
+    constexpr std::string_view str("#######123");
+    constexpr auto rec_parser = parse::recursive<int>([](auto p) {
+        return parse::integer() || parse::item<'#'>() >> p;
+    });
+    constexpr auto res = rec_parser.parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == 123);
+    REQUIRE(res.first == str.end());
+}
