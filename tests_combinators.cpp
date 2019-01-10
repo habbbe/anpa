@@ -235,9 +235,10 @@ TEST_CASE("many_general") {
     std::string str("#1=a#2=b#3=c");
     auto pairParser = parse::lift_value<std::pair<int, char>>(parse::item('#') >> parse::integer(),
                                                               parse::item('=') >> parse::any_item());
-    auto p = parse::many_general<std::unordered_map<int, char>>([](auto &m, auto &&r) {
+    auto p = parse::many_general<std::unordered_map<int, char>>(pairParser, [](auto &m, auto &&r) {
         m.insert(r);
-    }, pairParser);
+    });
+
     auto res = p.parse(str);
     REQUIRE(res.second);
     REQUIRE(res.second->size() == 3);
@@ -249,9 +250,9 @@ TEST_CASE("many_general") {
 
 TEST_CASE("many_with_state") {
     auto intParser = parse::item('#') >> parse::integer();
-    auto p = parse::many_state([](auto &s, auto i) {
+    auto p = parse::many_state(intParser, [](auto &s, auto i) {
         s.emplace_back(i);
-    }, intParser);
+    });
 
     std::vector<int> state;
     auto res = p.parse_with_state("#100#20#3", state);
@@ -464,9 +465,9 @@ TEST_CASE("many_f with separator") {
 TEST_CASE("many_state with separator") {
     constexpr auto intParser = parse::integer();
 
-    auto p = parse::many_state([](auto &s, auto i) {
+    auto p = parse::many_state(intParser, [](auto &s, auto i) {
         s += i;
-    }, intParser, parse::sequence("#%"));
+    }, parse::sequence("#%"));
 
     int state = 0;
     auto res = p.parse_with_state("100#%20#%3", state);

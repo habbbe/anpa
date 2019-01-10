@@ -173,6 +173,21 @@ inline constexpr auto consume(size_t n) {
 }
 
 /**
+ * Parser for consuming n items
+ */
+template <size_t N>
+inline constexpr auto consume() {
+    return parser([](auto &s) {
+        if (s.has_at_least(N)) {
+            auto start_pos = s.position;
+            s.advance(N);
+            return s.return_success(s.convert(start_pos, s.position));
+        }
+        return s.return_fail();
+    });
+}
+
+/**
  * Parser for consuming all items up until a certain item
  * Use boolean template parameter `Eat` to control whether or not to
  * consume the matched item, and `Include` to control whether to or not

@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <utility>
+#include <tuple>
 #include <valgrind/callgrind.h>
 
 namespace parse::internal {
@@ -12,81 +13,43 @@ namespace parse::internal {
  */
 template <typename State,
           typename Parser,
-          typename Fun = std::nullptr_t,
-          typename Sep = std::nullptr_t,
-          typename Break = std::nullptr_t,
+          typename Fun = std::tuple<>,
+          typename Sep = std::tuple<>,
+          typename Break = std::tuple<>,
           bool Eat = true,
           bool Include = false>
 inline constexpr auto many(State &s,
                            Parser p,
-                           Fun f = nullptr,
-                           Sep sep = nullptr,
-                           Break breakOn = nullptr) {
+                           Fun f = std::tuple<>(),
+                           Sep sep = std::tuple<>(),
+                           Break breakOn = std::tuple<>()) {
     auto start = s.position;
 
-    for (auto res = apply(p, s); res; res = apply(p, s)) {
-
-        if constexpr (!std::is_null_pointer_v<std::decay_t<Break>>) {
+    while (true) {
+        if constexpr (!std::is_empty_v<std::decay_t<Break>>) {
             auto p = s.position;
             if (apply(breakOn, s)) {
                 if constexpr (!Eat) s.set_position(p);
                 return s.return_success(s.convert(start, Include ? s.position : p));
+            } else {
+                s.position = p;
             }
         }
 
-        if constexpr (!std::is_null_pointer_v<std::decay_t<Fun>>) {
+        auto res = apply(p, s);
+
+        if (!res) break;
+
+        if constexpr (!std::is_empty_v<std::decay_t<Fun>>) {
             f(*res);
         }
 
-        if constexpr (!std::is_null_pointer_v<std::decay_t<Sep>>) {
+        if constexpr (!std::is_empty_v<std::decay_t<Sep>>) {
             if (!apply(sep, s)) break;
         }
     }
+
     return s.return_success(s.convert(start, s.position));
-}
-
-
-/**
- * General helper for evaluating a parser multiple times with an optional separator.
- * This seems to optimize better on GCC than the above in some cases.
- */
-template <typename Parser,
-          typename Fun = std::nullptr_t,
-          typename Sep = std::nullptr_t,
-          typename Break = std::nullptr_t,
-          bool Eat = true,
-          bool Include = false>
-inline constexpr auto many_2(Parser p,
-                           Fun f = nullptr,
-                           Sep sep = nullptr,
-                           Break breakOn = nullptr) {
-    return parser([=](auto &s) {
-        auto start = s.position;
-
-        while (true) {
-
-            if constexpr (!std::is_null_pointer_v<std::decay_t<Break>>) {
-                auto p = s.position;
-                if (apply(breakOn, s)) {
-                    if constexpr (!Eat) s.set_position(p);
-                    return s.return_success(s.convert(start, Include ? s.position : p));
-                }
-            }
-
-            auto res = apply(p, s);
-
-            if (!res) break;
-
-            if constexpr (!std::is_null_pointer_v<std::decay_t<Fun>>) {
-                f(s, *res);
-            }
-
-            if constexpr (!std::is_null_pointer_v<std::decay_t<Sep>>) {
-                if (!apply(sep, s)) break;
-            }
-        }
-        return s.return_success(s.convert(start, s.position));
-    });
 }
 
 /**
