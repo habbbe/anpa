@@ -514,7 +514,6 @@ inline constexpr auto until(Parser p) {
 template <typename ReturnType, typename ErrorType = void, typename F>
 constexpr auto recursive(F f) {
     return parser([f](auto &s) {
-        // Recursive lambda does
         auto rec = [f, &s](auto self) -> parse::result<ReturnType, ErrorType> {
             auto p = parser([self](auto &) { // The actual parser sent to the caller.
                 return self(self);
