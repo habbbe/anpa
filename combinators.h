@@ -278,7 +278,7 @@ template <typename Container,
           typename Inserter,
           typename ParserSep = std::tuple<>,
           typename Break = std::tuple<>>
-inline auto many_general(Parser p,
+inline constexpr auto many_general(Parser p,
                          Inserter inserter,
                          ParserSep sep = std::tuple<>(),
                          Break breakOn = std::tuple<>()) {
@@ -478,7 +478,7 @@ inline constexpr auto until(Parser p) {
     return parser([=](auto &s) {
         // Must check if we are at the end here, otherwise we would proceed past s.end
         // if the parser fails (which is normal for this combinator).
-        if (s.position == s.end) {
+        if (s.empty()) {
             return s.return_fail();
         }
 
