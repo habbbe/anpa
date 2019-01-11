@@ -57,7 +57,7 @@ inline constexpr auto parse_integer(Iterator begin, Iterator end) {
     };
 
     Integral result = 0;
-    int divisor = 1;
+    unsigned int divisor = 1;
     while (begin != end) {
         if (is_digit(*begin)) {
             if constexpr (IncludeDoubleDivisor) divisor *= 10;

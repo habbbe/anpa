@@ -407,7 +407,7 @@ inline constexpr auto integer() {
             }
         } else {
             if constexpr (IncludeDoubleDivisor) {
-                return s.template return_fail<std::pair<Integral, int>>();
+                return s.template return_fail<std::pair<Integral, unsigned int>>();
             } else {
                 return s.template return_fail<Integral>();
             }
