@@ -9,6 +9,7 @@
 #include "types.h"
 #include "lazy.h"
 
+
 template <typename Parser>
 constexpr auto eat(Parser p) {
     return parse::whitespace() >> p;
