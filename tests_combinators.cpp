@@ -248,7 +248,7 @@ TEST_CASE("many_general") {
     REQUIRE(res.first == str.begin() + 12);
 }
 
-TEST_CASE("many_state") {
+TEST_CASE("many_with_state") {
     auto intParser = parse::item('#') >> parse::integer();
     auto p = parse::many_state(intParser, [](auto &s, auto i) {
         s.emplace_back(i);

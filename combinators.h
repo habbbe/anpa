@@ -278,14 +278,16 @@ template <typename Container,
           typename Inserter,
           typename ParserSep = std::tuple<>,
           typename Break = std::tuple<>>
-inline constexpr auto many_general(Parser p,
+inline auto many_general(Parser p,
                          Inserter inserter,
                          ParserSep sep = std::tuple<>(),
                          Break breakOn = std::tuple<>()) {
     return parser([=](auto &s) {
-        return internal::many<Container>(s, p, [inserter](auto &c, auto &&res) {
+        Container c;
+        internal::many(s, p, [&c, inserter](auto &&res) {
             inserter(c, std::forward<decltype(res)>(res));
         }, sep, breakOn);
+        return s.return_success(std::move(c));
     });
 }
 
@@ -300,9 +302,11 @@ inline constexpr auto many_to_vector(Parser p,
                                      Break breakOn = std::tuple<>()) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
-        return internal::many<std::vector<result_type>>(s, p, [](auto &v, auto &&res) {
-            v.emplace_back(std::forward<decltype(res)>(res));
+        std::vector<result_type> r;
+        internal::many(s, p, [&r](auto &&res) {
+            r.emplace_back(std::forward<decltype(res)>(res));
         }, sep, breakOn);
+        return s.return_success(std::move(r));
     });
 }
 
@@ -322,9 +326,11 @@ inline constexpr auto many_to_map(Parser p,
         using key = std::tuple_element_t<0, result_type>;
         using value = std::tuple_element_t<1, result_type>;
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
-        return internal::many<map_type>(s, p, [](auto &m, auto &&r) {
+        map_type m;
+        internal::many(s, p, [&](auto &&r) {
             m.emplace(std::forward<decltype(r)>(r));
         }, sep, breakOn);
+        return s.return_success(std::move(m));
     });
 }
 
@@ -472,7 +478,7 @@ inline constexpr auto until(Parser p) {
     return parser([=](auto &s) {
         // Must check if we are at the end here, otherwise we would proceed past s.end
         // if the parser fails (which is normal for this combinator).
-        if (s.empty()) {
+        if (s.position == s.end) {
             return s.return_fail();
         }
 

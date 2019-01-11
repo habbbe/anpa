@@ -8,14 +8,10 @@
 
 namespace parse::internal {
 
-template<typename T>
-constexpr bool is_empty = std::is_same_v<std::tuple<>, std::decay_t<T>>;
-
 /**
  * General helper for evaluating a parser multiple times with an optional separator.
  */
-template <typename Result = std::tuple<>,
-          typename State,
+template <typename State,
           typename Parser,
           typename Fun = std::tuple<>,
           typename Sep = std::tuple<>,
@@ -27,26 +23,14 @@ inline constexpr auto many(State &s,
                            Fun f = std::tuple<>(),
                            Sep sep = std::tuple<>(),
                            Break breakOn = std::tuple<>()) {
-
-
-    constexpr bool has_result = !is_empty<Result>;
-
-    using start_type = std::conditional_t<has_result, Result, decltype(s.position)>;
-    start_type start;
-
-    if constexpr (!has_result) start = s.position;
+    auto start = s.position;
 
     while (true) {
-        if constexpr (!is_empty<Break>) {
+        if constexpr (!std::is_empty_v<std::decay_t<Break>>) {
             auto p = s.position;
             if (apply(breakOn, s)) {
                 if constexpr (!Eat) s.set_position(p);
-
-                if constexpr (has_result) {
-                    return s.return_success(std::move(start));
-                } else {
-                    return s.return_success(s.convert(start, Include ? s.position : p));
-                }
+                return s.return_success(s.convert(start, Include ? s.position : p));
             } else {
                 s.position = p;
             }
@@ -55,23 +39,17 @@ inline constexpr auto many(State &s,
         auto res = apply(p, s);
 
         if (!res) break;
-        if constexpr (!is_empty<Fun>) {
-            if constexpr (has_result) {
-                f(start, *res);
-            } else {
-                f(*res);
-            }
+
+        if constexpr (!std::is_empty_v<std::decay_t<Fun>>) {
+            f(*res);
         }
 
-        if constexpr (!is_empty<Sep>) {
+        if constexpr (!std::is_empty_v<std::decay_t<Sep>>) {
             if (!apply(sep, s)) break;
         }
     }
-    if constexpr (has_result) {
-        return s.return_success(std::move(start));
-    } else {
-        return s.return_success(s.convert(start, s.position));
-    }
+
+    return s.return_success(s.convert(start, s.position));
 }
 
 /**
