@@ -508,15 +508,15 @@ inline constexpr auto until(Parser p) {
  * a parser. The passed parser is functionally identical to the returned parser,
  * and can be used recursively within that.
  * You must provide the `ReturnType` of the parsers as the first template argument
- * (this enables the recursive behavior), and optionally an ErrorType if the parser
+ * (to make the compiler happy), and optionally an ErrorType if the parser
  * has error handling.
  */
 template <typename ReturnType, typename ErrorType = void, typename F>
 constexpr auto recursive(F f) {
     return parser([f](auto &s) {
-        // Recursive lambda doing the work for us.
+        // Recursive lambda does
         auto rec = [f, &s](auto self) -> parse::result<ReturnType, ErrorType> {
-            auto p =  parser([self](auto &) { // The actual parser sent to the caller.
+            auto p = parser([self](auto &) { // The actual parser sent to the caller.
                 return self(self);
             });
             return apply(f(p), s);
