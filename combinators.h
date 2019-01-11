@@ -59,30 +59,6 @@ inline constexpr auto change_error(Parser p, Error error) {
 }
 
 /**
- * Transform a parser to a parser that fails on a successful, but empty result (as decided by std::empty
- * or == 0 if integral)
- */
-template <typename Parser>
-inline constexpr auto not_empty(Parser p) {
-    return parser([=](auto &s) {
-        using result_type = std::decay_t<decltype(*(apply(p, s)))>;
-        constexpr auto empty = [](auto &t) {
-            if constexpr (std::is_integral<result_type>::value) {
-                return t == 0;
-            } else {
-                return std::empty(t);
-            }
-        };
-        if (auto result = apply(p, s); !result || !empty(*result)) {
-            return result;
-        } else {
-            using return_type = std::decay_t<decltype(*result)>;
-            return s.template return_fail<return_type>();
-        }
-    });
-}
-
-/**
  * Make a parser that doesn't consume its input on failure
  */
 template <typename Parser>
@@ -121,6 +97,21 @@ inline constexpr auto constrain(Parser p, Predicate pred) {
             return result;
         } else {
             return s.template return_fail<std::decay_t<decltype(*result)>>();
+        }
+    });
+}
+
+/**
+ * Transform a parser to a parser that fails on a successful, but empty result (as decided by std::empty
+ * or == 0 if integral)
+ */
+template <typename Parser>
+inline constexpr auto not_empty(Parser p) {
+    return constrain(p, [](auto &&res) {
+        if constexpr (std::is_integral_v<std::decay_t<decltype(res)>>) {
+            return res != 0;
+        } else {
+            return !std::empty(res);
         }
     });
 }
