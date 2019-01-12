@@ -2,42 +2,42 @@
 #include "parser.h"
 
 TEST_CASE("success") {
-    REQUIRE(parse::success().parse("").second);
+    static_assert(parse::success().parse("").second);
 }
 
 TEST_CASE("fail") {
-    REQUIRE(!parse::fail().parse("").second);
+    static_assert(!parse::fail().parse("").second);
 }
 
 TEST_CASE("empty") {
-    REQUIRE(parse::empty().parse(std::string("")).second);
-    REQUIRE(!parse::empty().parse(std::string(" ")).second);
+    static_assert(parse::empty().parse("").second);
+    static_assert(!parse::empty().parse(" ").second);
 }
 
 TEST_CASE("any_item") {
-    REQUIRE(*parse::any_item().parse(std::string("a")).second == 'a');
-    REQUIRE(!parse::any_item().parse(std::string("")).second);
+    static_assert(*parse::any_item().parse("a").second == 'a');
+    static_assert(!parse::any_item().parse("").second);
 }
 
 TEST_CASE("item") {
-    REQUIRE(*parse::item('a').parse(std::string("a")).second == 'a');
-    REQUIRE(!parse::item('b').parse(std::string("a")).second);
+    static_assert(*parse::item('a').parse("a").second == 'a');
+    static_assert(!parse::item('b').parse("a").second);
 }
 
 TEST_CASE("item_if") {
     constexpr std::string_view str("abc");
     constexpr auto p = parse::item_if([](auto &c) {return c == 'a';});
     constexpr auto res = p.parse(str);
-    REQUIRE(*res.second == 'a');
-    REQUIRE(res.first.position == str.begin() + 1);
+    static_assert(*res.second == 'a');
+    static_assert(res.first.position == str.begin() + 1);
     constexpr std::string_view strFail("bbc");
     constexpr auto resFail = p.parse(strFail);
-    REQUIRE(!resFail.second);
-    REQUIRE(resFail.first.position == strFail.begin());
+    static_assert(!resFail.second);
+    static_assert(resFail.first.position == strFail.begin());
 }
 
 TEST_CASE("custom") {
-    auto parser = [](auto begin, auto end) {
+    constexpr auto parser = [](auto begin, auto end) {
         using type = std::pair<std::decay_t<decltype(begin)>, std::optional<int>>;
         if (begin == end) {
             return type(end, {});
@@ -49,156 +49,155 @@ TEST_CASE("custom") {
             return type(begin, {});
         }
     };
-    std::string strA("a");
-    std::string strB("b");
-    std::string strC("c");
-    std::string strEmpty("");
+    constexpr std::string_view strA("a");
+    constexpr std::string_view strB("b");
+    constexpr std::string_view strC("c");
+    constexpr std::string_view strEmpty("");
 
-    auto resA = parse::custom(parser).parse(strA);
-    auto resB = parse::custom(parser).parse(strB);
-    auto resC = parse::custom(parser).parse(strC);
-    auto resEmpty = parse::custom(parser).parse(strEmpty);
+    constexpr auto resA = parse::custom(parser).parse(strA);
+    constexpr auto resB = parse::custom(parser).parse(strB);
+    constexpr auto resC = parse::custom(parser).parse(strC);
+    constexpr auto resEmpty = parse::custom(parser).parse(strEmpty);
 
-    REQUIRE(*resA.second == 1);
-    REQUIRE(resA.first.position == strA.begin() + 1);
+    static_assert(*resA.second == 1);
+    static_assert(resA.first.position == strA.begin() + 1);
 
-    REQUIRE(*resB.second == 2);
-    REQUIRE(resB.first.position == strB.begin() + 1);
+    static_assert(*resB.second == 2);
+    static_assert(resB.first.position == strB.begin() + 1);
 
-    REQUIRE(!resC.second);
-    REQUIRE(resC.first.position == strC.begin());
+    static_assert(!resC.second);
+    static_assert(resC.first.position == strC.begin());
 
-    REQUIRE(!resEmpty.second);
-    REQUIRE(resEmpty.first.position == strEmpty.end());
+    static_assert(!resEmpty.second);
+    static_assert(resEmpty.first.position == strEmpty.end());
 }
 
 TEST_CASE("custom_state") {
-    auto parser = [](auto begin, auto, auto &state) {
+    constexpr auto parser = [](auto begin, auto, auto &state) {
         using type = std::pair<std::decay_t<decltype(begin)>, std::optional<int>>;
         state = 3;
         return type(begin, 3);
     };
-    std::string str("a");
-    int i = 0;
-    auto res = parse::custom_with_state(parser).parse_with_state(str, i);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == 3);
-    REQUIRE(i == 3);
+    constexpr std::string_view str("a");
+    constexpr auto res = parse::custom_with_state(parser).parse_with_state(str, 0);
+    static_assert(res.second);
+    static_assert(*res.second == 3);
+    static_assert(res.first.user_state == 3);
 }
 
 TEST_CASE("sequence") {
-    std::string str("abcde");
-    auto resSuccess = parse::sequence("abc").parse(str);
-    REQUIRE(resSuccess.second);
-    REQUIRE(*resSuccess.second == "abc");
-    REQUIRE(resSuccess.first.position == str.begin() + 3);
+    constexpr std::string_view str("abcde");
+    constexpr auto resSuccess = parse::sequence("abc").parse(str);
+    static_assert(resSuccess.second);
+    static_assert(*resSuccess.second == "abc");
+    static_assert(resSuccess.first.position == str.begin() + 3);
 
-    auto resParialFail = parse::sequence("abce").parse(str);
-    REQUIRE(!resParialFail.second);
-    REQUIRE(resParialFail.first.position == str.begin());
+    constexpr auto resPartialFail = parse::sequence("abce").parse(str);
+    static_assert(!resPartialFail.second);
+    static_assert(resPartialFail.first.position == str.begin());
 
-    auto resTooLong = parse::sequence("abcdef").parse(str);
-    REQUIRE(!resTooLong.second);
-    REQUIRE(resTooLong.first.position == str.begin());
+    constexpr auto resTooLong = parse::sequence("abcdef").parse(str);
+    static_assert(!resTooLong.second);
+    static_assert(resTooLong.first.position == str.begin());
 
-    auto resFail = parse::sequence("b").parse(str);
-    REQUIRE(!resFail.second);
-    REQUIRE(resFail.first.position == str.begin());
+    constexpr auto resFail = parse::sequence("b").parse(str);
+    static_assert(!resFail.second);
+    static_assert(resFail.first.position == str.begin());
 }
 
 TEST_CASE("consume") {
-    std::string str("abcde");
-    auto resSuccess = parse::consume(3).parse(str);
-    REQUIRE(resSuccess.second);
-    REQUIRE(*resSuccess.second == "abc");
-    REQUIRE(resSuccess.first.position == str.begin() + 3);
+    constexpr std::string_view str("abcde");
+    constexpr auto resSuccess = parse::consume(3).parse(str);
+    static_assert(resSuccess.second);
+    static_assert(*resSuccess.second == "abc");
+    static_assert(resSuccess.first.position == str.begin() + 3);
 
-    auto resFail = parse::consume(6).parse(str);
-    REQUIRE(!resFail.second);
-    REQUIRE(resFail.first.position == str.begin());
+    constexpr auto resFail = parse::consume(6).parse(str);
+    static_assert(!resFail.second);
+    static_assert(resFail.first.position == str.begin());
 }
 
 TEST_CASE("until_item eat no include") {
-    std::string str("abcde");
-    auto res = parse::until_item('c').parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "ab");
-    REQUIRE(res.first.position == str.begin() + 3);
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::until_item('c').parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "ab");
+    static_assert(res.first.position == str.begin() + 3);
 }
 
 TEST_CASE("until_item no eat no include") {
-    std::string str("abcde");
-    auto res = parse::until_item<false, false>('c').parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "ab");
-    REQUIRE(res.first.position == str.begin() + 2);
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::until_item<false, false>('c').parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "ab");
+    static_assert(res.first.position == str.begin() + 2);
 }
 
 TEST_CASE("until_item eat include") {
-    std::string str("abcde");
-    auto res = parse::until_item<true, true>('c').parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "abc");
-    REQUIRE(res.first.position == str.begin() + 3);
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::until_item<true, true>('c').parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "abc");
+    static_assert(res.first.position == str.begin() + 3);
 }
 
 TEST_CASE("until_item no eat include") {
-    std::string str("abcde");
-    auto res = parse::until_item<false, true>('c').parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "abc");
-    REQUIRE(res.first.position == str.begin() + 2);
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::until_item<false, true>('c').parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "abc");
+    static_assert(res.first.position == str.begin() + 2);
 }
 
 TEST_CASE("until_sequence eat no include") {
-    std::string str("abcde");
-    auto res = parse::until_sequence("cd").parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "ab");
-    REQUIRE(res.first.position == str.begin() + 4);
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::until_sequence("cd").parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "ab");
+    static_assert(res.first.position == str.begin() + 4);
 
-    auto resFail = parse::until_sequence("cdf").parse(str);
-    REQUIRE(!resFail.second);
-    REQUIRE(resFail.first.position == str.begin());
+    constexpr auto resFail = parse::until_sequence("cdf").parse(str);
+    static_assert(!resFail.second);
+    static_assert(resFail.first.position == str.begin());
 }
 
 TEST_CASE("until_sequence no eat no include") {
-    std::string str("abcde");
-    auto res = parse::until_sequence<false, false>("cd").parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "ab");
-    REQUIRE(res.first.position == str.begin() + 2);
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::until_sequence<false, false>("cd").parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "ab");
+    static_assert(res.first.position == str.begin() + 2);
 }
 
 TEST_CASE("until_sequence eat include") {
-    std::string str("abcde");
-    auto res = parse::until_sequence<true, true>("cd").parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "abcd");
-    REQUIRE(res.first.position == str.begin() + 4);
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::until_sequence<true, true>("cd").parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "abcd");
+    static_assert(res.first.position == str.begin() + 4);
 }
 
 TEST_CASE("until_sequence no eat include") {
-    std::string str("abcde");
-    auto res = parse::until_sequence<false, true>("cd").parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "abcd");
-    REQUIRE(res.first.position == str.begin() + 2);
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::until_sequence<false, true>("cd").parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "abcd");
+    static_assert(res.first.position == str.begin() + 2);
 }
 
 TEST_CASE("rest") {
-    std::string str("abcde");
-    auto res = parse::rest().parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "abcde");
-    REQUIRE(res.first.position == str.end());
+    constexpr std::string_view str("abcde");
+    constexpr auto res = parse::rest().parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "abcde");
+    static_assert(res.first.position == str.end());
 
-    std::string strEmpty;
-    auto resEmpty = parse::rest().parse(strEmpty);
-    REQUIRE(resEmpty.second);
-    REQUIRE(*resEmpty.second == "");
-    REQUIRE(resEmpty.first.position == strEmpty.begin());
-    REQUIRE(resEmpty.first.position == strEmpty.end());
+    constexpr std::string_view strEmpty;
+    constexpr auto resEmpty = parse::rest().parse(strEmpty);
+    static_assert(resEmpty.second);
+    static_assert(*resEmpty.second == "");
+    static_assert(resEmpty.first.position == strEmpty.begin());
+    static_assert(resEmpty.first.position == strEmpty.end());
 }
 
 TEST_CASE("while_predicate") {
@@ -206,134 +205,131 @@ TEST_CASE("while_predicate") {
         return x == 'a' || x == 'b';
     };
 
-    std::string str("aabbcc");
-    auto res = parse::while_predicate(pred).parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "aabb");
-    REQUIRE(res.first.position == str.begin() + 4);
+    constexpr std::string_view str("aabbcc");
+    constexpr auto res = parse::while_predicate(pred).parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "aabb");
+    static_assert(res.first.position == str.begin() + 4);
 
-    std::string strNoMatch("cbbaa");
-    auto resNoMatch = parse::while_predicate(pred).parse(strNoMatch);
-    REQUIRE(resNoMatch.second);
-    REQUIRE(*resNoMatch.second == "");
-    REQUIRE(resNoMatch.first.position == strNoMatch.begin());
+    constexpr std::string_view strNoMatch("cbbaa");
+    constexpr auto resNoMatch = parse::while_predicate(pred).parse(strNoMatch);
+    static_assert(resNoMatch.second);
+    static_assert(*resNoMatch.second == "");
+    static_assert(resNoMatch.first.position == strNoMatch.begin());
 }
 
 TEST_CASE("while_in") {
-    std::string str("aabbcc");
-    auto res = parse::while_in("abc").parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "aabbcc");
-    REQUIRE(res.first.position == str.end());
+    constexpr std::string_view str("aabbcc");
+    constexpr auto res = parse::while_in("abc").parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "aabbcc");
+    static_assert(res.first.position == str.end());
 
-    auto resNoMatch = parse::while_in("def").parse(str);
-    REQUIRE(resNoMatch.second);
-    REQUIRE(*resNoMatch.second == "");
-    REQUIRE(resNoMatch.first.position == str.begin());
+    constexpr auto resNoMatch = parse::while_in("def").parse(str);
+    static_assert(resNoMatch.second);
+    static_assert(*resNoMatch.second == "");
+    static_assert(resNoMatch.first.position == str.begin());
 }
 
 TEST_CASE("between_sequences") {
-    std::string str("beginabcdeend");
-    auto res = parse::between_sequences("begin", "end").parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "abcde");
-    REQUIRE(res.first.position == str.end());
+    constexpr std::string_view str("beginabcdeend");
+    constexpr auto res = parse::between_sequences("begin", "end").parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "abcde");
+    static_assert(res.first.position == str.end());
 
-    auto resNoEat = parse::between_sequences<false, false>("begin", "end").parse(str);
-    REQUIRE(resNoEat.second);
-    REQUIRE(*resNoEat.second == "beginabcdeend");
-    REQUIRE(resNoEat.first.position == str.end());
+    constexpr auto resNoEat = parse::between_sequences<false, false>("begin", "end").parse(str);
+    static_assert(resNoEat.second);
+    static_assert(*resNoEat.second == "beginabcdeend");
+    static_assert(resNoEat.first.position == str.end());
 }
 
 TEST_CASE("between_sequences nested") {
-    std::string str("beginbeginabcdeendend");
-    auto res = parse::between_sequences<true>("begin", "end").parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "beginabcdeend");
-    REQUIRE(res.first.position == str.end());
+    constexpr std::string_view str("beginbeginabcdeendend");
+    constexpr auto res = parse::between_sequences<true>("begin", "end").parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "beginabcdeend");
+    static_assert(res.first.position == str.end());
 
-    auto resNoEat = parse::between_sequences<true, false>("begin", "end").parse(str);
-    REQUIRE(resNoEat.second);
-    REQUIRE(*resNoEat.second == "beginbeginabcdeendend");
-    REQUIRE(resNoEat.first.position == str.end());
+    constexpr auto resNoEat = parse::between_sequences<true, false>("begin", "end").parse(str);
+    static_assert(resNoEat.second);
+    static_assert(*resNoEat.second == "beginbeginabcdeendend");
+    static_assert(resNoEat.first.position == str.end());
 
-    std::string strNonClosing("beginbeginabcdeend");
-    auto resNonClosing = parse::between_sequences<true>("begin", "end").parse(strNonClosing);
-    REQUIRE(!resNonClosing.second);
-    REQUIRE(resNonClosing.first.position == strNonClosing.begin());
+    constexpr std::string_view strNonClosing("beginbeginabcdeend");
+    constexpr auto resNonClosing = parse::between_sequences<true>("begin", "end").parse(strNonClosing);
+    static_assert(!resNonClosing.second);
+    static_assert(resNonClosing.first.position == strNonClosing.begin());
 }
 
 TEST_CASE("between_items") {
-    std::string str("{abcde}");
-    auto res = parse::between_items('{', '}').parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == "abcde");
-    REQUIRE(res.first.position == str.end());
+    constexpr std::string_view str("{abcde}");
+    constexpr auto res = parse::between_items('{', '}').parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "abcde");
+    static_assert(res.first.position == str.end());
 }
 
 TEST_CASE("integer") {
     constexpr std::string_view str("42abcde");
     constexpr auto res = parse::integer().parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == 42);
-    REQUIRE(res.first.position == str.begin() + 2);
+    static_assert(res.second);
+    static_assert(*res.second == 42);
+    static_assert(res.first.position == str.begin() + 2);
 
-    std::string str2("-42abcde");
-    auto res2 = parse::integer().parse(str2);
-    REQUIRE(res2.second);
-    REQUIRE(*res2.second == -42);
-    REQUIRE(res2.first.position == str2.begin() + 3);
+    constexpr std::string_view str2("-42abcde");
+    constexpr auto res2 = parse::integer().parse(str2);
+    static_assert(res2.second);
+    static_assert(*res2.second == -42);
+    static_assert(res2.first.position == str2.begin() + 3);
 
-    std::string str3("-42abcde");
-    auto res3 = parse::integer<unsigned int>().parse(str3);
-    REQUIRE(!res3.second);
-    REQUIRE(res3.first.position == str3.begin());
+    constexpr std::string_view str3("-42abcde");
+    constexpr auto res3 = parse::integer<unsigned int>().parse(str3);
+    static_assert(!res3.second);
+    static_assert(res3.first.position == str3.begin());
 
-    std::string str4("42abcde");
-    auto res4 = parse::integer<unsigned int>().parse(str4);
-    REQUIRE(res4.second);
-    REQUIRE(*res4.second == 42);
-    REQUIRE(res4.first.position == str4.begin() + 2);
+    constexpr std::string_view str4("42abcde");
+    constexpr auto res4 = parse::integer<unsigned int>().parse(str4);
+    static_assert(res4.second);
+    static_assert(*res4.second == 42);
+    static_assert(res4.first.position == str4.begin() + 2);
 }
 
 TEST_CASE("floating") {
-    auto p = parse::floating();
-    auto test = [&](auto s, double r) {
-        std::string str(s);
-        auto res = p.parse(str);
-        REQUIRE(res.second);
-        REQUIRE(*res.second == r);
-        REQUIRE(res.first.position == str.end());
-    };
-
-    test("123", 123.0);
-    test("-123", -123.0);
-    test("123.321", 123.321);
-    test("-123.321", -123.321);
-    test("123.0", 123.0);
-    test("-123.0", -123.0);
-    test("123e3", 123e3);
-    test("-123e3", -123e3);
-    test("123e-3", 123e-3);
-    test("-123e-3", -123e-3);
-    test("123.321e3", 123.321e3);
-    test("-123.321e3", -123.321e3);
-    test("123.321e-3", 123.321e-3);
-    test("-123.321e-3", -123.321e-3);
+    constexpr auto p = parse::floating();
+#define floating_test_(s,b) { constexpr std::string_view str(s); \
+        constexpr auto res = p.parse(str); \
+        static_assert(res.second); \
+        static_assert(*res.second == b); \
+        static_assert(res.first.position == str.end());}
+    floating_test_("123", 123.0);
+    floating_test_("-123", -123.0);
+    floating_test_("123.321", 123.321);
+    floating_test_("-123.321", -123.321);
+    floating_test_("123.0", 123.0);
+    floating_test_("-123.0", -123.0);
+    floating_test_("123e1", 1230);
+    floating_test_("123e3", 123e3);
+    floating_test_("-123e3", -123e3);
+    floating_test_("123e-3", 123e-3);
+    floating_test_("-123e-3", -123e-3);
+    floating_test_("123.321e3", 123.321e3);
+    floating_test_("-123.321e3", -123.321e3);
+    floating_test_("123.321e-3", 123.321e-3);
+    floating_test_("-123.321e-3", -123.321e-3);
 }
 
 TEST_CASE("number") {
     auto &str = "42abcde";
-
     auto res = parse::number<int>().parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == 42);
     REQUIRE(res.first.position == str + 2);
 
-    // Doesn't seem to compile?
+    // No support for floats yet.
 //    auto &str2 = "42.3abcde";
-//    auto res2 = parse::number<float>().parse(str2);
-//    REQUIRE(res2.second);
-//    REQUIRE(*res2.second == 42.3);
-//    REQUIRE(res2.first.position == str2 + 4);
+//    constexpr auto res2 = parse::number<float>().parse(str2);
+//    static_assert(res2.second);
+//    static_assert(*res2.second == 42.3);
+//    static_assert(res2.first.position == str2 + 4);
 }

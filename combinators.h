@@ -302,6 +302,27 @@ inline constexpr auto many_to_vector(Parser p,
 }
 
 /**
+ * Create a parser that applies a parser until it fails and returns the result in a vector.
+ */
+template <size_t size,
+          typename Parser,
+          typename ParserSep = std::tuple<>,
+          typename Break = std::tuple<>>
+inline constexpr auto many_to_array(Parser p,
+                                    ParserSep sep = std::tuple<>(),
+                                    Break breakOn = std::tuple<>()) {
+    return parser([=](auto &s) {
+        using result_type = std::decay_t<decltype(*apply(p, s))>;
+        std::array<result_type, size> arr{};
+        size_t i = 0;
+        internal::many(s, p, [&arr, &i](auto &&res) {
+            arr[i++] = res;
+        }, sep, breakOn);
+        return s.return_success(std::pair(std::move(arr), i));
+    });
+}
+
+/**
  * Create a parser that applies a parser until it fails and returns the result in an `unordered_map`.
  * Key and value are retrieved from the result using std::tuple_element.
  */

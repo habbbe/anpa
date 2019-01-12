@@ -2,6 +2,7 @@
 #define PARSER_PARSERS_INTERNAL_H
 
 #include <tuple>
+#include <limits>
 #include "algorithm.h"
 
 namespace parse::internal {

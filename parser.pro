@@ -40,4 +40,5 @@ HEADERS += \
     settings.h \
     state.h \
     types.h \
-    parsers_internal.h
+    parsers_internal.h \
+    pow10.h

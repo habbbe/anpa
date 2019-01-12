@@ -119,16 +119,16 @@ struct parser_state: public parser_state_simple<Iterator, StringResultConversion
     UserState user_state;
 
     constexpr parser_state(Iterator begin, Iterator end, UserState &&state, StringResultConversion convert, Settings settings)
-        : parser_state_simple<Iterator, StringResultConversion, Settings>{begin, end, convert, settings}, user_state{std::forward<UserState>(state)} {}
+        : parser_state_simple<Iterator, StringResultConversion, Settings>{begin, end, convert, settings},
+          user_state{std::forward<UserState>(state)} {}
 
-    template<typename State>
-    constexpr parser_state(Iterator begin, Iterator end, const State &other) :
-        parser_state(begin, end, other.user_state, other.conversion_function, typename State::settings()){}
+    constexpr parser_state(Iterator begin, Iterator end, parser_state &other)
+        : parser_state_simple<Iterator, StringResultConversion, Settings>{begin, end, other.conversion_function, typename parser_state::settings()},
+          user_state{other.user_state} {}
 };
 template <typename Iterator, typename StringResultConversion, typename Settings, typename UserState>
 parser_state(Iterator, Iterator, UserState&&, StringResultConversion, Settings) ->
-parser_state<Iterator, StringResultConversion, Settings,
-UserState>;
+parser_state<Iterator, StringResultConversion, Settings, UserState>;
 
 }
 

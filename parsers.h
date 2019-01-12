@@ -8,6 +8,7 @@
 #include "types.h"
 #include "combinators.h"
 #include "parsers_internal.h"
+#include "pow10.h"
 
 namespace parse {
 
@@ -424,7 +425,7 @@ inline constexpr auto floating() {
         return floating_part >>= [](auto &&d) {
             auto exp = (item<'e'>() || item<'E'>()) >> integer();
             return (exp >>= [=](auto &&e) {
-                return mreturn(d * std::pow(10, e));
+                return mreturn(d * internal::pow_table<FloatType>::pow(e));
             }) || mreturn(d);
         };
     } else {
