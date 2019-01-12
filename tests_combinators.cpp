@@ -265,6 +265,15 @@ TEST_CASE("many_state") {
     REQUIRE(state[2] == 3);
 }
 
+TEST_CASE("fold") {
+    constexpr std::string_view str("#100#20#3");
+    constexpr auto intParser = parse::item<'#'>() >> parse::integer();
+    constexpr auto p = parse::fold(intParser, 0, [](auto a, auto b) {return a + b;});
+    constexpr auto res = p.parse(str);
+    REQUIRE(res.second);
+    REQUIRE(*res.second == 123);
+}
+
 TEST_CASE("lift_or") {
     auto atParser = parse::item('@') >> parse::integer();
     auto percentParser = parse::item('%') >> parse::any_item();

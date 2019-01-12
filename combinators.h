@@ -383,6 +383,25 @@ inline constexpr auto many_state(Parser p,
 }
 
 /**
+ * Fold a series of successful parser results with binary operator `f` and initial value `i`.
+ */
+template <typename Parser,
+          typename Init,
+          typename Fun,
+          typename ParserSep = std::tuple<>,
+          typename Break = std::tuple<>>
+inline constexpr auto fold(Parser p,
+                           Init &&i,
+                           Fun f,
+                           ParserSep sep = std::tuple<>(),
+                           Break breakOn = std::tuple<>()) {
+    return parser([p, i = std::forward<Init>(i), f, sep, breakOn](auto &s) mutable {
+        internal::many(s, p, [f, &i](auto &&a) {i = f(i, std::forward<decltype(a)>(a));}, sep, breakOn);
+        return s.return_success(std::move(i));
+    });
+}
+
+/**
  * Lift the result of a unary functor to the parser monad after applying it to the first successful
  * parser's result.
  * The lifted functor must provide an overload for every parser result type.
