@@ -11,19 +11,22 @@ namespace parse::internal {
 /**
  * General helper for evaluating a parser multiple times with an optional separator.
  */
-template <typename State,
+template <bool FailOnNoSuccess = false,
+          typename State,
           typename Parser,
           typename Fun = std::tuple<>,
           typename Sep = std::tuple<>,
           typename Break = std::tuple<>,
           bool Eat = true,
-          bool Include = false>
+          bool Include = false
+          >
 inline constexpr auto many(State &s,
                            Parser p,
                            Fun f = std::tuple<>(),
                            Sep sep = std::tuple<>(),
                            Break breakOn = std::tuple<>()) {
     auto start = s.position;
+    bool successes = false;
 
     while (true) {
         if constexpr (!std::is_empty_v<std::decay_t<Break>>) {
@@ -38,7 +41,15 @@ inline constexpr auto many(State &s,
 
         auto res = apply(p, s);
 
-        if (!res) break;
+        if (!res) {
+            if constexpr (FailOnNoSuccess) {
+                if (!successes) {
+                    return s.return_fail();
+                }
+            }
+            break;
+        }
+        successes = true;
 
         if constexpr (!std::is_empty_v<std::decay_t<Fun>>) {
             f(*res);

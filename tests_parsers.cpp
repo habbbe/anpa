@@ -24,6 +24,13 @@ TEST_CASE("item") {
     REQUIRE(!parse::item('b').parse(std::string("a")).second);
 }
 
+TEST_CASE("item_if") {
+    constexpr auto p = parse::item_if([](auto &c) {return c == 'a';});
+    constexpr auto res = p.parse(std::string_view("a"));
+    REQUIRE(*res.second == 'a');
+    REQUIRE(!p.parse(std::string("b")).second);
+}
+
 TEST_CASE("custom") {
     auto parser = [](auto begin, auto end) {
         using type = std::pair<std::decay_t<decltype(begin)>, std::optional<int>>;
@@ -260,8 +267,8 @@ TEST_CASE("between_items") {
 }
 
 TEST_CASE("integer") {
-    std::string str("42abcde");
-    auto res = parse::integer().parse(str);
+    constexpr std::string_view str("42abcde");
+    constexpr auto res = parse::integer().parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == 42);
     REQUIRE(res.first == str.begin() + 2);

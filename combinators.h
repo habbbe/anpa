@@ -385,7 +385,8 @@ inline constexpr auto many_state(Parser p,
 /**
  * Fold a series of successful parser results with binary operator `f` and initial value `i`.
  */
-template <typename Parser,
+template <bool FailOnNoSuccess = false,
+          typename Parser,
           typename Init,
           typename Fun,
           typename ParserSep = std::tuple<>,
@@ -396,7 +397,14 @@ inline constexpr auto fold(Parser p,
                            ParserSep sep = std::tuple<>(),
                            Break breakOn = std::tuple<>()) {
     return parser([p, i = std::forward<Init>(i), f, sep, breakOn](auto &s) mutable {
-        internal::many(s, p, [f, &i](auto &&a) {i = f(i, std::forward<decltype(a)>(a));}, sep, breakOn);
+        auto res = internal::many<FailOnNoSuccess>(s, p, [f, &i](auto &&a) {
+            i = f(i, std::forward<decltype(a)>(a));
+        }, sep, breakOn);
+        if constexpr (FailOnNoSuccess) {
+            if (!res) {
+                return s.template return_fail<Init>();
+            }
+        }
         return s.return_success(std::move(i));
     });
 }
