@@ -390,7 +390,7 @@ inline constexpr auto integer() {
         if (new_pos != s.position) {
             s.set_position(new_pos);
             if constexpr (IncludeDoubleDivisor) {
-                return s.return_success(std::make_pair(result, std::get<2>(res)));
+                return s.return_success(std::pair(result, std::get<2>(res)));
             } else {
                 return s.return_success(result);
             }
@@ -409,23 +409,21 @@ inline constexpr auto integer() {
  * Parser for a floating number.
  * Use template parameter AllowScientific to enable/disable support for scientific notation.
  */
-template <bool AllowScientific = true>
+template <bool AllowScientific = true, typename FloatType = double>
 inline constexpr auto floating() {
-    constexpr auto to_double = [](auto i, auto d, auto c) {
-        return i + ((i < 0 ? -1 : 1) * (d / double(c)));
-    };
 
-    constexpr auto dec = item('.') >> integer<unsigned int, true>();
-    constexpr auto floating_part = integer() >>= [=](auto n) {
-        return (dec >>= [=](auto p) {
-            return mreturn(to_double(n, p.first, p.second));
-        }) || mreturn(double(n));
+    constexpr auto dec = item<'.'>() >> integer<unsigned int, true>();
+
+    constexpr auto floating_part = integer() >>= [=](auto &&n) {
+        return (dec >>= [=](auto &&p) {
+            return mreturn(n + ((n < 0 ? -1 : 1) * (FloatType(p.first) / p.second)));
+        }) || mreturn(FloatType(n));
     };
 
     if constexpr (AllowScientific) {
-        return floating_part >>= [](auto d) {
-            auto exp = (item('e') || item('E')) >> integer();
-            return (exp >>= [=](auto e) {
+        return floating_part >>= [](auto &&d) {
+            auto exp = (item<'e'>() || item<'E'>()) >> integer();
+            return (exp >>= [=](auto &&e) {
                 return mreturn(d * std::pow(10, e));
             }) || mreturn(d);
         };

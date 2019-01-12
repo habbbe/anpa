@@ -15,7 +15,7 @@ auto test_json_type(Str &&s, T val) {
 }
 
 TEST_CASE("json_number") {
-    test_json_type<double>("-123.20", -123.20);
+    test_json_type<json_number>("-123.20", -123.20);
 }
 
 TEST_CASE("json_null") {
@@ -46,8 +46,8 @@ TEST_CASE("json_general") {
 
     REQUIRE(element1.size() == 3);
 
-    REQUIRE(element1[0].is_a<double>());
-    REQUIRE(element1[0].get<double>() == 3e5);
+    REQUIRE(element1[0].is_a<json_number>());
+    REQUIRE(element1[0].get<json_number>() == 3e5);
 
     REQUIRE(element1[1].is_a<json_array>());
     REQUIRE(element1[1].size() == 2);
