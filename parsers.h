@@ -384,18 +384,15 @@ inline constexpr auto number() {
 template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
     return parser([](auto &s) {
-        bool negate = std::is_signed_v<Integral> && !s.empty() && s.front() == '-';
-        auto start_iterator = std::next(s.position, negate ? 1 : 0);
-        auto res = internal::parse_integer<Integral, IncludeDoubleDivisor>(start_iterator, s.end);
+        auto res = internal::parse_integer<Integral, IncludeDoubleDivisor>(s.position, s.end);
         auto new_pos = std::get<0>(res);
         auto result = std::get<1>(res);
-        if (new_pos != start_iterator) {
+        if (new_pos != s.position) {
             s.set_position(new_pos);
-            auto n = result * (negate ? -1 : 1);
             if constexpr (IncludeDoubleDivisor) {
-                return s.return_success(std::make_pair(n, std::get<2>(res)));
+                return s.return_success(std::make_pair(result, std::get<2>(res)));
             } else {
-                return s.return_success(n);
+                return s.return_success(result);
             }
         } else {
             if constexpr (IncludeDoubleDivisor) {
