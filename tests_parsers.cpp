@@ -25,10 +25,15 @@ TEST_CASE("item") {
 }
 
 TEST_CASE("item_if") {
+    constexpr std::string_view str("abc");
     constexpr auto p = parse::item_if([](auto &c) {return c == 'a';});
-    constexpr auto res = p.parse(std::string_view("a"));
+    constexpr auto res = p.parse(str);
     REQUIRE(*res.second == 'a');
-    REQUIRE(!p.parse(std::string("b")).second);
+    REQUIRE(res.first == str.begin() + 1);
+    constexpr std::string_view strFail("bbc");
+    constexpr auto resFail = p.parse(strFail);
+    REQUIRE(!resFail.second);
+    REQUIRE(resFail.first == strFail.begin());
 }
 
 TEST_CASE("custom") {

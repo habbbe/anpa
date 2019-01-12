@@ -103,7 +103,7 @@ inline constexpr auto not_item() {
  */
 template <typename Pred>
 inline constexpr auto item_if(Pred pred) {
-    return constrain(any_item(), pred);
+    return try_parser(constrain(any_item(), pred));
 }
 
 /**
