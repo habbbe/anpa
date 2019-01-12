@@ -29,11 +29,11 @@ TEST_CASE("item_if") {
     constexpr auto p = parse::item_if([](auto &c) {return c == 'a';});
     constexpr auto res = p.parse(str);
     REQUIRE(*res.second == 'a');
-    REQUIRE(res.first == str.begin() + 1);
+    REQUIRE(res.first.position == str.begin() + 1);
     constexpr std::string_view strFail("bbc");
     constexpr auto resFail = p.parse(strFail);
     REQUIRE(!resFail.second);
-    REQUIRE(resFail.first == strFail.begin());
+    REQUIRE(resFail.first.position == strFail.begin());
 }
 
 TEST_CASE("custom") {
@@ -60,16 +60,16 @@ TEST_CASE("custom") {
     auto resEmpty = parse::custom(parser).parse(strEmpty);
 
     REQUIRE(*resA.second == 1);
-    REQUIRE(resA.first == strA.begin() + 1);
+    REQUIRE(resA.first.position == strA.begin() + 1);
 
     REQUIRE(*resB.second == 2);
-    REQUIRE(resB.first == strB.begin() + 1);
+    REQUIRE(resB.first.position == strB.begin() + 1);
 
     REQUIRE(!resC.second);
-    REQUIRE(resC.first == strC.begin());
+    REQUIRE(resC.first.position == strC.begin());
 
     REQUIRE(!resEmpty.second);
-    REQUIRE(resEmpty.first == strEmpty.end());
+    REQUIRE(resEmpty.first.position == strEmpty.end());
 }
 
 TEST_CASE("custom_state") {
@@ -91,19 +91,19 @@ TEST_CASE("sequence") {
     auto resSuccess = parse::sequence("abc").parse(str);
     REQUIRE(resSuccess.second);
     REQUIRE(*resSuccess.second == "abc");
-    REQUIRE(resSuccess.first == str.begin() + 3);
+    REQUIRE(resSuccess.first.position == str.begin() + 3);
 
     auto resParialFail = parse::sequence("abce").parse(str);
     REQUIRE(!resParialFail.second);
-    REQUIRE(resParialFail.first == str.begin());
+    REQUIRE(resParialFail.first.position == str.begin());
 
     auto resTooLong = parse::sequence("abcdef").parse(str);
     REQUIRE(!resTooLong.second);
-    REQUIRE(resTooLong.first == str.begin());
+    REQUIRE(resTooLong.first.position == str.begin());
 
     auto resFail = parse::sequence("b").parse(str);
     REQUIRE(!resFail.second);
-    REQUIRE(resFail.first == str.begin());
+    REQUIRE(resFail.first.position == str.begin());
 }
 
 TEST_CASE("consume") {
@@ -111,11 +111,11 @@ TEST_CASE("consume") {
     auto resSuccess = parse::consume(3).parse(str);
     REQUIRE(resSuccess.second);
     REQUIRE(*resSuccess.second == "abc");
-    REQUIRE(resSuccess.first == str.begin() + 3);
+    REQUIRE(resSuccess.first.position == str.begin() + 3);
 
     auto resFail = parse::consume(6).parse(str);
     REQUIRE(!resFail.second);
-    REQUIRE(resFail.first == str.begin());
+    REQUIRE(resFail.first.position == str.begin());
 }
 
 TEST_CASE("until_item eat no include") {
@@ -123,7 +123,7 @@ TEST_CASE("until_item eat no include") {
     auto res = parse::until_item('c').parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "ab");
-    REQUIRE(res.first == str.begin() + 3);
+    REQUIRE(res.first.position == str.begin() + 3);
 }
 
 TEST_CASE("until_item no eat no include") {
@@ -131,7 +131,7 @@ TEST_CASE("until_item no eat no include") {
     auto res = parse::until_item<false, false>('c').parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "ab");
-    REQUIRE(res.first == str.begin() + 2);
+    REQUIRE(res.first.position == str.begin() + 2);
 }
 
 TEST_CASE("until_item eat include") {
@@ -139,7 +139,7 @@ TEST_CASE("until_item eat include") {
     auto res = parse::until_item<true, true>('c').parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "abc");
-    REQUIRE(res.first == str.begin() + 3);
+    REQUIRE(res.first.position == str.begin() + 3);
 }
 
 TEST_CASE("until_item no eat include") {
@@ -147,7 +147,7 @@ TEST_CASE("until_item no eat include") {
     auto res = parse::until_item<false, true>('c').parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "abc");
-    REQUIRE(res.first == str.begin() + 2);
+    REQUIRE(res.first.position == str.begin() + 2);
 }
 
 TEST_CASE("until_sequence eat no include") {
@@ -155,11 +155,11 @@ TEST_CASE("until_sequence eat no include") {
     auto res = parse::until_sequence("cd").parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "ab");
-    REQUIRE(res.first == str.begin() + 4);
+    REQUIRE(res.first.position == str.begin() + 4);
 
     auto resFail = parse::until_sequence("cdf").parse(str);
     REQUIRE(!resFail.second);
-    REQUIRE(resFail.first == str.begin());
+    REQUIRE(resFail.first.position == str.begin());
 }
 
 TEST_CASE("until_sequence no eat no include") {
@@ -167,7 +167,7 @@ TEST_CASE("until_sequence no eat no include") {
     auto res = parse::until_sequence<false, false>("cd").parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "ab");
-    REQUIRE(res.first == str.begin() + 2);
+    REQUIRE(res.first.position == str.begin() + 2);
 }
 
 TEST_CASE("until_sequence eat include") {
@@ -175,7 +175,7 @@ TEST_CASE("until_sequence eat include") {
     auto res = parse::until_sequence<true, true>("cd").parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "abcd");
-    REQUIRE(res.first == str.begin() + 4);
+    REQUIRE(res.first.position == str.begin() + 4);
 }
 
 TEST_CASE("until_sequence no eat include") {
@@ -183,7 +183,7 @@ TEST_CASE("until_sequence no eat include") {
     auto res = parse::until_sequence<false, true>("cd").parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "abcd");
-    REQUIRE(res.first == str.begin() + 2);
+    REQUIRE(res.first.position == str.begin() + 2);
 }
 
 TEST_CASE("rest") {
@@ -191,14 +191,14 @@ TEST_CASE("rest") {
     auto res = parse::rest().parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "abcde");
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 
     std::string strEmpty;
     auto resEmpty = parse::rest().parse(strEmpty);
     REQUIRE(resEmpty.second);
     REQUIRE(*resEmpty.second == "");
-    REQUIRE(resEmpty.first == strEmpty.begin());
-    REQUIRE(resEmpty.first == strEmpty.end());
+    REQUIRE(resEmpty.first.position == strEmpty.begin());
+    REQUIRE(resEmpty.first.position == strEmpty.end());
 }
 
 TEST_CASE("while_predicate") {
@@ -210,13 +210,13 @@ TEST_CASE("while_predicate") {
     auto res = parse::while_predicate(pred).parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "aabb");
-    REQUIRE(res.first == str.begin() + 4);
+    REQUIRE(res.first.position == str.begin() + 4);
 
     std::string strNoMatch("cbbaa");
     auto resNoMatch = parse::while_predicate(pred).parse(strNoMatch);
     REQUIRE(resNoMatch.second);
     REQUIRE(*resNoMatch.second == "");
-    REQUIRE(resNoMatch.first == strNoMatch.begin());
+    REQUIRE(resNoMatch.first.position == strNoMatch.begin());
 }
 
 TEST_CASE("while_in") {
@@ -224,12 +224,12 @@ TEST_CASE("while_in") {
     auto res = parse::while_in("abc").parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "aabbcc");
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 
     auto resNoMatch = parse::while_in("def").parse(str);
     REQUIRE(resNoMatch.second);
     REQUIRE(*resNoMatch.second == "");
-    REQUIRE(resNoMatch.first == str.begin());
+    REQUIRE(resNoMatch.first.position == str.begin());
 }
 
 TEST_CASE("between_sequences") {
@@ -237,12 +237,12 @@ TEST_CASE("between_sequences") {
     auto res = parse::between_sequences("begin", "end").parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "abcde");
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 
     auto resNoEat = parse::between_sequences<false, false>("begin", "end").parse(str);
     REQUIRE(resNoEat.second);
     REQUIRE(*resNoEat.second == "beginabcdeend");
-    REQUIRE(resNoEat.first == str.end());
+    REQUIRE(resNoEat.first.position == str.end());
 }
 
 TEST_CASE("between_sequences nested") {
@@ -250,17 +250,17 @@ TEST_CASE("between_sequences nested") {
     auto res = parse::between_sequences<true>("begin", "end").parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "beginabcdeend");
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 
     auto resNoEat = parse::between_sequences<true, false>("begin", "end").parse(str);
     REQUIRE(resNoEat.second);
     REQUIRE(*resNoEat.second == "beginbeginabcdeendend");
-    REQUIRE(resNoEat.first == str.end());
+    REQUIRE(resNoEat.first.position == str.end());
 
     std::string strNonClosing("beginbeginabcdeend");
     auto resNonClosing = parse::between_sequences<true>("begin", "end").parse(strNonClosing);
     REQUIRE(!resNonClosing.second);
-    REQUIRE(resNonClosing.first == strNonClosing.begin());
+    REQUIRE(resNonClosing.first.position == strNonClosing.begin());
 }
 
 TEST_CASE("between_items") {
@@ -268,7 +268,7 @@ TEST_CASE("between_items") {
     auto res = parse::between_items('{', '}').parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "abcde");
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 }
 
 TEST_CASE("integer") {
@@ -276,24 +276,24 @@ TEST_CASE("integer") {
     constexpr auto res = parse::integer().parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == 42);
-    REQUIRE(res.first == str.begin() + 2);
+    REQUIRE(res.first.position == str.begin() + 2);
 
     std::string str2("-42abcde");
     auto res2 = parse::integer().parse(str2);
     REQUIRE(res2.second);
     REQUIRE(*res2.second == -42);
-    REQUIRE(res2.first == str2.begin() + 3);
+    REQUIRE(res2.first.position == str2.begin() + 3);
 
     std::string str3("-42abcde");
     auto res3 = parse::integer<unsigned int>().parse(str3);
     REQUIRE(!res3.second);
-    REQUIRE(res3.first == str3.begin());
+    REQUIRE(res3.first.position == str3.begin());
 
     std::string str4("42abcde");
     auto res4 = parse::integer<unsigned int>().parse(str4);
     REQUIRE(res4.second);
     REQUIRE(*res4.second == 42);
-    REQUIRE(res4.first == str4.begin() + 2);
+    REQUIRE(res4.first.position == str4.begin() + 2);
 }
 
 TEST_CASE("floating") {
@@ -303,7 +303,7 @@ TEST_CASE("floating") {
         auto res = p.parse(str);
         REQUIRE(res.second);
         REQUIRE(*res.second == r);
-        REQUIRE(res.first == str.end());
+        REQUIRE(res.first.position == str.end());
     };
 
     test("123", 123.0);
@@ -328,12 +328,12 @@ TEST_CASE("number") {
     auto res = parse::number<int>().parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == 42);
-    REQUIRE(res.first == str + 2);
+    REQUIRE(res.first.position == str + 2);
 
     // Doesn't seem to compile?
 //    auto &str2 = "42.3abcde";
 //    auto res2 = parse::number<float>().parse(str2);
 //    REQUIRE(res2.second);
 //    REQUIRE(*res2.second == 42.3);
-//    REQUIRE(res2.first == str2 + 4);
+//    REQUIRE(res2.first.position == str2 + 4);
 }

@@ -33,7 +33,7 @@ TEST_CASE("try_parser") {
     std::string str("abcde");
     auto res = p.parse(str);
     REQUIRE(!res.second);
-    REQUIRE(res.first == str.begin());
+    REQUIRE(res.first.position == str.begin());
 }
 
 TEST_CASE("no_consume") {
@@ -42,7 +42,7 @@ TEST_CASE("no_consume") {
     auto res = p.parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == "abcde");
-    REQUIRE(res.first == str.begin());
+    REQUIRE(res.first.position == str.begin());
 }
 
 TEST_CASE("constrain") {
@@ -214,7 +214,7 @@ TEST_CASE("many_to_vector") {
     REQUIRE(res.second->at(0) == 100);
     REQUIRE(res.second->at(1) == 20);
     REQUIRE(res.second->at(2) == 3);
-    REQUIRE(res.first == str.begin() + 9);
+    REQUIRE(res.first.position == str.begin() + 9);
 }
 
 TEST_CASE("many_to_map") {
@@ -228,7 +228,7 @@ TEST_CASE("many_to_map") {
     REQUIRE(res.second->at(1) == 'a');
     REQUIRE(res.second->at(2) == 'b');
     REQUIRE(res.second->at(3) == 'c');
-    REQUIRE(res.first == str.begin() + 12);
+    REQUIRE(res.first.position == str.begin() + 12);
 }
 
 TEST_CASE("many_general") {
@@ -245,7 +245,7 @@ TEST_CASE("many_general") {
     REQUIRE(res.second->at(1) == 'a');
     REQUIRE(res.second->at(2) == 'b');
     REQUIRE(res.second->at(3) == 'c');
-    REQUIRE(res.first == str.begin() + 12);
+    REQUIRE(res.first.position == str.begin() + 12);
 }
 
 TEST_CASE("many_state") {
@@ -263,6 +263,26 @@ TEST_CASE("many_state") {
     REQUIRE(state[0] == 100);
     REQUIRE(state[1] == 20);
     REQUIRE(state[2] == 3);
+}
+
+TEST_CASE("many_state compile time") {
+    struct state {
+        int i = 0;
+        int is[100] = {};
+    };
+
+    constexpr auto intParser = parse::item('#') >> parse::integer();
+    constexpr auto p = parse::many_state(intParser, [](auto &s, auto i) {
+        s.is[s.i++] = i;
+    });
+    constexpr auto res = p.parse_with_state("#100#20#3", state());
+    static_assert(res.second);
+    static_assert(*res.second == "#100#20#3");
+
+    static_assert(res.first.user_state.i == 3);
+    static_assert(res.first.user_state.is[0] == 100);
+    static_assert(res.first.user_state.is[1] == 20);
+    static_assert(res.first.user_state.is[2] == 3);
 }
 
 TEST_CASE("fold") {
@@ -379,7 +399,7 @@ TEST_CASE("parse_result") {
     REQUIRE(res.second->at(0) == 100);
     REQUIRE(res.second->at(1) == 20);
     REQUIRE(res.second->at(2) == 3);
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 }
 
 TEST_CASE("parse_result state") {
@@ -398,7 +418,7 @@ TEST_CASE("parse_result state") {
     REQUIRE(res.second->at(0) == 100);
     REQUIRE(res.second->at(1) == 20);
     REQUIRE(res.second->at(2) == 3);
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 }
 
 TEST_CASE("until eat no include") {
@@ -410,14 +430,14 @@ TEST_CASE("until eat no include") {
 
     REQUIRE(res.second);
     REQUIRE(*res.second == "abc");
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 
     auto pFail = parse::until(parse::until_item('#'));
 
     auto resFail = pFail.parse(str);
 
     REQUIRE(!resFail.second);
-    REQUIRE(resFail.first == str.begin());
+    REQUIRE(resFail.first.position == str.begin());
 }
 
 TEST_CASE("until no eat no include") {
@@ -429,7 +449,7 @@ TEST_CASE("until no eat no include") {
 
     REQUIRE(res.second);
     REQUIRE(*res.second == "abc");
-    REQUIRE(res.first == str.begin() + 3);
+    REQUIRE(res.first.position == str.begin() + 3);
 }
 
 TEST_CASE("until eat include") {
@@ -441,7 +461,7 @@ TEST_CASE("until eat include") {
 
     REQUIRE(res.second);
     REQUIRE(*res.second == "abc{123}");
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 }
 
 TEST_CASE("until no eat include") {
@@ -453,7 +473,7 @@ TEST_CASE("until no eat include") {
 
     REQUIRE(res.second);
     REQUIRE(*res.second == "abc{123}");
-    REQUIRE(res.first == str.begin() + 3);
+    REQUIRE(res.first.position == str.begin() + 3);
 }
 
 TEST_CASE("many_f with separator") {
@@ -508,5 +528,5 @@ TEST_CASE("recursive") {
     constexpr auto res = rec_parser.parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == 123);
-    REQUIRE(res.first == str.end());
+    REQUIRE(res.first.position == str.end());
 }

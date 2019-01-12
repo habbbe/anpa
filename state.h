@@ -99,9 +99,6 @@ struct parser_state_simple {
     constexpr auto return_fail() { return return_fail_error<Res>("Parsing error"); }
 
     constexpr auto return_fail() { return return_fail<default_result_type>(); }
-
-private:
-    parser_state_simple(const parser_state_simple &other) = delete;
 };
 
 constexpr auto string_view_convert = [](auto begin, auto end) {
@@ -119,16 +116,19 @@ constexpr auto string_view_convert = [](auto begin, auto end) {
  */
 template <typename Iterator, typename StringResultConversion, typename Settings, typename UserState>
 struct parser_state: public parser_state_simple<Iterator, StringResultConversion, Settings> {
-    UserState& user_state;
+    UserState user_state;
 
-    constexpr parser_state(Iterator begin, Iterator end, UserState& state, StringResultConversion convert, Settings settings)
-        : parser_state_simple<Iterator, StringResultConversion, Settings>{begin, end, convert, settings}, user_state{state} {}
+    constexpr parser_state(Iterator begin, Iterator end, UserState &&state, StringResultConversion convert, Settings settings)
+        : parser_state_simple<Iterator, StringResultConversion, Settings>{begin, end, convert, settings}, user_state{std::forward<UserState>(state)} {}
 
     template<typename State>
     constexpr parser_state(Iterator begin, Iterator end, const State &other) :
         parser_state(begin, end, other.user_state, other.conversion_function, typename State::settings()){}
 };
-
+template <typename Iterator, typename StringResultConversion, typename Settings, typename UserState>
+parser_state(Iterator, Iterator, UserState&&, StringResultConversion, Settings) ->
+parser_state<Iterator, StringResultConversion, Settings,
+UserState>;
 
 }
 

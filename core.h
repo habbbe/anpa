@@ -102,7 +102,7 @@ struct parser {
     template <typename InternalState>
     constexpr auto parse_internal(InternalState &&state) const {
         auto res = apply(p, state);
-        return std::make_pair(state.position, res);
+        return std::pair(std::forward<InternalState>(state), res);
     }
 
     /**
@@ -114,9 +114,9 @@ struct parser {
     template <typename Settings = parser_settings, typename Iterator, typename State, typename ConversionFunction>
     constexpr auto parse_with_state(Iterator begin,
                                     Iterator end,
-                                    State &user_state,
+                                    State &&user_state,
                                     ConversionFunction convert) const {
-        return parse_internal(parser_state(begin, end, user_state, convert, Settings()));
+        return parse_internal(parser_state(begin, end, std::forward<State>(user_state), convert, Settings()));
     }
 
     /**
@@ -128,10 +128,10 @@ struct parser {
     template <typename Settings = parser_settings, typename Iterator, typename State>
     constexpr auto parse_with_state(Iterator begin,
                                     Iterator end,
-                                    State &user_state) const {
+                                    State &&user_state) const {
         return parse_with_state<Settings>(begin,
                                 end,
-                                user_state,
+                                std::forward<State>(user_state),
                                 string_view_convert);
     }
 
@@ -143,10 +143,10 @@ struct parser {
      */
     template <typename Settings = parser_settings, typename SequenceType, typename State>
     constexpr auto parse_with_state(const SequenceType &sequence,
-                                    State &user_state) const {
+                                    State &&user_state) const {
         return parse_with_state<Settings>(std::begin(sequence),
                                 std::end(sequence),
-                                user_state);
+                                std::forward<State>(user_state));
     }
 
     /**
@@ -157,10 +157,10 @@ struct parser {
      */
     template <typename Settings = parser_settings, typename ItemType, size_t N, typename State>
     constexpr auto parse_with_state(const ItemType (&sequence)[N],
-                                    State &user_state) const {
+                                    State &&user_state) const {
         return parse_with_state<Settings>(sequence,
                                 sequence + N - 1,
-                                user_state);
+                                std::forward<State>(user_state));
     }
 
     /**
