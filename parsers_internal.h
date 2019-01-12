@@ -21,6 +21,28 @@ inline constexpr auto item(State &s, const ItemType &c) {
     return s.template return_fail<ItemType>();
 }
 
+template <typename State, typename Length>
+inline constexpr auto consume(State &s, const Length &l) {
+        if (s.has_at_least(l)) {
+            auto start_pos = s.position;
+            s.advance(l);
+            return s.return_success(s.convert(start_pos, s.position));
+        }
+        return s.return_fail();
+}
+
+template <bool Eat = true, bool Include = false, typename State, typename ItemType>
+inline constexpr auto until_item(State &s, const ItemType &c) {
+    if (auto pos = algorithm::find(s.position, s.end, c); pos != s.end) {
+        auto res_start = s.position;
+        auto res_end = std::next(pos, Include);
+        s.set_position(std::next(pos, Eat));
+        return s.return_success(s.convert(res_start, res_end));
+    } else {
+        return s.return_fail();
+    }
+}
+
 /**
  * Helper for parsing of sequences
  */

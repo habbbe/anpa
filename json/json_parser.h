@@ -18,7 +18,7 @@ constexpr auto string_parser = []() {
     constexpr auto unicode = parse::item<'u'>() >> parse::times(4, parse::item_if([](auto &f) {return std::isxdigit(f);}));
     constexpr auto escaped = parse::item<'\\'>() >> (unicode || parse::any_of<'"','\\','/','b','f','n','r','t'>());
     constexpr auto notEnd = escaped || parse::any_item();
-    return parse::lift_value<json_string>(eat(parse::item<'"'>()) >> parse::many(notEnd, std::tuple<>(), parse::item<'"'>()));
+    return parse::lift_value<json_string>(eat(parse::item<'"'>()) >> parse::many(notEnd, {}, parse::item<'"'>()));
 }();
 
 constexpr auto number_parser = eat(parse::floating());

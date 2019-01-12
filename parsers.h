@@ -99,8 +99,7 @@ inline constexpr auto not_item() {
 }
 
 /**
- * Parser for a single item. Templated version.
- * This is faster than the above due to less copying.
+ * Parser for a single item matching the provided predicate.
  */
 template <typename Pred>
 inline constexpr auto item_if(Pred pred) {
@@ -163,27 +162,17 @@ inline constexpr auto any_of() {
  */
 inline constexpr auto consume(size_t n) {
     return parser([=](auto &s) {
-        if (s.has_at_least(n)) {
-            auto start_pos = s.position;
-            s.advance(n);
-            return s.return_success(s.convert(start_pos, s.position));
-        }
-        return s.return_fail();
+        return internal::consume(s, n);
     });
 }
 
 /**
- * Parser for consuming n items
+ * Templated version of `consume`.
  */
 template <size_t N>
 inline constexpr auto consume() {
     return parser([](auto &s) {
-        if (s.has_at_least(N)) {
-            auto start_pos = s.position;
-            s.advance(N);
-            return s.return_success(s.convert(start_pos, s.position));
-        }
-        return s.return_fail();
+        return internal::consume(s, N);
     });
 }
 
@@ -196,14 +185,17 @@ inline constexpr auto consume() {
 template <bool Eat = true, bool Include = false, typename ItemType>
 inline constexpr auto until_item(ItemType &&c) {
     return parser([c = std::forward<ItemType>(c)](auto &s) {
-        if (auto pos = algorithm::find(s.position, s.end, c); pos != s.end) {
-            auto res_start = s.position;
-            auto res_end = std::next(pos, Include);
-            s.set_position(std::next(pos, Eat));
-            return s.return_success(s.convert(res_start, res_end));
-        } else {
-            return s.return_fail();
-        }
+        return internal::until_item<Eat, Include>(s, c);
+    });
+}
+
+/**
+ * Templated version of `until_item`.
+ */
+template <auto item, bool Eat = true, bool Include = false>
+inline constexpr auto until_item() {
+    return parser([](auto &s) {
+        return internal::until_item<Eat, Include>(s, item);
     });
 }
 
@@ -280,7 +272,7 @@ inline constexpr auto while_in(const ItemType (&items)[N]) {
 
 /**
  * Parser that consumes all items contained in set described by the template parameters.
- * This is faster than the above due to less copying.
+ * This might be faster than the above.
  */
 template <auto v, auto... vs>
 inline constexpr auto while_in() {

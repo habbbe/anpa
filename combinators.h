@@ -357,7 +357,7 @@ inline constexpr auto many(Parser p,
                            ParserSep sep = std::tuple<>(),
                            Break breakOn = std::tuple<>()) {
     return parser([=](auto &s) {
-        return internal::many(s, p, std::tuple<>(), sep, breakOn);
+        return internal::many(s, p, {}, sep, breakOn);
     });
 }
 
