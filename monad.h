@@ -14,7 +14,7 @@ namespace parse {
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator>>(Parser1 p1, Parser2 p2) {
-    return p1 >>= [=](auto &) {
+    return p1 >>= [=](auto&&) {
         return p2;
     };
 }
@@ -38,7 +38,7 @@ inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
     return parse::parser([=](auto &s) {
         auto res = apply(p1, s);
         if (res) {
-            if (auto res2 = apply(p2, s)) {
+            if (const auto &res2 = apply(p2, s)) {
                 return res;
             } else {
                 return s.template return_fail_change_result<std::decay_t<decltype(*res)>>(res2);

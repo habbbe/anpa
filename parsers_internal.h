@@ -17,8 +17,7 @@ inline constexpr auto item(State &s, const ItemType &c) {
             if constexpr (Not) return a != b;
             else return a == b;
         };
-        auto res = comp(c, s.front());
-        if (res) {
+        if (comp(c, s.front())) {
             s.advance(1);
             return s.return_success(c);
         }
