@@ -29,8 +29,6 @@ struct json_value {
     template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, json_value>>>
     json_value(T &&t) : val(std::make_shared<json_value_variant>(std::forward<T>(t))) {}
 
-    json_value(const json_value &other): val(other.val) {}
-
     template <typename T>
     decltype(auto) get() {return std::get<T>(*val);}
 
