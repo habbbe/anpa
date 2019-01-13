@@ -547,13 +547,13 @@ inline constexpr auto until(Parser p) {
  * a parser. The passed parser is functionally identical to the returned parser,
  * and can be used recursively within that.
  * You must provide the `ReturnType` of the parsers as the first template argument
- * (to make the compiler happy), and optionally an ErrorType if the parser
- * has error handling.
+ * (to make the compiler happy).
  */
-template <typename ReturnType, typename ErrorType = void, typename F>
+template <typename ReturnType, typename F>
 constexpr auto recursive(F f) {
     return parser([f](auto &s) {
-        auto rec = [f, &s](auto self) -> parse::result<ReturnType, ErrorType> {
+        auto rec = [f, &s](auto self)
+                -> parse::result<ReturnType, typename std::decay_t<decltype(s)>::error_type> {
             auto p = parser([self](auto &) { // The actual parser sent to the caller.
                 return self(self);
             });

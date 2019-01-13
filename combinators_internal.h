@@ -89,11 +89,7 @@ static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps)
     } else {
         // All parsers failed
         using result_type = std::decay_t<decltype(f(*result))>;
-        if constexpr (State::error_handling) {
-            return s.template return_fail<result_type>(result.error());
-        } else {
-            return s.template return_fail<result_type>();
-        }
+        return s.template return_fail_change_result<result_type>(result);
     }
 }
 

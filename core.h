@@ -40,11 +40,7 @@ static constexpr auto operator>>=(Parser p, F f) {
             return apply(f(*result), s);
         } else {
             using new_return_type = std::decay_t<decltype(*apply(f(*result), s))>;
-            if constexpr (std::decay_t<decltype(s)>::error_handling) {
-                return s.template return_fail<new_return_type>(result.error());
-            } else {
-                return s.template return_fail<new_return_type>();
-            }
+            return s.template return_fail_change_result<new_return_type>(result);
         }
     });
 }

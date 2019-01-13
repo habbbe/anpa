@@ -18,7 +18,7 @@ struct parser_state_simple {
 
     using settings = Settings;
     constexpr static bool error_handling = Settings::error_handling;
-
+    using error_type = std::conditional_t<error_handling, const char*, void>;
 
     using default_result_type = decltype(conversion_function(std::declval<Iterator>(), std::declval<Iterator>()));
 
@@ -96,7 +96,9 @@ struct parser_state_simple {
     }
 
     template <typename Res>
-    constexpr auto return_fail() { return return_fail_error<Res>("Parsing error"); }
+    constexpr auto return_fail() {
+        return return_fail_error<Res>("Parsing error");
+    }
 
     constexpr auto return_fail() { return return_fail<default_result_type>(); }
 };
