@@ -52,7 +52,7 @@ inline constexpr auto many(State &s,
         successes = true;
 
         if constexpr (!std::is_empty_v<std::decay_t<Fun>>) {
-            f(*res);
+            f(std::move(*res)); // We're done with the result here so we can move it.
         }
 
         if constexpr (!std::is_empty_v<std::decay_t<Sep>>) {
