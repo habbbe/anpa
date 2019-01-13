@@ -435,7 +435,9 @@ inline constexpr auto floating() {
  * Parser for whitespace
  */
 inline constexpr auto whitespace() {
-    return while_in<' ', '\n', '\t', '\r', '\f'>();
+    return while_predicate([](const auto &c) {
+        return c == ' ' || (c >= '\t' && c <= '\r');
+    });
 }
 
 }

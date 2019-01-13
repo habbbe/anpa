@@ -83,7 +83,7 @@ inline constexpr auto contains(Iterator begin, Iterator end, const V &needle) {
  */
 template <auto... vs, typename V>
 inline constexpr auto contains(const V &sought) {
-    return ((sought == vs) || ...);
+    return ((vs == sought) || ...);
 }
 
 /**
