@@ -415,7 +415,7 @@ inline constexpr auto floating() {
     constexpr auto floating_part = integer() >>= [](const auto &n) {
         auto dec = item<'.'>() >> integer<unsigned int, true>();
         return (dec >>= [&](const auto &p) {
-            return mreturn(n + ((n < 0 ? -1 : 1) * (FloatType(p.first) / p.second)));
+            return mreturn(n + ((0 <= n) - (n < 0)) * (FloatType(p.first) / p.second));
         }) || mreturn(FloatType(n));
     };
 

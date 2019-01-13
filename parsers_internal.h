@@ -13,7 +13,11 @@ namespace parse::internal {
 template <bool Not = false,typename State, typename ItemType>
 inline constexpr auto item(State &s, const ItemType &c) {
     if (!s.empty()) {
-        auto res = Not ? s.front() != c : s.front() == c;
+        auto comp = [](const auto &a, const auto&b) {
+            if constexpr (Not) return a != b;
+            else return a == b;
+        };
+        auto res = comp(c, s.front());
         if (res) {
             s.advance(1);
             return s.return_success(c);
