@@ -38,10 +38,10 @@ inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
     return parse::parser([=](auto &s) {
         auto res = apply(p1, s);
         if (res) {
-            if (apply(p2, s)) {
+            if (auto res2 = apply(p2, s)) {
                 return res;
             } else {
-                return s.return_fail_result(res);
+                return s.template return_fail_change_result<std::decay_t<decltype(*res)>>(res2);
             }
         }
         return res;
