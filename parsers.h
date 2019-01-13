@@ -412,19 +412,17 @@ inline constexpr auto integer() {
  */
 template <bool AllowScientific = true, typename FloatType = double>
 inline constexpr auto floating() {
-
-    constexpr auto dec = item<'.'>() >> integer<unsigned int, true>();
-
-    constexpr auto floating_part = integer() >>= [=](auto &&n) {
-        return (dec >>= [=](auto &&p) {
+    constexpr auto floating_part = integer() >>= [](const auto &n) {
+        auto dec = item<'.'>() >> integer<unsigned int, true>();
+        return (dec >>= [&](const auto &p) {
             return mreturn(n + ((n < 0 ? -1 : 1) * (FloatType(p.first) / p.second)));
         }) || mreturn(FloatType(n));
     };
 
     if constexpr (AllowScientific) {
-        return floating_part >>= [](auto &&d) {
+        return floating_part >>= [](const auto &d) {
             auto exp = (item<'e'>() || item<'E'>()) >> integer();
-            return (exp >>= [=](auto &&e) {
+            return (exp >>= [&](const auto &e) {
                 return mreturn(d * internal::pow_table<FloatType>::pow(e));
             }) || mreturn(d);
         };

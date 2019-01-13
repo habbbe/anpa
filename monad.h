@@ -14,7 +14,7 @@ namespace parse {
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator>>(Parser1 p1, Parser2 p2) {
-    return p1 >>= [=] (const auto &) {
+    return p1 >>= [=](auto &) {
         return p2;
     };
 }
@@ -30,7 +30,7 @@ inline constexpr auto operator>=(Parser p, Value &&v) {
 /*
  * Combine two parser, ignoring the result of the second one.
  * This is an optimized version. Using
- * `m1 >>= [](auto &&r) { return m2 >> Parser1::mreturn(r); }`
+ * `p1 >>= [](auto &&r) { return p2 >> Parser1::mreturn(r); }`
  * works, but does unecessary copying.
  */
 template <typename Parser1, typename Parser2>

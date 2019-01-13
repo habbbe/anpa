@@ -22,9 +22,9 @@ template <bool FailOnNoSuccess = false,
           >
 inline constexpr auto many(State &s,
                            Parser p,
-                           Fun f = std::tuple<>(),
-                           Sep sep = std::tuple<>(),
-                           Break breakOn = std::tuple<>()) {
+                           [[maybe_unused]] Fun f = std::tuple<>(),
+                           [[maybe_unused]] Sep sep = std::tuple<>(),
+                           [[maybe_unused]] Break breakOn = std::tuple<>()) {
     auto start = s.position;
     bool successes = false;
 

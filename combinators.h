@@ -418,12 +418,12 @@ inline constexpr auto fold(Parser p,
                            ParserSep sep = std::tuple<>(),
                            Break breakOn = std::tuple<>()) {
     return parser([p, i = std::forward<Init>(i), f, sep, breakOn](auto &s) mutable {
-        auto res = internal::many<FailOnNoSuccess>(s, p, [f, &i](auto &&a) {
+        [[maybe_unused]] auto res = internal::many<FailOnNoSuccess>(s, p, [f, &i](auto &&a) {
             i = f(i, std::forward<decltype(a)>(a));
         }, sep, breakOn);
         if constexpr (FailOnNoSuccess) {
             if (!res) {
-                return s.template return_fail<Init>();
+                return s.template return_fail_change_result<Init>(res);
             }
         }
         return s.return_success(std::move(i));
