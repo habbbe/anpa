@@ -19,7 +19,7 @@ TEST_CASE("json_number") {
 }
 
 TEST_CASE("json_null") {
-    test_json_type<std::nullptr_t>("null", nullptr);
+    test_json_type<json_null>("null", json_null());
 }
 
 TEST_CASE("json_bool") {
@@ -53,8 +53,8 @@ TEST_CASE("json_general") {
     REQUIRE(element1[1].size() == 2);
     REQUIRE(element1[1][0].is_a<json_string>());
     REQUIRE(element1[1][0].get<json_string>() == "cba");
-    REQUIRE(element1[1][1].is_a<std::nullptr_t>());
-    REQUIRE(element1[1][1].get<std::nullptr_t>() == nullptr);
+    REQUIRE(element1[1][1].is_a<json_null>());
+    REQUIRE(element1[1][1].get<json_null>() == json_null());
 
     REQUIRE(element1[2].is_a<json_object>());
     auto object = element1[2];
