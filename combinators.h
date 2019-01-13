@@ -339,7 +339,7 @@ inline constexpr auto many_to_map(Parser p,
         using value = std::tuple_element_t<1, result_type>;
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
         map_type m;
-        internal::many(s, p, [&](auto &&r) {
+        internal::many(s, p, [&m](auto &&r) {
             m.emplace(std::forward<decltype(r)>(r));
         }, sep, breakOn);
         return s.return_success(std::move(m));

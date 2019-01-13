@@ -97,8 +97,7 @@ struct parser {
 
     template <typename InternalState>
     constexpr auto parse_internal(InternalState &&state) const {
-        auto res = apply(p, state);
-        return std::pair(std::forward<InternalState>(state), res);
+        return std::pair(std::forward<InternalState>(state), apply(p, state));
     }
 
     /**
