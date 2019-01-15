@@ -5,6 +5,7 @@
 #include <utility>
 #include <tuple>
 #include <valgrind/callgrind.h>
+#include "types.h"
 
 namespace parse::internal {
 
@@ -14,21 +15,21 @@ namespace parse::internal {
 template <bool FailOnNoSuccess = false,
           typename State,
           typename Parser,
-          typename Fun = std::tuple<>,
-          typename Sep = std::tuple<>,
-          typename Break = std::tuple<>,
+          typename Fun = none,
+          typename Sep = none,
+          typename Break = none,
           bool Eat = true,
           bool Include = false
           >
 inline constexpr auto many(State &s,
                            Parser p,
-                           [[maybe_unused]] Fun f = std::tuple<>(),
-                           [[maybe_unused]] Sep sep = std::tuple<>(),
-                           [[maybe_unused]] Break breakOn = std::tuple<>()) {
+                           [[maybe_unused]] Fun f = {},
+                           [[maybe_unused]] Sep sep = {},
+                           [[maybe_unused]] Break breakOn = {}) {
     auto start = s.position;
     bool successes = false;
 
-    while (true) {
+    for (;;) {
         if constexpr (!std::is_empty_v<std::decay_t<Break>>) {
             auto p = s.position;
             if (apply(breakOn, s)) {

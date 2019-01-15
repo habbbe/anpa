@@ -17,7 +17,7 @@ namespace parse {
  */
 inline constexpr auto success() {
     return parser([](auto &s) {
-        return s.return_success(true);
+        return s.return_success(none());
     });
 }
 
@@ -37,9 +37,9 @@ inline constexpr auto fail() {
 inline constexpr auto empty() {
     return parser([](auto &s) {
         if (s.empty()) {
-            return s.return_success(true);
+            return s.return_success(none());
         }
-        return s.template return_fail<bool>();
+        return s.template return_fail<none>();
     });
 }
 

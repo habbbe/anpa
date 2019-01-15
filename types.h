@@ -4,6 +4,16 @@
 #include <type_traits>
 #include <iterator>
 
+namespace parse {
+
+/**
+ * Empty type used to denote empty-ish results.
+ * This type is also used to denote the lack of optional parameters.
+ */
+struct none {};
+
+}
+
 namespace parse::types {
 
 template <typename T, typename ... Ts>

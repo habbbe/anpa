@@ -15,16 +15,15 @@ namespace parse {
 
 /**
  * Transform a parser to a parser that always succeeds.
- * Will return true as result if the parser succeeded, and false otherwise.
- * The result of the parse will be ignored.
+ * Will return an `std::optional` with the result.
  */
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto &s) {
-        if (apply(p, s)) {
-            return s.return_success(true);
+        if (auto res = apply(p, s)) {
+            return s.return_success(std::optional(std::move(*res)));
         } else {
-            return s.return_success(false);
+            return s.return_success(std::optional<std::decay_t<decltype(*res)>>());
         }
     });
 }
@@ -137,7 +136,7 @@ inline constexpr auto operator+(P1 p1, P2 p2) {
 
 /**
  * Combine two parsers so that the second will be tried before failing.
- * If the two parsers return different types the return value will instead be `true`.
+ * If the two parsers return different types the return value will instead be `none`.
  */
 template <typename P1, typename P2>
 inline constexpr auto operator||(P1 p1, P2 p2) {
@@ -154,11 +153,12 @@ inline constexpr auto operator||(P1 p1, P2 p2) {
             }
         } else {
             if (apply(p1, s)) {
-                return s.return_success(true);
+                return s.return_success(none());
             } else {
                 s.position = original_position;
-                return apply(p2, s) ? s.return_success(true) :
-                                      s.template return_fail<bool>();
+                auto result2 = apply(p2, s);
+                return result2 ? s.return_success(none()) :
+                                      s.template return_fail_change_result<none>(result2);
             }
         }
     });
@@ -172,7 +172,7 @@ inline constexpr auto first(Parsers ... ps) {
 /**
  * Modify the supplied user state.
  * Will use the returned value from the user supplied function as result,
- * or `true` if return type is `void`.
+ * or `none` if return type is `void`.
  */
 template <typename Fun>
 inline constexpr auto modify_state(Fun f) {
@@ -180,7 +180,7 @@ inline constexpr auto modify_state(Fun f) {
         using result_type = std::decay_t<decltype(f(s.user_state))>;
         if constexpr (std::is_void<result_type>::value) {
             f(s.user_state);
-            return s.return_success(true);
+            return s.return_success(none());
         } else {
             return s.return_success(f(s.user_state));
         }
@@ -267,12 +267,12 @@ inline constexpr auto emplace_back_to_state_direct(Parsers... ps) {
 template <typename Container,
           typename Parser,
           typename Inserter,
-          typename ParserSep = std::tuple<>,
-          typename Break = std::tuple<>>
+          typename ParserSep = none,
+          typename Break = none>
 inline constexpr auto many_general(Parser p,
-                         Inserter inserter,
-                         ParserSep sep = std::tuple<>(),
-                         Break breakOn = std::tuple<>()) {
+                                   Inserter inserter,
+                                   ParserSep sep = {},
+                                   Break breakOn = {}) {
     return parser([=](auto &s) {
         Container c;
         internal::many(s, p, [&c, inserter](auto &&res) {
@@ -286,11 +286,11 @@ inline constexpr auto many_general(Parser p,
  * Create a parser that applies a parser until it fails and returns the result in a vector.
  */
 template <typename Parser,
-          typename ParserSep = std::tuple<>,
-          typename Break = std::tuple<>>
+          typename ParserSep = none,
+          typename Break = none>
 inline constexpr auto many_to_vector(Parser p,
-                                     ParserSep sep = std::tuple<>(),
-                                     Break breakOn = std::tuple<>()) {
+                                     ParserSep sep = {},
+                                     Break breakOn = {}) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
@@ -306,11 +306,11 @@ inline constexpr auto many_to_vector(Parser p,
  */
 template <size_t size,
           typename Parser,
-          typename ParserSep = std::tuple<>,
-          typename Break = std::tuple<>>
+          typename ParserSep = none,
+          typename Break = none>
 inline constexpr auto many_to_array(Parser p,
-                                    ParserSep sep = std::tuple<>(),
-                                    Break breakOn = std::tuple<>()) {
+                                    ParserSep sep = {},
+                                    Break breakOn = {}) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::array<result_type, size> arr{};
@@ -328,11 +328,11 @@ inline constexpr auto many_to_array(Parser p,
  */
 template <bool Unordered = true,
           typename Parser,
-          typename ParserSep = std::tuple<>,
-          typename Break = std::tuple<>>
+          typename ParserSep = none,
+          typename Break = none>
 inline constexpr auto many_to_map(Parser p,
-                                  ParserSep sep = std::tuple<>(),
-                                  Break breakOn = std::tuple<>()) {
+                                  ParserSep sep = {},
+                                  Break breakOn = {}) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         using key = std::tuple_element_t<0, result_type>;
@@ -354,12 +354,12 @@ inline constexpr auto many_to_map(Parser p,
  */
 template <typename Parser,
           typename Fun,
-          typename ParserSep = std::tuple<>,
-          typename Break = std::tuple<>>
+          typename ParserSep = none,
+          typename Break = none>
 inline constexpr auto many_f(Parser p,
                              Fun f,
-                             ParserSep sep = std::tuple<>(),
-                             Break breakOn = std::tuple<>()) {
+                             ParserSep sep = {},
+                             Break breakOn = {}) {
     return parser([=](auto &s) {
         return internal::many(s, p, [f](auto &&r) {
             f(std::forward<decltype(r)>(r));
@@ -372,11 +372,11 @@ inline constexpr auto many_f(Parser p,
  * returned by the provided conversion function.
  */
 template <typename Parser,
-          typename ParserSep = std::tuple<>,
-          typename Break = std::tuple<>>
+          typename ParserSep = none,
+          typename Break = none>
 inline constexpr auto many(Parser p,
-                           ParserSep sep = std::tuple<>(),
-                           Break breakOn = std::tuple<>()) {
+                           ParserSep sep = {},
+                           Break breakOn = {}) {
     return parser([=](auto &s) {
         return internal::many(s, p, {}, sep, breakOn);
     });
@@ -390,12 +390,12 @@ inline constexpr auto many(Parser p,
  */
 template <typename Parser,
           typename Fun,
-          typename ParserSep = std::tuple<>,
-          typename Until = std::tuple<>>
+          typename ParserSep = none,
+          typename Until = none>
 inline constexpr auto many_state(Parser p,
                                  Fun f,
-                                 ParserSep sep = std::tuple<>(),
-                                 Until until = std::tuple<>()) {
+                                 ParserSep sep = {},
+                                 Until until = {}) {
     return parser([=](auto &s) {
         return internal::many(s, p, [f, &s](auto &&res) {
             f(s.user_state, std::forward<decltype(res)>(res));
@@ -410,13 +410,13 @@ template <bool FailOnNoSuccess = false,
           typename Parser,
           typename Init,
           typename Fun,
-          typename ParserSep = std::tuple<>,
-          typename Break = std::tuple<>>
+          typename ParserSep = none,
+          typename Break = none>
 inline constexpr auto fold(Parser p,
                            Init &&i,
                            Fun f,
-                           ParserSep sep = std::tuple<>(),
-                           Break breakOn = std::tuple<>()) {
+                           ParserSep sep = {},
+                           Break breakOn = {}) {
     return parser([p, i = std::forward<Init>(i), f, sep, breakOn](auto &s) mutable {
         [[maybe_unused]] auto res = internal::many<FailOnNoSuccess>(s, p, [f, &i](auto &&a) {
             i = f(i, std::forward<decltype(a)>(a));
