@@ -16,6 +16,15 @@ struct none {};
 
 namespace parse::types {
 
+template <typename State, typename P1, typename P2, typename ... Ps>
+constexpr bool same_result = [](){
+    using R1 = decltype(*apply(std::declval<P1>(), std::declval<State>()));
+    using R2 = decltype(*apply(std::declval<P2>(), std::declval<State>()));
+    if (!std::is_same_v<R1, R2>) return false;
+    else if constexpr (sizeof...(Ps) == 0) return true;
+    else return same_result<P2, Ps...>;
+}();
+
 template <typename T, typename ... Ts>
 constexpr bool is_one_of = (std::is_same_v<T, Ts> || ...);
 
