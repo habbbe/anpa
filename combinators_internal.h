@@ -30,7 +30,7 @@ inline constexpr auto many(State &s,
     bool successes = false;
 
     for (;;) {
-        if constexpr (!std::is_same_v<none, std::decay_t<Break>>) {
+        if constexpr (!std::is_empty_v<std::decay_t<Break>>) {
             auto p = s.position;
             if (apply(breakOn, s)) {
                 if constexpr (!Eat) s.set_position(p);
@@ -52,11 +52,11 @@ inline constexpr auto many(State &s,
         }
         successes = true;
 
-        if constexpr (!std::is_same_v<none, std::decay_t<Fun>>) {
+        if constexpr (!std::is_empty_v<std::decay_t<Fun>>) {
             f(std::move(*res)); // We're done with the result here so we can move it.
         }
 
-        if constexpr (!std::is_same_v<none, std::decay_t<Sep>>) {
+        if constexpr (!std::is_empty_v<std::decay_t<Sep>>) {
             if (!apply(sep, s)) break;
         }
     }
@@ -85,23 +85,15 @@ template <typename State, typename F, typename Parser, typename... Parsers>
 static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     auto startPos = s.position;
     if (auto result = apply(p, s)) {
-        if constexpr (std::is_same_v<none, std::decay_t<F>>) {
-            return s.return_success(std::move(*result));
-        } else {
-            return s.return_success(f(std::move(*result)));
-        }
+        return s.return_success(f(std::move(*result)));
     } else if constexpr (sizeof...(ps) > 0) {
         s.position = startPos;
         return lift_or_rec(s, f, ps...);
     } else {
         // All parsers failed
         s.position = startPos;
-        if constexpr (std::is_same_v<none, std::decay_t<F>>) {
-            return s.template return_fail_result(result);
-        } else {
-            using result_type = std::decay_t<decltype(f(*result))>;
-            return s.template return_fail_change_result<result_type>(result);
-        }
+        using result_type = std::decay_t<decltype(f(*result))>;
+        return s.template return_fail_change_result<result_type>(result);
     }
 }
 

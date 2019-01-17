@@ -135,28 +135,38 @@ inline constexpr auto operator+(P1 p1, P2 p2) {
 }
 
 /**
- * Make a parser that returns the result of the first successful parse from one of the supplied
- * parsers, evaluated left to right.
- * If all result types of the parsers don't match, the result type will be `none`.
+ * Combine two parsers so that the second will be tried before failing.
+ * If the two parsers return different types the return value will instead be `none`.
  */
-template <typename ... Parsers>
-inline constexpr auto first(Parsers ... ps) {
+template <typename P1, typename P2>
+inline constexpr auto operator||(P1 p1, P2 p2) {
     return parser([=](auto &s) {
-        if constexpr (types::same_result<decltype(s), Parsers...>) {
-            return internal::lift_or_rec(s, none(), ps...);
+        using R1 = decltype(*apply(p1, s));
+        using R2 = decltype(*apply(p2, s));
+        auto original_position = s.position;
+        if constexpr (std::is_same_v<R1, R2>) {
+            if (auto result1 = apply(p1, s)) {
+                return result1;
+            } else {
+                s.position = original_position;
+                return apply(p2, s);
+            }
         } else {
-            return internal::lift_or_rec(s, [](auto&&) {return none();}, ps...);
+            if (apply(p1, s)) {
+                return s.return_success(none());
+            } else {
+                s.position = original_position;
+                auto result2 = apply(p2, s);
+                return result2 ? s.return_success(none()) :
+                                      s.template return_fail_change_result<none>(result2);
+            }
         }
     });
 }
 
-/**
- * Combine two parsers so that the second will be tried before failing.
- * If the result types of the parsers don't match, the result type will be `none`.
- */
-template <typename P1, typename P2>
-inline constexpr auto operator||(P1 p1, P2 p2) {
-    return first(p1, p2);
+template <typename ... Parsers>
+inline constexpr auto first(Parsers ... ps) {
+    return (ps || ...);
 }
 
 /**
