@@ -68,7 +68,7 @@ inline constexpr auto many(State &s,
  * Recursive helper for `get_parsed`
  */
 template <typename State, typename Iterator, typename Parser, typename... Parsers>
-static inline constexpr auto get_parsed_recursive(State &s, Iterator original_position, Parser p, Parsers... ps) {
+inline constexpr auto get_parsed_recursive(State &s, Iterator original_position, Parser p, Parsers... ps) {
     if (auto result = apply(p, s)) {
         if constexpr (sizeof...(Parsers) == 0) {
             return s.return_success(s.convert(original_position, s.position));
@@ -82,7 +82,7 @@ static inline constexpr auto get_parsed_recursive(State &s, Iterator original_po
 
 // Compile time recursive resolver for lifting of arbitrary number of parsers
 template <typename State, typename F, typename Parser, typename... Parsers>
-static inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
+inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
     auto startPos = s.position;
     if (auto result = apply(p, s)) {
         return s.return_success(f(std::move(*result)));

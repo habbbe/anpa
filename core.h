@@ -34,7 +34,7 @@ struct parser;
  * Monadic bind for the parser
  */
 template <typename Parser, typename F>
-static constexpr auto operator>>=(Parser p, F f) {
+inline constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto &s) {
         if (const auto &result = apply(p, s)) {
             return apply(f(std::move(*result)), s);
@@ -206,7 +206,7 @@ struct parser {
      * Class member of mreturn_forward. For general monad use.
      */
     template <typename T, typename... Args>
-    static constexpr auto mreturn_forward(Args&&... args) {
+    static inline constexpr auto mreturn_forward(Args&&... args) {
         return parse::mreturn_forward<T>(std::forward<Args>(args)...);
     }
 
@@ -214,7 +214,7 @@ struct parser {
      * Class member of mreturn. For general monad use.
      */
     template <typename T>
-    static constexpr auto mreturn(T &&v) {
+    static inline constexpr auto mreturn(T &&v) {
         return parse::mreturn(std::forward<T>(v));
     }
 

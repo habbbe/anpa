@@ -114,7 +114,7 @@ template <size_t StartLength,
           typename End,
           typename EqualStart,
           typename EqualEnd>
-static inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
+inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto &s) {
         if (s.empty() || !equal_start(s.position, std::next(s.position, StartLength), start))
             return s.return_fail();
