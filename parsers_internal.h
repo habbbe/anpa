@@ -83,23 +83,21 @@ inline constexpr auto parse_integer(Iterator begin, Iterator end) {
     };
 
     Integral multiplier = 1;
-        if constexpr (std::is_signed_v<Integral>) {
-            if (begin != end && *begin == '-') {
-                multiplier = -1;
-                ++begin;
-            }
+    if constexpr (std::is_signed_v<Integral>) {
+        if (begin != end && *begin == '-') {
+            multiplier = -1;
+            ++begin;
         }
+    }
 
     Integral result = 0;
     unsigned int divisor = 1;
-    while (begin != end) {
-        if (is_digit(*begin)) {
-            if constexpr (IncludeDoubleDivisor) divisor *= 10;
-            result = (*begin++ - '0') + result * 10;
-        } else {
-            break;
-        }
+
+    for (;begin != end && is_digit(*begin); ++begin) {
+        if constexpr (IncludeDoubleDivisor) divisor *= 10;
+        result = (*begin - '0') + result * 10;
     }
+
     result *= multiplier;
     if constexpr (IncludeDoubleDivisor) return std::tuple{begin, result, divisor};
     else return std::tuple{begin, result};

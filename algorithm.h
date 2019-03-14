@@ -73,8 +73,8 @@ inline constexpr auto find(Iterator begin, Iterator end, const Element &element)
  */
 template <typename Iterator, typename V>
 inline constexpr auto contains(Iterator begin, Iterator end, const V &needle) {
-    for (;begin != end;)
-        if (*begin++ == needle) return true;
+    for (;begin != end; ++begin)
+        if (*begin == needle) return true;
     return false;
 }
 
