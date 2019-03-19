@@ -501,6 +501,22 @@ TEST_CASE("until no eat include") {
     static_assert(res.first.position == str.begin() + 3);
 }
 
+TEST_CASE("until end") {
+    constexpr auto untilEnd = parse::until(parse::empty());
+    constexpr std::string_view str("abc{123}");
+    constexpr auto res = untilEnd.parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "abc{123}");
+}
+
+TEST_CASE("until end empty") {
+    constexpr auto untilEnd = parse::until(parse::empty());
+    constexpr std::string_view str("");
+    constexpr auto res = untilEnd.parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == "");
+}
+
 TEST_CASE("many_f with separator") {
     constexpr auto intParser = parse::integer();
 
@@ -530,7 +546,6 @@ TEST_CASE("many_state with separator") {
 }
 
 TEST_CASE("recursive") {
-
     constexpr std::string_view str("{{{{{{{{123}}}}}}}}");
     constexpr auto rec_parser = parse::recursive<int>([](auto p) {
         return parse::integer() || (parse::item<'{'>() >> p << parse::item<'}'>());
