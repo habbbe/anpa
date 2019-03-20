@@ -14,7 +14,7 @@ using json_object = std::unordered_map<json_string, json_value>;
 using json_object_pair = std::pair<json_string, json_value>;
 using json_array = std::vector<json_value>;
 using json_number = double;
-using json_null = std::tuple<>;
+using json_null = parse::none;
 
 using json_value_variant = std::variant<
 json_null,

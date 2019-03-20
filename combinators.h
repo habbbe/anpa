@@ -271,13 +271,12 @@ template <typename Container,
           typename Break = none>
 inline constexpr auto many_general(Parser p,
                                    Inserter inserter,
-                                   ParserSep sep = {},
-                                   Break breakOn = {}) {
+                                   ParserSep sep = {}) {
     return parser([=](auto &s) {
         Container c;
         internal::many(s, p, [&c, inserter](auto &&res) {
             inserter(c, std::forward<decltype(res)>(res));
-        }, sep, breakOn);
+        }, sep);
         return s.return_success(std::move(c));
     });
 }
@@ -289,14 +288,13 @@ template <typename Parser,
           typename ParserSep = none,
           typename Break = none>
 inline constexpr auto many_to_vector(Parser p,
-                                     ParserSep sep = {},
-                                     Break breakOn = {}) {
+                                     ParserSep sep = {}) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
         internal::many(s, p, [&r](auto &&res) {
             r.emplace_back(std::forward<decltype(res)>(res));
-        }, sep, breakOn);
+        }, sep);
         return s.return_success(std::move(r));
     });
 }
@@ -309,15 +307,14 @@ template <size_t size,
           typename ParserSep = none,
           typename Break = none>
 inline constexpr auto many_to_array(Parser p,
-                                    ParserSep sep = {},
-                                    Break breakOn = {}) {
+                                    ParserSep sep = {}) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::array<result_type, size> arr{};
         size_t i = 0;
         internal::many(s, p, [&arr, &i](auto &&res) {
             arr[i++] = res;
-        }, sep, breakOn);
+        }, sep);
         return s.return_success(std::pair(std::move(arr), i));
     });
 }
@@ -331,8 +328,7 @@ template <bool Unordered = true,
           typename ParserSep = none,
           typename Break = none>
 inline constexpr auto many_to_map(Parser p,
-                                  ParserSep sep = {},
-                                  Break breakOn = {}) {
+                                  ParserSep sep = {}) {
     return parser([=](auto &s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         using key = std::tuple_element_t<0, result_type>;
@@ -341,7 +337,7 @@ inline constexpr auto many_to_map(Parser p,
         map_type m;
         internal::many(s, p, [&m](auto &&r) {
             m.emplace(std::forward<decltype(r)>(r));
-        }, sep, breakOn);
+        }, sep);
         return s.return_success(std::move(m));
     });
 }
@@ -358,12 +354,11 @@ template <typename Parser,
           typename Break = none>
 inline constexpr auto many_f(Parser p,
                              Fun f,
-                             ParserSep sep = {},
-                             Break breakOn = {}) {
+                             ParserSep sep = {}) {
     return parser([=](auto &s) {
         return internal::many(s, p, [f](auto &&r) {
             f(std::forward<decltype(r)>(r));
-        }, sep, breakOn);
+        }, sep);
     });
 }
 
@@ -375,10 +370,9 @@ template <typename Parser,
           typename ParserSep = none,
           typename Break = none>
 inline constexpr auto many(Parser p,
-                           ParserSep sep = {},
-                           Break breakOn = {}) {
+                           ParserSep sep = {}) {
     return parser([=](auto &s) {
-        return internal::many(s, p, {}, sep, breakOn);
+        return internal::many(s, p, {}, sep);
     });
 }
 
@@ -394,12 +388,11 @@ template <typename Parser,
           typename Until = none>
 inline constexpr auto many_state(Parser p,
                                  Fun f,
-                                 ParserSep sep = {},
-                                 Until until = {}) {
+                                 ParserSep sep = {}) {
     return parser([=](auto &s) {
         return internal::many(s, p, [f, &s](auto &&res) {
             f(s.user_state, std::forward<decltype(res)>(res));
-        }, sep, until);
+        }, sep);
     });
 }
 
@@ -415,12 +408,11 @@ template <bool FailOnNoSuccess = false,
 inline constexpr auto fold(Parser p,
                            Init &&i,
                            Fun f,
-                           ParserSep sep = {},
-                           Break breakOn = {}) {
-    return parser([p, i = std::forward<Init>(i), f, sep, breakOn](auto &s) mutable {
+                           ParserSep sep = {}) {
+    return parser([p, i = std::forward<Init>(i), f, sep](auto &s) mutable {
         [[maybe_unused]] auto res = internal::many<FailOnNoSuccess>(s, p, [f, &i](auto &&a) {
             i = f(i, std::forward<decltype(a)>(a));
-        }, sep, breakOn);
+        }, sep);
         if constexpr (FailOnNoSuccess) {
             if (!res) {
                 return s.template return_fail_change_result<Init>(res);

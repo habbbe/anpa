@@ -3,7 +3,6 @@
 
 #include <type_traits>
 #include <utility>
-#include <tuple>
 #include <valgrind/callgrind.h>
 #include "types.h"
 
@@ -16,30 +15,15 @@ template <bool FailOnNoSuccess = false,
           typename State,
           typename Parser,
           typename Fun = none,
-          typename Sep = none,
-          typename Break = none,
-          bool Eat = true,
-          bool Include = false
-          >
+          typename Sep = none>
 inline constexpr auto many(State &s,
                            Parser p,
                            [[maybe_unused]] Fun f = {},
-                           [[maybe_unused]] Sep sep = {},
-                           [[maybe_unused]] Break breakOn = {}) {
+                           [[maybe_unused]] Sep sep = {}) {
     auto start = s.position;
     bool successes = false;
 
     for (;;) {
-        if constexpr (!std::is_empty_v<std::decay_t<Break>>) {
-            auto p = s.position;
-            if (apply(breakOn, s)) {
-                if constexpr (!Eat) s.set_position(p);
-                return s.return_success(s.convert(start, Include ? s.position : p));
-            } else {
-                s.position = p;
-            }
-        }
-
         auto res = apply(p, s);
 
         if (!res) {

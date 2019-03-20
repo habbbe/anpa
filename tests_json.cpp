@@ -29,6 +29,7 @@ TEST_CASE("json_bool") {
 
 TEST_CASE("json_string") {
     test_json_type<json_string>("\"abc\"", "abc");
+    REQUIRE(!json_parser.parse("\"abc").second);
 }
 
 TEST_CASE("json_general") {
