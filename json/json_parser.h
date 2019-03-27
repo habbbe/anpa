@@ -15,7 +15,7 @@ constexpr auto eat(Parser p) {
 }
 
 constexpr auto string_parser = []() {
-    constexpr auto unicode = parse::item<'u'>() >> parse::times(4, parse::item_if([](auto &f) {return std::isxdigit(f);}));
+    constexpr auto unicode = parse::item<'u'>() >> parse::times<4>(parse::item_if([](const auto& f) {return std::isxdigit(f);}));
     constexpr auto escaped = parse::item<'\\'>() >> (unicode || parse::any_of<'"','\\','/','b','f','n','r','t'>());
     constexpr auto notEnd = escaped || parse::not_item<'"'>();
     return parse::lift_value<json_string>(eat(parse::item<'"'>()) >> parse::many(notEnd) << parse::item<'"'>());
@@ -38,9 +38,9 @@ constexpr auto get_array_parser(F value_parser) {
 }
 
 constexpr auto json_parser = parse::recursive<json_value>([](auto val_parser) {
-        return parse::lift_or_value<json_value>(string_parser,
-                            bool_parser, null_parser, number_parser,
-                            get_array_parser(val_parser), get_object_parser(val_parser));
+        return parse::lift_or_value<json_value>(string_parser, number_parser,
+                                                get_object_parser(val_parser), get_array_parser(val_parser),
+                                                bool_parser, null_parser);
 });
 
 constexpr auto array_parser = get_array_parser(json_parser);

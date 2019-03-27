@@ -16,7 +16,7 @@ template <bool FailOnNoSuccess = false,
           typename Parser,
           typename Fun = none,
           typename Sep = none>
-inline constexpr auto many(State &s,
+inline constexpr auto many(State& s,
                            Parser p,
                            [[maybe_unused]] Fun f = {},
                            [[maybe_unused]] Sep sep = {}) {
@@ -48,11 +48,21 @@ inline constexpr auto many(State &s,
     return s.return_success(s.convert(start, s.position));
 }
 
+
+template <typename State, typename Parser>
+inline constexpr auto times(State& s, size_t n, Parser p) {
+    auto start = s.position;
+    for (size_t i = n; i > 0; --i) {
+        if (auto res = apply(p, s)) return s.return_fail_result_default(res);
+    }
+    return s.return_success(s.convert(start, s.position));
+}
+
 /**
  * Recursive helper for `get_parsed`
  */
 template <typename State, typename Iterator, typename Parser, typename... Parsers>
-inline constexpr auto get_parsed_recursive(State &s, Iterator original_position, Parser p, Parsers... ps) {
+inline constexpr auto get_parsed_recursive(State& s, Iterator original_position, Parser p, Parsers... ps) {
     if (auto result = apply(p, s)) {
         if constexpr (sizeof...(Parsers) == 0) {
             return s.return_success(s.convert(original_position, s.position));
@@ -66,7 +76,7 @@ inline constexpr auto get_parsed_recursive(State &s, Iterator original_position,
 
 // Compile time recursive resolver for lifting of arbitrary number of parsers
 template <typename State, typename F, typename Parser, typename... Parsers>
-inline constexpr auto lift_or_rec(State &s, F f, Parser p, Parsers... ps) {
+inline constexpr auto lift_or_rec(State& s, F f, Parser p, Parsers... ps) {
     auto startPos = s.position;
     if (auto result = apply(p, s)) {
         return s.return_success(f(std::move(*result)));

@@ -20,14 +20,14 @@ struct action {
     std::string_view name;
     std::string_view com;
     template <typename S1, typename S2>
-    constexpr action(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
+    constexpr action(S1&& name, S2&& com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
 };
 
 struct info {
     std::string_view name;
     std::string_view com;
     template <typename S1, typename S2>
-    constexpr info(S1 &&name, S2 &&com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
+    constexpr info(S1&& name, S2&& com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
 };
 
 struct separator {};
@@ -48,7 +48,7 @@ syntax_error
 
 double test()
 {
-    constexpr auto add_to_state = [](auto &s, auto &&...args) {
+    constexpr auto add_to_state = [](auto& s, auto&&... args) {
         s.emplace_back(std::forward<decltype(args)>(args)...);
         return true;
     };
@@ -68,7 +68,7 @@ double test()
     r.reserve(1000000);
     std::ifstream t("hub");
 
-//    constexpr auto add_to_state = [] (auto &s, auto&&... args) {
+//    constexpr auto add_to_state = [] (auto& s, auto&&... args) {
 //        s.emplace_back(args...);
 //        return true;
 //    };
@@ -83,7 +83,7 @@ double test()
     }
 
     TICK;
-    for (auto &l : lines) {
+    for (auto& l : lines) {
         entry_parser.parse_with_state(l.begin(), l.end(), r);
     }
 

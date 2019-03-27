@@ -11,32 +11,33 @@ namespace parse::internal {
  * Parser for a single item
  */
 template <bool Not = false,typename State, typename ItemType>
-inline constexpr auto item(State &s, const ItemType &c) {
+inline constexpr auto item(State& s, const ItemType& c) {
     if (!s.empty()) {
-        auto comp = [](const auto &a, const auto&b) {
+        auto comp = [](const auto& a, const auto& b) {
             if constexpr (Not) return a != b;
             else return a == b;
         };
-        if (comp(c, s.front())) {
+        auto front = s.position;
+        if (comp(c, *front)) {
             s.advance(1);
-            return s.return_success(c);
+            return s.return_success(*front);
         }
     }
-    return s.template return_fail<ItemType>();
+    return s.template return_fail<std::decay_t<decltype(s.front())>>();
 }
 
 template <typename State, typename Length>
-inline constexpr auto consume(State &s, const Length &l) {
-        if (s.has_at_least(l)) {
-            auto start_pos = s.position;
-            s.advance(l);
-            return s.return_success(s.convert(start_pos, s.position));
-        }
-        return s.return_fail();
+inline constexpr auto consume(State& s, const Length& l) {
+    if (s.has_at_least(l)) {
+        auto start_pos = s.position;
+        s.advance(l);
+        return s.return_success(s.convert(start_pos, s.position));
+    }
+    return s.return_fail();
 }
 
 template <bool Eat = true, bool Include = false, typename State, typename ItemType>
-inline constexpr auto until_item(State &s, const ItemType &c) {
+inline constexpr auto until_item(State& s, const ItemType& c) {
     if (auto pos = algorithm::find(s.position, s.end, c); pos != s.end) {
         auto res_start = s.position;
         auto res_end = std::next(pos, Include);
@@ -51,7 +52,7 @@ inline constexpr auto until_item(State &s, const ItemType &c) {
  * Helper for parsing of sequences
  */
 template <typename State, typename Eq>
-inline constexpr auto sequence(State &s, const size_t &size, Eq equal) {
+inline constexpr auto sequence(State& s, const size_t& size, Eq equal) {
     auto orig_pos = s.position;
     if (s.has_at_least(size) && equal(orig_pos)) {
         s.advance(size);
@@ -65,7 +66,7 @@ inline constexpr auto sequence(State &s, const size_t &size, Eq equal) {
  * Helper for parsing until a sequence
  */
 template <bool Eat = true, bool Include = false, typename State, typename Search>
-inline constexpr auto until_sequence(State &s, Search search) {
+inline constexpr auto until_sequence(State& s, Search search) {
     if (auto [pos, new_end] = search(s.position, s.end); pos != s.end) {
         auto res_start = s.position;
         auto res_end = Include ? new_end : pos;
@@ -74,33 +75,6 @@ inline constexpr auto until_sequence(State &s, Search search) {
     } else {
         return s.return_fail();
     }
-}
-
-template <typename Integral, bool IncludeDoubleDivisor, typename Iterator>
-inline constexpr auto parse_integer(Iterator begin, Iterator end) {
-    constexpr auto is_digit = [](auto &c) {
-        return c <= '9' && c >= '0';
-    };
-
-    Integral multiplier = 1;
-    if constexpr (std::is_signed_v<Integral>) {
-        if (begin != end && *begin == '-') {
-            multiplier = -1;
-            ++begin;
-        }
-    }
-
-    Integral result = 0;
-    unsigned int divisor = 1;
-
-    for (;begin != end && is_digit(*begin); ++begin) {
-        if constexpr (IncludeDoubleDivisor) divisor *= 10;
-        result = (*begin - '0') + result * 10;
-    }
-
-    result *= multiplier;
-    if constexpr (IncludeDoubleDivisor) return std::tuple{begin, result, divisor};
-    else return std::tuple{begin, result};
 }
 
 // General matching algorithm with supplied equality functions.
@@ -113,7 +87,7 @@ template <size_t StartLength,
           typename EqualStart,
           typename EqualEnd>
 inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
-    return parser([=](auto &s) {
+    return parser([=](auto& s) {
         if (s.empty() || !equal_start(s.position, std::next(s.position, StartLength), start))
             return s.return_fail();
 
@@ -141,10 +115,10 @@ inline constexpr auto between_general(Start start, End end, EqualStart equal_sta
 }
 
 template <typename State, typename Result>
-inline constexpr auto custom(State &s, Result &&result) {
+inline constexpr auto custom(State& s, Result&& result) {
     s.set_position(result.first);
     if (result.second) {
-        return s.return_success(*result.second);
+        return s.return_success(std::move(*result.second));
     } else {
         return s.template return_fail<std::decay_t<decltype(*result.second)>>();
     }

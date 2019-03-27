@@ -35,7 +35,7 @@ inline constexpr auto equal(Iterator begin) {
  */
 template <auto... vs, typename Iterator>
 inline constexpr auto equal(Iterator begin, Iterator end) {
-    auto op = [&](const auto &x, const auto &v) {
+    auto op = [=](const auto& x, const auto& v) {
         return x != end && *x == v;
     };
     return (op(begin++, vs) && ...);
@@ -57,22 +57,22 @@ inline constexpr auto find_if(Iterator begin, Iterator end, Predicate p) {
  */
 template <typename Iterator, typename Predicate>
 inline constexpr auto find_if_not(Iterator begin, Iterator end, Predicate p) {
-    return algorithm::find_if(begin, end, [=](const auto &val){return !p(val);});
+    return algorithm::find_if(begin, end, [=](const auto& val){return !p(val);});
 }
 
 /**
  * constexpr version of `std::find`
  */
 template <typename Iterator, typename Element>
-inline constexpr auto find(Iterator begin, Iterator end, const Element &element) {
-    return algorithm::find_if(begin, end, [&](const auto &val){return val == element;});
+inline constexpr auto find(Iterator begin, Iterator end, const Element& element) {
+    return algorithm::find_if(begin, end, [&](const auto& val){return val == element;});
 }
 
 /**
  * Check if the supplied value is contained within the given template parameters.
  */
 template <typename Iterator, typename V>
-inline constexpr auto contains(Iterator begin, Iterator end, const V &needle) {
+inline constexpr auto contains(Iterator begin, Iterator end, const V& needle) {
     for (;begin != end; ++begin)
         if (*begin == needle) return true;
     return false;
@@ -82,7 +82,7 @@ inline constexpr auto contains(Iterator begin, Iterator end, const V &needle) {
  * Check if the supplied value is contained within the given template parameters.
  */
 template <auto... vs, typename V>
-inline constexpr auto contains(const V &sought) {
+inline constexpr auto contains(const V& sought) {
     return ((vs == sought) || ...);
 }
 

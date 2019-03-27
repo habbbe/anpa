@@ -46,7 +46,7 @@ TEST_CASE("no_consume") {
 }
 
 TEST_CASE("constrain") {
-    auto pred = [](auto &r) {
+    auto pred = [](auto& r) {
         return r == 1;
     };
 
@@ -111,8 +111,8 @@ TEST_CASE("first") {
 }
 
 TEST_CASE("modify_state") {
-    constexpr auto p = parse::item('a') >>= [](auto &&r) {
-        return parse::modify_state([=](auto &s) {
+    constexpr auto p = parse::item('a') >>= [](auto&& r) {
+        return parse::modify_state([=](auto& s) {
             s = 123;
             return r + 1;
         });
@@ -134,7 +134,7 @@ TEST_CASE("set_in_state") {
         char c = 'b';
     };
 
-    constexpr auto p = parse::set_in_state(parse::item('a'), [](auto &s) -> auto& {return s.c;});
+    constexpr auto p = parse::set_in_state(parse::item('a'), [](auto& s) -> auto& {return s.c;});
 
     constexpr auto res1 = p.parse_with_state("abc", state());
 
@@ -150,7 +150,7 @@ TEST_CASE("set_in_state") {
 
 TEST_CASE("apply_to_state") {
     constexpr auto intParser = parse::item('#') >> parse::integer();
-    constexpr auto p = parse::apply_to_state([](auto &s, auto i, auto j, auto k) {
+    constexpr auto p = parse::apply_to_state([](auto& s, auto i, auto j, auto k) {
         s = i + j + k;
         return 321;
     }, intParser, intParser, intParser);
@@ -163,7 +163,7 @@ TEST_CASE("apply_to_state") {
 }
 
 TEST_CASE("emplace_to_state") {
-    auto p = parse::emplace_to_state([](auto &s) -> auto& {
+    auto p = parse::emplace_to_state([](auto& s) -> auto& {
         return s;
     }, parse::sequence("abc") + parse::sequence("de"));
 
@@ -189,7 +189,7 @@ TEST_CASE("emplace_to_state_direct") {
 }
 
 TEST_CASE("emplace_back_to_state") {
-    auto p = parse::emplace_back_to_state([](auto &s) -> auto& {
+    auto p = parse::emplace_back_to_state([](auto& s) -> auto& {
         return s;
     }, parse::sequence("abc") + parse::sequence("de"));
 
@@ -276,7 +276,7 @@ TEST_CASE("many_general") {
     constexpr std::string_view str("#1=a#4=b#7=c");
     constexpr auto pairParser = parse::lift_value<std::pair<int, char>>(parse::item('#') >> parse::integer(),
                                                               parse::item('=') >> parse::any_item());
-    constexpr auto p = parse::many_general<val>(pairParser, [](auto &s, auto &&r) {
+    constexpr auto p = parse::many_general<val>(pairParser, [](auto& s, auto&& r) {
         s.is[r.first] = r.second;
     });
 
@@ -295,7 +295,7 @@ TEST_CASE("many_state") {
     };
 
     constexpr auto intParser = parse::item('#') >> parse::integer();
-    constexpr auto p = parse::many_state(intParser, [](auto &s, auto i) {
+    constexpr auto p = parse::many_state(intParser, [](auto& s, auto i) {
         s.is[s.i++] = i;
     });
     constexpr auto res = p.parse_with_state("#100#20#3", state());
@@ -357,17 +357,17 @@ TEST_CASE("lift_or_state") {
     constexpr auto hashParser = parse::item('#') >> parse::while_in("abc");
 
     struct f {
-        constexpr auto operator()(int &s, int) const {
+        constexpr auto operator()(int& s, int) const {
             s = 11;
             return 1;
         }
 
-        constexpr auto operator()(int &s, char) const {
+        constexpr auto operator()(int& s, char) const {
             s = 22;
             return 2;
         }
 
-        constexpr auto operator()(int &s, std::string_view) const {
+        constexpr auto operator()(int& s, std::string_view) const {
             s = 33;
             return 3;
         }
@@ -535,7 +535,7 @@ TEST_CASE("many_f with separator") {
 TEST_CASE("many_state with separator") {
     constexpr auto intParser = parse::integer();
 
-    constexpr auto p = parse::many_state(intParser, [](auto &s, auto i) {
+    constexpr auto p = parse::many_state(intParser, [](auto& s, auto i) {
         s += i;
     }, parse::sequence("#%"));
 

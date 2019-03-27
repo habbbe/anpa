@@ -28,7 +28,7 @@ struct json_value {
     std::shared_ptr<json_value_variant> val;
 
     template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, json_value>>>
-    json_value(T &&t) : val(std::make_shared<json_value_variant>(std::forward<T>(t))) {}
+    json_value(T&& t) : val(std::make_shared<json_value_variant>(std::forward<T>(t))) {}
 
     template <typename T>
     decltype(auto) get() {return std::get<T>(*val);}
@@ -39,10 +39,10 @@ struct json_value {
     decltype(auto) operator[](size_t i) {return std::get<json_array>(*val)[i];}
 
     template <typename Key>
-    decltype(auto) at(Key &&key) {return std::get<json_object>(*val).at(key);}
+    decltype(auto) at(Key&& key) {return std::get<json_object>(*val).at(key);}
 
     size_t size() const {
-        return std::visit([](const auto &v) {
+        return std::visit([](const auto& v) {
             using type = std::decay_t<decltype(v)>;
             if constexpr (parse::types::is_one_of<type, json_array, json_object, json_string>) return v.size();
             else return size_t(0);
@@ -50,8 +50,8 @@ struct json_value {
     }
 
     template <typename Key>
-    auto contains(const Key &key) {
-        auto &map = get<json_object>();
+    auto contains(const Key& key) {
+        auto& map = get<json_object>();
         return map.find(key) != map.end();
     }
 };

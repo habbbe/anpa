@@ -26,7 +26,7 @@ TEST_CASE("item") {
 
 TEST_CASE("item_if") {
     constexpr std::string_view str("abc");
-    constexpr auto p = parse::item_if([](auto &c) {return c == 'a';});
+    constexpr auto p = parse::item_if([](auto& c) {return c == 'a';});
     constexpr auto res = p.parse(str);
     static_assert(*res.second == 'a');
     static_assert(res.first.position == str.begin() + 1);
@@ -73,7 +73,7 @@ TEST_CASE("custom") {
 }
 
 TEST_CASE("custom_state") {
-    constexpr auto parser = [](auto begin, auto, auto &state) {
+    constexpr auto parser = [](auto begin, auto, auto& state) {
         using type = std::pair<std::decay_t<decltype(begin)>, std::optional<int>>;
         state = 3;
         return type(begin, 3);
@@ -201,7 +201,7 @@ TEST_CASE("rest") {
 }
 
 TEST_CASE("while_predicate") {
-    auto pred = [](auto &x) {
+    auto pred = [](auto& x) {
         return x == 'a' || x == 'b';
     };
 
@@ -320,14 +320,14 @@ TEST_CASE("floating") {
 }
 
 TEST_CASE("number") {
-    auto &str = "42abcde";
+    auto& str = "42abcde";
     auto res = parse::number<int>().parse(str);
     REQUIRE(res.second);
     REQUIRE(*res.second == 42);
     REQUIRE(res.first.position == str + 2);
 
     // No support for floats yet.
-//    auto &str2 = "42.3abcde";
+//    auto& str2 = "42.3abcde";
 //    constexpr auto res2 = parse::number<float>().parse(str2);
 //    static_assert(res2.second);
 //    static_assert(*res2.second == 42.3);

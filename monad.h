@@ -23,22 +23,22 @@ inline constexpr auto operator>>(Parser1 p1, Parser2 p2) {
  * Put the provided value in the parser monad on successful computation
  */
 template <typename Parser, typename Value>
-inline constexpr auto operator>=(Parser p, Value &&v) {
+inline constexpr auto operator>=(Parser p, Value&& v) {
     return p >> Parser::mreturn(std::forward<Value>(v));
 }
 
 /*
  * Combine two parser, ignoring the result of the second one.
  * This is an optimized version. Using
- * `p1 >>= [](auto &&r) { return p2 >> Parser1::mreturn(r); }`
+ * `p1 >>= [](auto&& r) { return p2 >> Parser1::mreturn(r); }`
  * works, but does unecessary copying.
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
-    return parse::parser([=](auto &s) {
+    return parse::parser([=](auto& s) {
         auto res = apply(p1, s);
         if (res) {
-            if (const auto &res2 = apply(p2, s)) {
+            if (const auto& res2 = apply(p2, s)) {
                 return res;
             } else {
                 return s.template return_fail_change_result<std::decay_t<decltype(*res)>>(res2);
@@ -54,7 +54,7 @@ inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
 template <std::size_t num_args, typename F>
 inline constexpr auto curry_n(F f) {
     if constexpr (num_args > 0) {
-        return [=](auto &&v) {
+        return [=](auto&& v) {
             return curry_n<num_args-1>([&](auto&&...vs) {
                 return f(std::forward<decltype(v)>(v), std::forward<decltype(vs)>(vs)...);
             });
@@ -69,7 +69,7 @@ inline constexpr auto curry_n(F f) {
  */
 template <typename F, typename P, typename... Ps>
 inline constexpr auto lift_internal(F f, P p, Ps... ps) {
-    return p >>= [=](auto &&r) {
+    return p >>= [=](auto&& r) {
         if constexpr (sizeof...(ps) == 0) {
             return f(std::forward<decltype(r)>(r));
         } else {
@@ -92,7 +92,7 @@ inline constexpr auto lift_prepare(F f, Ps... ps) {
  */
 template <typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift(F f, Parser p, Parsers... ps) {
-    auto fun = [=](auto &&...ps) {
+    auto fun = [=](auto&&... ps) {
         return Parser::mreturn(f(std::forward<decltype(ps)>(ps)...));
     };
     return lift_prepare(fun, p, ps...);
@@ -115,7 +115,7 @@ inline constexpr auto lift_lazy(F f, Parsers... ps) {
  */
 template <typename T, typename Parser, typename... Parsers>
 inline constexpr auto lift_value(Parser p, Parsers... ps) {
-    constexpr auto fun = [](auto &&...ps) {
+    constexpr auto fun = [](auto&&... ps) {
         return Parser::template mreturn_forward<T>(std::forward<decltype(ps)>(ps)...);
     };
     return lift_prepare(fun, p, ps...);
@@ -141,7 +141,7 @@ inline constexpr auto lift_value_lazy_raw(Parsers... ps) {
 
 template <typename Parser>
 inline constexpr auto lift_shared(Parser p) {
-    return lift([](auto &&s){
+    return lift([](auto&& s){
         using type = std::decay_t<decltype(s)>;
         return std::make_shared<type>(std::forward<decltype(s)>(s));
     }, p);
@@ -149,7 +149,7 @@ inline constexpr auto lift_shared(Parser p) {
 
 template <typename Parser>
 inline constexpr auto lift_lazy(Parser p) {
-    return lift([](auto &&s){
+    return lift([](auto&& s){
         return lazy::make_lazy(std::forward<decltype(s)>(s));
     }, p);
 }

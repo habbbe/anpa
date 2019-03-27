@@ -11,7 +11,7 @@
 namespace parse {
 
 template <typename Result, typename ErrorType, typename State, typename Iterator, typename StringConversionFunction = std::remove_const_t<decltype(string_view_convert)>, typename Settings = parser_settings>
-using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, StringConversionFunction, Settings>, parser_state<Iterator, StringConversionFunction, State, Settings>> &)>;
+using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, StringConversionFunction, Settings>, parser_state<Iterator, StringConversionFunction, State, Settings>>&)>;
 
 /**
  * Apply a parser to a state and return the result.
@@ -19,7 +19,7 @@ using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_
  * wrap the parser to enable recursion.
  */
 template <typename P, typename S>
-constexpr auto apply(P p, S &s) {
+constexpr auto apply(P p, S& s) {
     if constexpr (std::is_invocable_v<P>) {
         return apply(p(), s);
     } else {
@@ -35,8 +35,8 @@ struct parser;
  */
 template <typename Parser, typename F>
 inline constexpr auto operator>>=(Parser p, F f) {
-    return parser([=](auto &s) {
-        if (const auto &result = apply(p, s)) {
+    return parser([=](auto& s) {
+        if (const auto& result = apply(p, s)) {
             return apply(f(std::move(*result)), s);
         } else {
             using new_return_type = std::decay_t<decltype(*apply(f(std::move(*result)), s))>;
@@ -50,8 +50,10 @@ inline constexpr auto operator>>=(Parser p, F f) {
  */
 template <typename T, typename... Args>
 constexpr auto mreturn_forward(Args&&... args) {
-    return parser([&](auto &s) {
-        return s.template return_success_forward<T>(std::forward<Args>(args)...);
+    return parser([args = std::make_tuple(std::forward<Args>(args) ...)](auto& s)mutable{
+        return std::apply([&s](auto&& ... args){
+            return s.template return_success_forward<T>(std::forward<Args>(args)...);
+        }, std::move(args));
     });
 }
 
@@ -60,7 +62,7 @@ constexpr auto mreturn_forward(Args&&... args) {
  */
 template <typename T>
 constexpr auto mreturn(T&& t) {
-    return parser([t = std::forward<T>(t)](auto &s) {
+    return parser([t = std::forward<T>(t)](auto& s) {
         return s.return_success(t);
     });
 }
@@ -68,15 +70,15 @@ constexpr auto mreturn(T&& t) {
 /**
  * Lift a value to the parser monad. Templated general version. The returned value must be in global scope.
  */
-template <auto &T>
-constexpr auto mreturn() { return parser([](auto &s) { return s.return_success(T); }); }
+template <auto& T>
+constexpr auto mreturn() { return parser([](auto& s) { return s.return_success(T); }); }
 
 /**
  * Lift a value to the parser monad. Templated general version. Use this for literal types you know at
  * compile time.
  */
 template <auto T>
-constexpr auto mreturn() { return parser([](auto &s) { return s.return_success(T); }); }
+constexpr auto mreturn() { return parser([](auto& s) { return s.return_success(T); }); }
 
 /**
  * Monadic parser
@@ -91,12 +93,12 @@ struct parser {
     constexpr parser(P p) : p{p} {}
 
     template <typename State>
-    constexpr auto operator()(State &s) const {
+    constexpr auto operator()(State& s) const {
         return apply(p, s);
     }
 
     template <typename InternalState>
-    constexpr auto parse_internal(InternalState &&state) const {
+    constexpr auto parse_internal(InternalState&& state) const {
         return std::pair(std::forward<InternalState>(state), apply(p, state));
     }
 
@@ -109,7 +111,7 @@ struct parser {
     template <typename Settings = parser_settings, typename Iterator, typename State, typename ConversionFunction>
     constexpr auto parse_with_state(Iterator begin,
                                     Iterator end,
-                                    State &&user_state,
+                                    State&& user_state,
                                     ConversionFunction convert) const {
         return parse_internal(parser_state(begin, end, std::forward<State>(user_state), convert, Settings()));
     }
@@ -123,7 +125,7 @@ struct parser {
     template <typename Settings = parser_settings, typename Iterator, typename State>
     constexpr auto parse_with_state(Iterator begin,
                                     Iterator end,
-                                    State &&user_state) const {
+                                    State&& user_state) const {
         return parse_with_state<Settings>(begin,
                                 end,
                                 std::forward<State>(user_state),
@@ -137,8 +139,8 @@ struct parser {
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename SequenceType, typename State>
-    constexpr auto parse_with_state(const SequenceType &sequence,
-                                    State &&user_state) const {
+    constexpr auto parse_with_state(const SequenceType& sequence,
+                                    State&& user_state) const {
         return parse_with_state<Settings>(std::begin(sequence),
                                 std::end(sequence),
                                 std::forward<State>(user_state));
@@ -152,7 +154,7 @@ struct parser {
      */
     template <typename Settings = parser_settings, typename ItemType, size_t N, typename State>
     constexpr auto parse_with_state(const ItemType (&sequence)[N],
-                                    State &&user_state) const {
+                                    State&& user_state) const {
         return parse_with_state<Settings>(sequence,
                                 sequence + N - 1,
                                 std::forward<State>(user_state));
@@ -187,7 +189,7 @@ struct parser {
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename SequenceType>
-    constexpr auto parse(const SequenceType &sequence) const {
+    constexpr auto parse(const SequenceType& sequence) const {
         return parse<Settings>(std::begin(sequence), std::end(sequence));
     }
 
@@ -214,7 +216,7 @@ struct parser {
      * Class member of mreturn. For general monad use.
      */
     template <typename T>
-    static inline constexpr auto mreturn(T &&v) {
+    static inline constexpr auto mreturn(T&& v) {
         return parse::mreturn(std::forward<T>(v));
     }
 
@@ -226,7 +228,7 @@ struct parser {
     template <typename T,
               typename = std::enable_if_t<parse::types::iterator_is_category_v<T, std::output_iterator_tag>>>
     constexpr auto operator[](T t) const {
-        return *this >>= [=](auto &&s) {
+        return *this >>= [=](auto&& s) {
             *t = std::forward<decltype(s)>(s);
             return mreturn_forward<bool>(true);
         };

@@ -16,8 +16,8 @@ namespace parse {
  * Parser that always succeeds
  */
 inline constexpr auto success() {
-    return parser([](auto &s) {
-        return s.return_success(none());
+    return parser([](auto& s) {
+        return s.template return_success_forward<none>();
     });
 }
 
@@ -26,7 +26,7 @@ inline constexpr auto success() {
  */
 template <typename T = bool>
 inline constexpr auto fail() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         return s.template return_fail<T>();
     });
 }
@@ -35,9 +35,9 @@ inline constexpr auto fail() {
  * Parser for the empty sequence
  */
 inline constexpr auto empty() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         if (s.empty()) {
-            return s.return_success(none());
+            return s.template return_success_forward<none>();
         }
         return s.template return_fail<none>();
     });
@@ -47,7 +47,7 @@ inline constexpr auto empty() {
  * Parser for any item
  */
 inline constexpr auto any_item() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         if (s.empty())
             return s.template return_fail<decltype(s.front())>();
 
@@ -61,8 +61,8 @@ inline constexpr auto any_item() {
  * Parser for a single item
  */
 template <typename ItemType>
-inline constexpr auto item(const ItemType &i) {
-    return parser([=](auto &s) {
+inline constexpr auto item(ItemType&& i) {
+    return parser([i = std::forward<ItemType>(i)](auto& s) {
         return internal::item(s, i);
     });
 }
@@ -73,7 +73,7 @@ inline constexpr auto item(const ItemType &i) {
  */
 template <auto i>
 inline constexpr auto item() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         return internal::item(s, i);
     });
 }
@@ -82,8 +82,8 @@ inline constexpr auto item() {
  * Parser for a single item
  */
 template <typename ItemType>
-inline constexpr auto not_item(const ItemType &i) {
-    return parser([=](auto &s) {
+inline constexpr auto not_item(ItemType&& i) {
+    return parser([i = std::forward<ItemType>(i)](auto& s) {
         return internal::item<true>(s, i);
     });
 }
@@ -94,7 +94,7 @@ inline constexpr auto not_item(const ItemType &i) {
  */
 template <auto i>
 inline constexpr auto not_item() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         return internal::item<true>(s, i);
     });
 }
@@ -104,7 +104,15 @@ inline constexpr auto not_item() {
  */
 template <typename Pred>
 inline constexpr auto item_if(Pred pred) {
-    return try_parser(constrain(any_item(), pred));
+    return parser([=](auto& s) {
+        auto &c = s.front();
+        if (pred(c)) {
+            s.advance(1);
+            return s.return_success(c);
+        } else {
+            return s.template return_fail<std::decay_t<decltype(c)>>();
+        }
+    });
 }
 
 /**
@@ -112,9 +120,9 @@ inline constexpr auto item_if(Pred pred) {
  */
 template <typename Iterator>
 inline constexpr auto sequence(Iterator begin, Iterator end) {
-    return parser([=](auto &s) {
+    return parser([=](auto& s) {
         return internal::sequence(s, std::distance(begin, end),
-                                  [=](auto &i) {return algorithm::equal(begin, end, i);});
+                                  [=](auto& i) {return algorithm::equal(begin, end, i);});
     });
 }
 
@@ -124,9 +132,9 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
  */
 template <auto v, auto... vs>
 inline constexpr auto sequence() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         return internal::sequence(s, sizeof...(vs) + 1,
-                                  [](auto &i){return algorithm::equal<v, vs...>(i);});
+                                  [](auto& i){return algorithm::equal<v, vs...>(i);});
     });
 }
 
@@ -143,7 +151,7 @@ inline constexpr auto sequence(const ItemType (&seq)[N]) {
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto any_of(const ItemType (&seq)[N]) {
-    return parse::item_if([b = std::begin(seq), e = std::end(seq) - 1](const auto &c) {
+    return parse::item_if([b = std::begin(seq), e = std::end(seq) - 1](const auto& c) {
         return algorithm::contains(b, e, c);
     });
 }
@@ -153,7 +161,7 @@ inline constexpr auto any_of(const ItemType (&seq)[N]) {
  */
 template <auto v, auto... vs>
 inline constexpr auto any_of() {
-    return parse::item_if([](const auto &c) {
+    return parse::item_if([](const auto& c) {
         return algorithm::contains<v, vs...>(c);
     });
 }
@@ -162,7 +170,7 @@ inline constexpr auto any_of() {
  * Parser for consuming n items
  */
 inline constexpr auto consume(size_t n) {
-    return parser([=](auto &s) {
+    return parser([=](auto& s) {
         return internal::consume(s, n);
     });
 }
@@ -172,7 +180,7 @@ inline constexpr auto consume(size_t n) {
  */
 template <size_t N>
 inline constexpr auto consume() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         return internal::consume(s, N);
     });
 }
@@ -184,8 +192,8 @@ inline constexpr auto consume() {
  * to include the matched item in the result.
  */
 template <bool Eat = true, bool Include = false, typename ItemType>
-inline constexpr auto until_item(ItemType &&c) {
-    return parser([c = std::forward<ItemType>(c)](auto &s) {
+inline constexpr auto until_item(ItemType&& c) {
+    return parser([c = std::forward<ItemType>(c)](auto& s) {
         return internal::until_item<Eat, Include>(s, c);
     });
 }
@@ -195,7 +203,7 @@ inline constexpr auto until_item(ItemType &&c) {
  */
 template <auto item, bool Eat = true, bool Include = false>
 inline constexpr auto until_item() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         return internal::until_item<Eat, Include>(s, item);
     });
 }
@@ -209,9 +217,9 @@ inline constexpr auto until_item() {
  */
 template <bool Eat = true, bool Include = false, typename Iterator>
 inline constexpr auto until_sequence(Iterator begin, Iterator end) {
-    return parser([=](auto &s) {
+    return parser([=](auto& s) {
         return internal::until_sequence<Eat, Include>(s,
-                    [=](auto &b, auto &e) {return algorithm::search(b, e, begin, end);});
+                    [=](auto& b, auto& e) {return algorithm::search(b, e, begin, end);});
     });
 }
 
@@ -234,7 +242,7 @@ inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
  * Parser for the rest of the sequence
  */
 inline constexpr auto rest() {
-    return parser([](auto &s) {
+    return parser([](auto& s) {
         auto start_pos = s.position;;
         s.set_position(s.end);
         return s.return_success(s.convert(start_pos, s.position));
@@ -247,7 +255,7 @@ inline constexpr auto rest() {
  */
 template <typename Predicate>
 inline constexpr auto while_predicate(Predicate predicate) {
-    return parser([=](auto &s) {
+    return parser([=](auto& s) {
         auto res = algorithm::find_if_not(s.position, s.end, predicate);
         auto start_pos = s.position;
         s.set_position(res);
@@ -260,7 +268,7 @@ inline constexpr auto while_predicate(Predicate predicate) {
  */
 template <typename Iterator>
 inline constexpr auto while_in(Iterator start, Iterator end) {
-    return while_predicate([=](const auto &val){return algorithm::find(start, end, val) != end;});
+    return while_predicate([=](const auto& val){return algorithm::find(start, end, val) != end;});
 }
 
 /**
@@ -277,7 +285,7 @@ inline constexpr auto while_in(const ItemType (&items)[N]) {
  */
 template <auto v, auto... vs>
 inline constexpr auto while_in() {
-    return while_predicate([](const auto &val){
+    return while_predicate([](const auto& val){
         return algorithm::contains<v, vs...>(val);
     });
 }
@@ -314,7 +322,7 @@ inline constexpr auto between_sequences(const ItemType (&start)[NStart], const I
  */
 template <bool Nested = false, bool Eat = true, typename ItemType>
 inline constexpr auto between_items(const ItemType start, const ItemType end) {
-    constexpr auto compare_single = [](auto iterator, auto, auto &toCompare) {
+    constexpr auto compare_single = [](const auto iterator, auto, const auto& toCompare) {
         return *iterator == toCompare;
     };
     return internal::between_general<1, 1, Nested, Eat>(start, end, compare_single, compare_single);
@@ -329,7 +337,7 @@ inline constexpr auto between_items(const ItemType start, const ItemType end) {
  */
 template <typename Parser>
 inline constexpr auto custom(Parser custom_parser) {
-    return parser([=](auto &s) {
+    return parser([=](auto& s) {
         return internal::custom(s, custom_parser(s.position, s.end));
     });
 }
@@ -337,13 +345,13 @@ inline constexpr auto custom(Parser custom_parser) {
 /**
  * Create a custom parser.
  * custom_parser should be a callable with the following signature
- * std::pair<Iterator, std::optional<Result>>(Iterator position, Iterator End, State &state)
+ * std::pair<Iterator, std::optional<Result>>(Iterator position, Iterator End, State& state)
  * where the first element is the new iterator position, and the second the result, where
  * and empty optional signals a failed parse.
  */
 template <typename Parser>
 inline constexpr auto custom_with_state(Parser custom_parser) {
-    return parser([=](auto &s) {
+    return parser([=](auto& s) {
         return internal::custom(s, custom_parser(s.position, s.end, s.user_state));
     });
 }
@@ -358,8 +366,8 @@ inline constexpr auto custom_with_state(Parser custom_parser) {
  */
 template <typename Number>
 inline constexpr auto number() {
-    return parser([](auto &s) {
-        auto [start, end] = [](auto &state) {
+    return parser([](auto& s) {
+        auto [start, end] = [](auto& state) {
             if constexpr (std::is_pointer_v<decltype(state.position)>) {
                 return std::pair(state.position, state.end);
             } else {
@@ -384,26 +392,34 @@ inline constexpr auto number() {
  */
 template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
-    return parser([](auto &s) {
-        auto res = internal::parse_integer<Integral, IncludeDoubleDivisor>(s.position, s.end);
-        auto new_pos = std::get<0>(res);
-        auto result = std::get<1>(res);
-        if (new_pos != s.position) {
-            s.set_position(new_pos);
+    auto f_res = [](bool&& neg) {
+        struct t {
+            Integral first;
+            unsigned int second;
+        };
+        auto p = fold<true, true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}), t{0,1},
+                                  [](auto& r, auto&& c) {
             if constexpr (IncludeDoubleDivisor) {
-                return s.return_success(std::pair(result, std::get<2>(res)));
-            } else {
-                return s.return_success(result);
+                r.second *= 10;
             }
-        } else {
+            r.first = r.first*10 + c - '0';
+        });
+        return p >>= [neg](auto&& res) {
+            Integral result = (neg ? -1 : 1) * res.first;
             if constexpr (IncludeDoubleDivisor) {
-                return s.template return_fail<std::pair<Integral,
-                        std::decay_t<decltype(std::get<2>(res))>>>();
+                return mreturn_forward<std::pair<Integral, unsigned int>>(result, res.second);
             } else {
-                return s.template return_fail<Integral>();
+                return mreturn(result);
             }
-        }
-    });
+        };
+    };
+    if constexpr (std::is_signed_v<Integral>) {
+        return succeed(item<'-'>()) >>= [=](auto&& neg) {
+            return f_res(neg.has_value());
+        };
+    } else {
+        return f_res(false);
+    }
 }
 
 /**
@@ -412,18 +428,18 @@ inline constexpr auto integer() {
  */
 template <bool AllowScientific = true, typename FloatType = double>
 inline constexpr auto floating() {
-    constexpr auto floating_part = integer() >>= [](const auto &n) {
+    constexpr auto floating_part = integer() >>= [](const auto& n) {
         auto dec = item<'.'>() >> integer<unsigned int, true>();
-        return (dec >>= [&](const auto &p) {
+        return (dec >>= [&](const auto& p) {
             // ((0 <= n) - (n < 0)) returns -1 for n < 0 otherwise 1
             return mreturn(n + ((0 <= n) - (n < 0)) * (FloatType(p.first) / p.second));
-        }) || mreturn(FloatType(n));
+        }) || mreturn_forward<FloatType>(n);
     };
 
     if constexpr (AllowScientific) {
-        return floating_part >>= [](const auto &d) {
+        return floating_part >>= [](const auto& d) {
             auto exp = (item<'e'>() || item<'E'>()) >> integer();
-            return (exp >>= [&](const auto &e) {
+            return (exp >>= [&](const auto& e) {
                 return mreturn(d * internal::pow_table<FloatType>::pow(e));
             }) || mreturn(d);
         };
@@ -436,7 +452,7 @@ inline constexpr auto floating() {
  * Parser for whitespace
  */
 inline constexpr auto whitespace() {
-    return while_predicate([](const auto &c) {
+    return while_predicate([](const auto& c) {
         return c == ' ' || (c >= '\t' && c <= '\r');
     });
 }

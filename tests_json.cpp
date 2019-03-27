@@ -5,7 +5,7 @@
 #include "time_measure.h"
 
 template <typename T, typename Str>
-auto test_json_type(Str &&s, T val) {
+auto test_json_type(Str&& s, T val) {
     std::string_view str(s);
     auto p = json_parser;
     auto res = p.parse(str);
@@ -36,12 +36,12 @@ TEST_CASE("json_general") {
     std::string_view str("{\"first\"  :  [3e5 ,[ \"cba\" ,null], {\"ef\":false}], \"second\":true}");
     auto res = json_parser.parse(str);
     REQUIRE(res.second);
-    auto &json = *res.second;
+    auto& json = *res.second;
     REQUIRE(json.is_a<json_object>());
 
     REQUIRE(json.contains("first"));
 
-    auto &element1 = json.at("first");
+    auto& element1 = json.at("first");
 
     REQUIRE(element1.is_a<json_array>());
 
