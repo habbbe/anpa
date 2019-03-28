@@ -19,7 +19,7 @@ namespace parse {
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto& s) {
-        if (auto result = apply(p, s)) {
+        if (const auto& result = apply(p, s)) {
             return s.return_success(std::optional(std::move(*result)));
         } else {
             return s.return_success(std::optional<std::decay_t<decltype(*result)>>());
@@ -493,8 +493,8 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
 template <typename Parser1, typename Parser2>
 inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
     return parser([=](auto& s) {
-        if (auto result = apply(p1, s)) {
-            auto result_text = *result;
+        if (auto&& result = apply(p1, s)) {
+            auto result_text = std::move(*result);
             using state_type = std::decay_t<decltype(s)>;
             state_type new_state(std::begin(result_text), std::end(result_text), s);
             auto new_result = apply(p2, new_state);
