@@ -22,8 +22,8 @@ constexpr auto string_parser = []() {
 }();
 
 constexpr auto number_parser = eat(parse::floating<true, json_number>());
-constexpr auto bool_parser = eat((parse::sequence<'t','r','u','e'>() >> parse::mreturn<true>()) ||
-                                 (parse::sequence<'f','a','l','s','e'>() >> parse::mreturn<false>()));
+constexpr auto bool_parser = eat((parse::sequence<'t','r','u','e'>() >= true) ||
+                                 (parse::sequence<'f','a','l','s','e'>() >= false));
 constexpr auto null_parser = eat(parse::sequence<'n','u','l','l'>() >> parse::mreturn_forward<json_null>());
 
 template <typename F>

@@ -2,7 +2,6 @@
 #define PARSER_PARSERS_H
 
 #include <charconv>
-#include <cmath>
 #include "algorithm.h"
 #include "core.h"
 #include "types.h"
