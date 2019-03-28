@@ -147,7 +147,7 @@ inline constexpr auto sequence(const ItemType (&seq)[N]) {
 }
 
 /**
- * Parser for a sequence described by a string literal
+ * Parser for any item contained in the set described by the provided string literal
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto any_of(const ItemType (&seq)[N]) {
@@ -157,7 +157,7 @@ inline constexpr auto any_of(const ItemType (&seq)[N]) {
 }
 
 /**
- * Parser for a sequence described by a string literal
+ * Parser for any item contained in the set described by the provided template arguments
  */
 template <auto v, auto... vs>
 inline constexpr auto any_of() {
@@ -228,7 +228,7 @@ inline constexpr auto until_sequence(Iterator begin, Iterator end) {
  * Use boolean template parameter `Eat` to control whether or not to
  * consume the matched sequence, and `Include` to controler whether or not to include
  * the matched sequence in the result.
- * This is much faster than using until(sequence()).
+ * This is much faster than using `until(sequence())`.
  */
 template <bool Eat = true,
           bool Include = false,
