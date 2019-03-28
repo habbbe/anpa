@@ -24,7 +24,7 @@ inline constexpr auto many(State& s,
     bool successes = false;
 
     for (;;) {
-        auto res = apply(p, s);
+        const auto& res = apply(p, s);
 
         if (!res) {
             if constexpr (FailOnNoSuccess) {
@@ -52,8 +52,8 @@ inline constexpr auto many(State& s,
 template <typename State, typename Parser>
 inline constexpr auto times(State& s, size_t n, Parser p) {
     auto start = s.position;
-    for (size_t i = n; i > 0; --i) {
-        if (auto res = apply(p, s)) return s.return_fail_result_default(res);
+    for (size_t i = 0; i < n; ++i) {
+        if (const auto& res = apply(p, s); !res) return s.return_fail_result_default(res);
     }
     return s.return_success(s.convert(start, s.position));
 }
