@@ -401,7 +401,10 @@ inline constexpr auto many_state(Parser p,
 }
 
 /**
- * Fold a series of successful parser results with binary operator `f` and initial value `i`.
+ * Fold a series of successful parser results with binary functor `f` and initial value `i`.
+ * Use template parameter `FailOnNoSuccess` to decide if to fail when the parser succeeds 0 times.
+ * Use template parameter `Mutate` to mutate your accumulator value rather than returning a new one.
+ * If not using `Mutate` the functor cannot take its accumulator parameter by l-value reference.
  */
 template <bool FailOnNoSuccess = false,
           bool Mutate = false,
@@ -416,7 +419,7 @@ inline constexpr auto fold(Parser p,
     return parser([p, i = std::forward<Init>(i), f, sep](auto& s) mutable {
         [[maybe_unused]] auto res = internal::many<FailOnNoSuccess>(s, p, [f, &i](auto&& a) {
             if constexpr (Mutate)  f(i, std::forward<decltype(a)>(a));
-            else i = f(i, std::forward<decltype(a)>(a));
+            else i = f(std::move(i), std::forward<decltype(a)>(a));
         }, sep);
         if constexpr (FailOnNoSuccess) {
             if (!res) {

@@ -105,7 +105,7 @@ inline constexpr auto not_item() {
 template <typename Pred>
 inline constexpr auto item_if(Pred pred) {
     return parser([=](auto& s) {
-        auto &c = s.front();
+        const auto& c = s.front();
         if (pred(c)) {
             s.advance(1);
             return s.return_success(c);
@@ -392,22 +392,22 @@ inline constexpr auto number() {
  */
 template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
-    auto f_res = [](bool&& neg) {
+    auto res_parser = [](bool&& neg) {
         struct t {
-            Integral first;
-            unsigned int second;
+            Integral acc = 0;
+            unsigned int div = 1;
         };
-        auto p = fold<true, true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}), t{0,1},
-                                  [](auto& r, auto&& c) {
+        auto p = fold<true,true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}), t{},
+                                  [](auto&& r, auto&& c) {
             if constexpr (IncludeDoubleDivisor) {
-                r.second *= 10;
+                r.div *= 10;
             }
-            r.first = r.first*10 + c - '0';
+            r.acc = r.acc * 10 + c - '0';
         });
         return p >>= [neg](auto&& res) {
-            Integral result = (neg ? -1 : 1) * res.first;
+            Integral result = (neg ? -1 : 1) * res.acc;
             if constexpr (IncludeDoubleDivisor) {
-                return mreturn_forward<std::pair<Integral, unsigned int>>(result, res.second);
+                return mreturn_forward<std::pair<Integral, unsigned int>>(result, res.div);
             } else {
                 return mreturn(result);
             }
@@ -415,10 +415,10 @@ inline constexpr auto integer() {
     };
     if constexpr (std::is_signed_v<Integral>) {
         return succeed(item<'-'>()) >>= [=](auto&& neg) {
-            return f_res(neg.has_value());
+            return res_parser(neg.has_value());
         };
     } else {
-        return f_res(false);
+        return res_parser(false);
     }
 }
 
