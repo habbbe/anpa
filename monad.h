@@ -36,15 +36,15 @@ inline constexpr auto operator>=(Parser p, Value&& v) {
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
     return parse::parser([=](auto& s) {
-        auto res = apply(p1, s);
-        if (res) {
-            if (const auto& res2 = apply(p2, s)) {
-                return res;
+        auto result = apply(p1, s);
+        if (result) {
+            if (auto result2 = apply(p2, s)) {
+                return result;
             } else {
-                return s.template return_fail_change_result<std::decay_t<decltype(*res)>>(res2);
+                return s.template return_fail_change_result<std::decay_t<decltype(*result)>>(result2);
             }
         }
-        return res;
+        return result;
     });
 }
 

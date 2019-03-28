@@ -24,9 +24,9 @@ inline constexpr auto many(State& s,
     bool successes = false;
 
     for (;;) {
-        const auto& res = apply(p, s);
+        auto result = apply(p, s);
 
-        if (!res) {
+        if (!result) {
             if constexpr (FailOnNoSuccess) {
                 if (!successes) {
                     return s.return_fail();
@@ -37,7 +37,7 @@ inline constexpr auto many(State& s,
         successes = true;
 
         if constexpr (!std::is_empty_v<std::decay_t<Fun>>) {
-            f(std::move(*res)); // We're done with the result here so we can move it.
+            f(std::move(*result)); // We're done with the result here so we can move it.
         }
 
         if constexpr (!std::is_empty_v<std::decay_t<Sep>>) {
@@ -53,7 +53,7 @@ template <typename State, typename Parser>
 inline constexpr auto times(State& s, size_t n, Parser p) {
     auto start = s.position;
     for (size_t i = 0; i < n; ++i) {
-        if (const auto& res = apply(p, s); !res) return s.return_fail_result_default(res);
+        if (auto result = apply(p, s); !result) return s.return_fail_result_default(result);
     }
     return s.return_success(s.convert(start, s.position));
 }

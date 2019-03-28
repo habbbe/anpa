@@ -19,10 +19,10 @@ namespace parse {
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto& s) {
-        if (auto res = apply(p, s)) {
-            return s.return_success(std::optional(std::move(*res)));
+        if (auto result = apply(p, s)) {
+            return s.return_success(std::optional(std::move(*result)));
         } else {
-            return s.return_success(std::optional<std::decay_t<decltype(*res)>>());
+            return s.return_success(std::optional<std::decay_t<decltype(*result)>>());
         }
     });
 }
@@ -417,13 +417,13 @@ inline constexpr auto fold(Parser p,
                            Fun f,
                            ParserSep sep = {}) {
     return parser([p, i = std::forward<Init>(i), f, sep](auto& s) mutable {
-        [[maybe_unused]] auto res = internal::many<FailOnNoSuccess>(s, p, [f, &i](auto&& a) {
+        [[maybe_unused]] auto result = internal::many<FailOnNoSuccess>(s, p, [f, &i](auto&& a) {
             if constexpr (Mutate)  f(i, std::forward<decltype(a)>(a));
             else i = f(std::move(i), std::forward<decltype(a)>(a));
         }, sep);
         if constexpr (FailOnNoSuccess) {
-            if (!res) {
-                return s.template return_fail_change_result<Init>(res);
+            if (!result) {
+                return s.template return_fail_change_result<Init>(result);
             }
         }
         return s.return_success(std::move(i));
