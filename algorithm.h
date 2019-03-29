@@ -69,7 +69,7 @@ inline constexpr auto find(Iterator begin, Iterator end, const Element& element)
 }
 
 /**
- * Check if the supplied value is contained within the given template parameters.
+ * Check if the supplied value is contained within the range described by [begin, end).
  */
 template <typename Iterator, typename V>
 inline constexpr auto contains(Iterator begin, Iterator end, const V& needle) {

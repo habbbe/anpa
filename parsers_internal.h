@@ -10,7 +10,7 @@ namespace parse::internal {
 /**
  * Parser for a single item
  */
-template <bool Not = false,typename State, typename ItemType>
+template <bool Not = false, typename State, typename ItemType>
 inline constexpr auto item(State& s, const ItemType& c) {
     if (!s.empty()) {
         auto comp = [](const auto& a, const auto& b) {

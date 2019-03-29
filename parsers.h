@@ -397,7 +397,7 @@ inline constexpr auto integer() {
             unsigned int div = 1;
         };
         auto p = fold<true,true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}), t{},
-                                  [](auto&& r, auto&& c) {
+                                  [](auto& r, auto&& c) {
             if constexpr (IncludeDoubleDivisor) {
                 r.div *= 10;
             }
@@ -437,7 +437,7 @@ inline constexpr auto floating() {
 
     if constexpr (AllowScientific) {
         return floating_part >>= [](const auto& d) {
-            auto exp = (item<'e'>() || item<'E'>()) >> integer();
+            auto exp = any_of<'e', 'E'>() >> integer();
             return (exp >>= [&](const auto& e) {
                 return mreturn(d * internal::pow_table<FloatType>::pow(e));
             }) || mreturn(d);
