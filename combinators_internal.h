@@ -14,12 +14,12 @@ namespace parse::internal {
 template <bool FailOnNoSuccess = false,
           typename State,
           typename Parser,
-          typename Fun = none,
-          typename Sep = none>
+          typename Sep = none,
+          typename Fun = none>
 inline constexpr auto many(State& s,
                            Parser p,
-                           [[maybe_unused]] Fun f = {},
-                           [[maybe_unused]] Sep sep = {}) {
+                           [[maybe_unused]] Sep sep = {},
+                           [[maybe_unused]] Fun f = {}) {
     auto start = s.position;
     bool successes = false;
 
