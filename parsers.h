@@ -255,8 +255,8 @@ inline constexpr auto rest() {
 template <typename Predicate>
 inline constexpr auto while_predicate(Predicate predicate) {
     return parser([=](auto& s) {
-        auto result = algorithm::find_if_not(s.position, s.end, predicate);
         auto start_pos = s.position;
+        auto result = algorithm::find_if_not(start_pos, s.end, predicate);
         s.set_position(result);
         return s.return_success(s.convert(start_pos, result));
     });

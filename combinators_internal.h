@@ -77,17 +77,18 @@ inline constexpr auto get_parsed_recursive(State& s, Iterator original_position,
 // Compile time recursive resolver for lifting of arbitrary number of parsers
 template <typename State, typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_rec(State& s, F f, Parser p, Parsers... ps) {
-    auto startPos = s.position;
+    auto start_pos = s.position;
     if (const auto& result = apply(p, s)) {
         return s.return_success(f(std::move(*result)));
-    } else if constexpr (sizeof...(ps) > 0) {
-        s.position = startPos;
-        return lift_or_rec(s, f, ps...);
     } else {
-        // All parsers failed
-        s.position = startPos;
-        using result_type = std::decay_t<decltype(f(*result))>;
-        return s.template return_fail_change_result<result_type>(result);
+        s.position = start_pos;
+        if constexpr (sizeof...(ps) > 0) {
+            return lift_or_rec(s, f, ps...);
+        } else {
+            // All parsers failed
+            using result_type = std::decay_t<decltype(f(*result))>;
+            return s.template return_fail_change_result<result_type>(result);
+        }
     }
 }
 
