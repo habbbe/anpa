@@ -49,11 +49,9 @@ inline constexpr auto operator>>=(Parser p, F f) {
  * Lifts a type to the parser monad by forwarding the provided arguments to its constructor.
  */
 template <typename T, typename... Args>
-constexpr auto mreturn_forward(Args&&... args) {
-    return parser([args = std::make_tuple(std::forward<Args>(args) ...)](auto& s) mutable {
-        return std::apply([&s](auto&& ... args){
-            return s.template return_success_forward<T>(std::forward<Args>(args)...);
-        }, std::move(args));
+constexpr auto mreturn_emplace(Args&&... args) {
+    return parser([=](auto& s) {
+        return s.template return_success_emplace<T>(args...);
     });
 }
 
@@ -62,9 +60,7 @@ constexpr auto mreturn_forward(Args&&... args) {
  */
 template <typename T>
 constexpr auto mreturn(T&& t) {
-    return parser([t = std::forward<T>(t)](auto& s) {
-        return s.return_success(t);
-    });
+    return mreturn_emplace<T>(std::forward<T>(t));
 }
 
 /**
@@ -205,11 +201,11 @@ struct parser {
     }
 
     /**
-     * Class member of mreturn_forward. For general monad use.
+     * Class member of mreturn_emplace. For general monad use.
      */
     template <typename T, typename... Args>
-    static inline constexpr auto mreturn_forward(Args&&... args) {
-        return parse::mreturn_forward<T>(std::forward<Args>(args)...);
+    static inline constexpr auto mreturn_emplace(Args&&... args) {
+        return parse::mreturn_emplace<T>(std::forward<Args>(args)...);
     }
 
     /**
@@ -230,7 +226,7 @@ struct parser {
     constexpr auto operator[](T t) const {
         return *this >>= [=](auto&& s) {
             *t = std::forward<decltype(s)>(s);
-            return mreturn_forward<bool>(true);
+            return mreturn_emplace<bool>(true);
         };
     }
 };

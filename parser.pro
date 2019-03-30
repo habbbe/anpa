@@ -20,14 +20,7 @@ HEADERS += \
     json_parser.h \
     time_measure.h \
     json_parser.h \
-    lazy.h \
-    parser.h \
-    time_measure.h \
     test/catch.hpp \
-    json_parser.h \
-    lazy.h \
-    parser.h \
-    time_measure.h \
     json/json_value.h \
     json/json_parser.h \
     algorithm.h \

@@ -16,7 +16,7 @@ namespace parse {
  */
 inline constexpr auto success() {
     return parser([](auto& s) {
-        return s.template return_success_forward<none>();
+        return s.template return_success_emplace<none>();
     });
 }
 
@@ -36,7 +36,7 @@ inline constexpr auto fail() {
 inline constexpr auto empty() {
     return parser([](auto& s) {
         if (s.empty()) {
-            return s.template return_success_forward<none>();
+            return s.template return_success_emplace<none>();
         }
         return s.template return_fail<none>();
     });
@@ -404,9 +404,9 @@ inline constexpr auto integer() {
             r.acc = r.acc * 10 + c - '0';
         });
         return p >>= [neg](auto&& res) {
-            Integral result = (neg ? -1 : 1) * res.acc;
+            Integral result = neg ? -res.acc : res.acc;
             if constexpr (IncludeDoubleDivisor) {
-                return mreturn_forward<std::pair<Integral, unsigned int>>(result, res.div);
+                return mreturn_emplace<std::pair<Integral, unsigned int>>(result, res.div);
             } else {
                 return mreturn(result);
             }
@@ -432,7 +432,7 @@ inline constexpr auto floating() {
         return (dec >>= [&](const auto& p) {
             // ((0 <= n) - (n < 0)) returns -1 for n < 0 otherwise 1
             return mreturn(n + ((0 <= n) - (n < 0)) * (FloatType(p.first) / p.second));
-        }) || mreturn_forward<FloatType>(n);
+        }) || mreturn_emplace<FloatType>(n);
     };
 
     if constexpr (AllowScientific) {

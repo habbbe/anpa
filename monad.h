@@ -116,7 +116,7 @@ inline constexpr auto lift_lazy(F f, Parsers... ps) {
 template <typename T, typename Parser, typename... Parsers>
 inline constexpr auto lift_value(Parser p, Parsers... ps) {
     constexpr auto fun = [](auto&&... ps) {
-        return Parser::template mreturn_forward<T>(std::forward<decltype(ps)>(ps)...);
+        return Parser::template mreturn_emplace<T>(std::forward<decltype(ps)>(ps)...);
     };
     return lift_prepare(fun, p, ps...);
 }

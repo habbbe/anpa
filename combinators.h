@@ -159,11 +159,11 @@ inline constexpr auto operator||(P1 p1, P2 p2) {
             }
         } else {
             if (apply(p1, s)) {
-                return s.template return_success_forward<none>();
+                return s.template return_success_emplace<none>();
             } else {
                 s.position = original_position;
                 auto result2 = apply(p2, s);
-                return result2 ? s.template return_success_forward<none>() :
+                return result2 ? s.template return_success_emplace<none>() :
                                       s.template return_fail_change_result<none>(result2);
             }
         }
@@ -186,7 +186,7 @@ inline constexpr auto modify_state(Fun f) {
         using result_type = std::decay_t<decltype(f(s.user_state))>;
         if constexpr (std::is_void<result_type>::value) {
             f(s.user_state);
-            return s.template return_success_forward<none>();
+            return s.template return_success_emplace<none>();
         } else {
             return s.return_success(f(s.user_state));
         }
@@ -327,7 +327,8 @@ inline constexpr auto many_to_array(Parser p,
 }
 
 /**
- * Create a parser that applies a parser until it fails and returns the result in an `std::map`.
+ * Create a parser that applies a parser until it fails and returns the result in an
+ * `std::unordered_map`.
  * Use the first template argument to specify unordered or not. Default is unordered.
  * Key and value are retrieved from the result using std::tuple_element.
  */
