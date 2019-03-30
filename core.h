@@ -101,7 +101,7 @@ struct parser {
     /**
      * Begin parsing a sequence interpreted as [begin, end) with state,
      * using the supplied conversion function when returning sequence results.
-     * The result is a std::pair with the position of the first unparsed token as first
+     * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename Iterator, typename State, typename ConversionFunction>
@@ -115,7 +115,7 @@ struct parser {
     /**
      * Begin parsing a sequence interpreted as [begin, end) with state,
      * using basic_string_view for sequence results.
-     * The result is a std::pair with the position of the first unparsed token as first
+     * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename Iterator, typename State>
@@ -131,7 +131,7 @@ struct parser {
     /**
      * Begin parsing a sequence interpreted as [std::begin(sequence), std::end(sequence)) with state,
      * using basic_string_view for sequence results.
-     * The result is a std::pair with the position of the first unparsed token as first
+     * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename SequenceType, typename State>
@@ -145,7 +145,7 @@ struct parser {
     /**
      * Begin parsing a null terminated string literal,
      * using basic_string_view for sequence results.
-     * The result is a std::pair with the position of the first unparsed token as first
+     * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename ItemType, size_t N, typename State>
@@ -159,7 +159,7 @@ struct parser {
     /**
      * Begin parsing the sequence described by [begin, end),
      * using the supplied conversion function when returning sequence results.
-     * The result is a std::pair with the position of the first unparsed token as first
+     * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename Iterator, typename ConversionFunction>
@@ -170,7 +170,7 @@ struct parser {
     /**
      * Begin parsing the sequence described by [begin, end),
      * using basic_string_view for sequence results.
-     * The result is a std::pair with the position of the first unparsed token as first
+     * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename Iterator>
@@ -181,7 +181,7 @@ struct parser {
     /**
      * Begin parsing a sequence interpreted as [std::begin(sequence), std::end(sequence))
      * using basic_string_view for sequence results.
-     * The result is a std::pair with the position of the first unparsed token as first
+     * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename SequenceType>
@@ -192,7 +192,7 @@ struct parser {
     /**
      * Begin parsing a null terminated string literal
      * using basic_string_view for sequence results.
-     * The result is a std::pair with the position of the first unparsed token as first
+     * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
     template <typename Settings = parser_settings, typename ItemType, size_t N>
