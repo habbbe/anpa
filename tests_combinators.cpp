@@ -10,6 +10,7 @@ TEST_CASE("succeed") {
 
 struct with_error_handling {
     constexpr static bool error_handling = true;
+    constexpr static auto conversion_function = parse::string_view_convert;
 };
 
 TEST_CASE("change_error") {

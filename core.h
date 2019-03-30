@@ -10,8 +10,8 @@
 
 namespace parse {
 
-template <typename Result, typename ErrorType, typename State, typename Iterator, typename StringConversionFunction = std::remove_const_t<decltype(string_view_convert)>, typename Settings = parser_settings>
-using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, StringConversionFunction, Settings>, parser_state<Iterator, StringConversionFunction, State, Settings>>&)>;
+template <typename Result, typename ErrorType, typename State, typename Iterator, typename Settings = parser_settings>
+using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, Settings>, parser_state<Iterator, State, Settings>>&)>;
 
 /**
  * Apply a parser to a state and return the result.
@@ -104,28 +104,11 @@ struct parser {
      * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
-    template <typename Settings = parser_settings, typename Iterator, typename State, typename ConversionFunction>
-    constexpr auto parse_with_state(Iterator begin,
-                                    Iterator end,
-                                    State&& user_state,
-                                    ConversionFunction convert) const {
-        return parse_internal(parser_state(begin, end, std::forward<State>(user_state), convert, Settings()));
-    }
-
-    /**
-     * Begin parsing a sequence interpreted as [begin, end) with state,
-     * using basic_string_view for sequence results.
-     * The result is a std::pair with the parser state as the first
-     * element and the result of the parse as the second.
-     */
     template <typename Settings = parser_settings, typename Iterator, typename State>
     constexpr auto parse_with_state(Iterator begin,
                                     Iterator end,
                                     State&& user_state) const {
-        return parse_with_state<Settings>(begin,
-                                end,
-                                std::forward<State>(user_state),
-                                string_view_convert);
+        return parse_internal(parser_state(begin, end, std::forward<State>(user_state), Settings()));
     }
 
     /**
@@ -162,20 +145,9 @@ struct parser {
      * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
-    template <typename Settings = parser_settings, typename Iterator, typename ConversionFunction>
-    constexpr auto parse(Iterator begin, Iterator end, ConversionFunction convert) const {
-        return parse_internal(parser_state_simple(begin, end, convert, Settings()));
-    }
-
-    /**
-     * Begin parsing the sequence described by [begin, end),
-     * using basic_string_view for sequence results.
-     * The result is a std::pair with the parser state as the first
-     * element and the result of the parse as the second.
-     */
     template <typename Settings = parser_settings, typename Iterator>
     constexpr auto parse(Iterator begin, Iterator end) const {
-        return parse<Settings>(begin, end, string_view_convert);
+        return parse_internal(parser_state_simple(begin, end, Settings()));
     }
 
     /**
