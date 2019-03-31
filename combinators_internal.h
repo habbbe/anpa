@@ -81,7 +81,7 @@ inline constexpr auto lift_or_rec(State& s, F f, Parser p, Parsers... ps) {
     if (const auto& result = apply(p, s)) {
         return s.return_success(f(std::move(*result)));
     } else {
-        s.position = start_pos;
+        s.set_position(start_pos);
         if constexpr (sizeof...(ps) > 0) {
             return lift_or_rec(s, f, ps...);
         } else {

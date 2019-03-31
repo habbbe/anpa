@@ -72,7 +72,7 @@ inline constexpr auto try_parser(Parser p) {
         auto old_position = s.position;
         auto result = apply(p, s);
         if (!result) {
-            s.position = old_position;
+            s.set_position(old_position);
         }
         return result;
     });
@@ -86,7 +86,7 @@ inline constexpr auto no_consume(Parser p) {
     return parser([=](auto& s) {
         auto old_position = s.position;
         auto result = apply(p, s);
-        s.position = old_position;
+        s.set_position(old_position);
         return result;
     });
 }
@@ -154,14 +154,14 @@ inline constexpr auto operator||(P1 p1, P2 p2) {
             if (auto result1 = apply(p1, s)) {
                 return result1;
             } else {
-                s.position = original_position;
+                s.set_position(original_position);
                 return apply(p2, s);
             }
         } else {
             if (apply(p1, s)) {
                 return s.template return_success_emplace<none>();
             } else {
-                s.position = original_position;
+                s.set_position(original_position);
                 auto result2 = apply(p2, s);
                 return result2 ? s.template return_success_emplace<none>() :
                                       s.template return_fail_change_result<none>(result2);
@@ -521,7 +521,7 @@ inline constexpr auto until(Parser p) {
         auto position_end = position_start;
         for (auto result = apply(p, s); !result; result = apply(p, s)) {
             if (s.empty()) {
-                s.position = position_start;
+                s.set_position(position_start);
                 return s.return_fail_result_default(result);
             }
             s.advance(1);

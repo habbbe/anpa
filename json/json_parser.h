@@ -24,7 +24,7 @@ constexpr auto string_parser = []() {
 constexpr auto number_parser = eat(parse::floating<true, json_number>());
 constexpr auto bool_parser = eat((parse::sequence<'t','r','u','e'>() >= true) ||
                                  (parse::sequence<'f','a','l','s','e'>() >= false));
-constexpr auto null_parser = eat(parse::sequence<'n','u','l','l'>() >> parse::mreturn_emplace<json_null>());
+constexpr auto null_parser = eat(parse::sequence<'n','u','l','l'>() >= json_null());
 
 template <typename F>
 constexpr auto get_object_parser(F value_parser) {
