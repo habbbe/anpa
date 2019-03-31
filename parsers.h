@@ -391,24 +391,21 @@ inline constexpr auto number() {
  */
 template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
-    auto res_parser = [](bool&& neg) {
-        struct t {
-            Integral acc = 0;
-            unsigned int div = 1;
-        };
-        auto p = fold<true, true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}), t{},
-                                  [](auto& r, auto&& c) {
-            if constexpr (IncludeDoubleDivisor) {
-                r.div *= 10;
-            }
-            r.acc = r.acc * 10 + c - '0';
-        });
+    auto p = fold<true, true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}),
+                              std::pair<Integral, unsigned>(0, 1), [](auto& r, auto&& c) {
+        if constexpr (IncludeDoubleDivisor) {
+            r.second *= 10;
+        }
+        r.first = r.first * 10 + c - '0';
+    });
+
+    auto res_parser = [p](bool neg) {
         return p >>= [=](auto&& res) {
-            Integral result = neg ? -res.acc : res.acc;
+            if (neg) res.first = -res.first;
             if constexpr (IncludeDoubleDivisor) {
-                return mreturn_emplace<std::pair<Integral, unsigned int>>(result, res.div);
+                return mreturn(std::move(res));
             } else {
-                return mreturn(result);
+                return mreturn(res.first);
             }
         };
     };
