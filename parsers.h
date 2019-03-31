@@ -396,14 +396,14 @@ inline constexpr auto integer() {
             Integral acc = 0;
             unsigned int div = 1;
         };
-        auto p = fold<true,true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}), t{},
+        auto p = fold<true, true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}), t{},
                                   [](auto& r, auto&& c) {
             if constexpr (IncludeDoubleDivisor) {
                 r.div *= 10;
             }
             r.acc = r.acc * 10 + c - '0';
         });
-        return p >>= [neg](auto&& res) {
+        return p >>= [=](auto&& res) {
             Integral result = neg ? -res.acc : res.acc;
             if constexpr (IncludeDoubleDivisor) {
                 return mreturn_emplace<std::pair<Integral, unsigned int>>(result, res.div);
@@ -427,18 +427,18 @@ inline constexpr auto integer() {
  */
 template <bool AllowScientific = true, typename FloatType = double>
 inline constexpr auto floating() {
-    constexpr auto floating_part = integer() >>= [](const auto& n) {
+    constexpr auto floating_part = integer() >>= [](auto&& n) {
         auto dec = item<'.'>() >> integer<unsigned int, true>();
-        return (dec >>= [&](const auto& p) {
+        return (dec >>= [=](auto&& p) {
             // ((0 <= n) - (n < 0)) returns -1 for n < 0 otherwise 1
             return mreturn(n + (((0 <= n) - (n < 0)) * (int(p.first)) / FloatType(p.second)));
         }) || mreturn_emplace<FloatType>(n);
     };
 
     if constexpr (AllowScientific) {
-        return floating_part >>= [](const auto& d) {
+        return floating_part >>= [](auto&& d) {
             auto exp = any_of<'e', 'E'>() >> integer();
-            return (exp >>= [&](const auto& e) {
+            return (exp >>= [=](auto&& e) {
                 return mreturn(d * internal::pow_table<FloatType>::pow(e));
             }) || mreturn(d);
         };
