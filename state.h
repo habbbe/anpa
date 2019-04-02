@@ -29,7 +29,7 @@ struct parser_state_simple {
         parser_state_simple(begin, end, typename State::settings()){}
 
 
-    constexpr auto has_at_least(long n) {
+    constexpr auto has_at_least(long n) const {
         return algorithm::contains_elements(position, end, n);
     }
 
@@ -45,7 +45,7 @@ struct parser_state_simple {
 
     // Convenience function for returning a succesful parse.
     template <typename Res, typename... Args>
-    constexpr auto return_success_emplace(Args&&... args) {
+    constexpr auto return_success_emplace(Args&&... args) const {
         using T = std::decay_t<Res>;
         if constexpr (error_handling) {
             return result<T, default_error_type>(std::in_place_index<1>, std::forward<Args>(args)...);
@@ -56,13 +56,13 @@ struct parser_state_simple {
 
     // Convenience function for returning a succesful parse.
     template <typename Res>
-    constexpr auto return_success(Res&& res) {
+    constexpr auto return_success(Res&& res) const {
         return return_success_emplace<std::decay_t<Res>>(std::forward<Res>(res));
     }
 
     // Convenience function for returning a failed parse with state and type of result.
     template <typename Res, typename Error>
-    constexpr auto return_fail_error(Error&& error) {
+    constexpr auto return_fail_error(Error&& error) const {
         using T = std::decay_t<Res>;
         if constexpr (error_handling) {
             return result<T, std::decay_t<decltype(error)>>(std::in_place_index<0>, std::forward<Error>(error));
@@ -72,10 +72,10 @@ struct parser_state_simple {
     }
 
     template <typename Error>
-    constexpr auto return_fail_error_default(Error&& error) { return return_fail_error<default_result_type>(std::forward<Error>(error)); }
+    constexpr auto return_fail_error_default(Error&& error) const { return return_fail_error<default_result_type>(std::forward<Error>(error)); }
 
     template <typename Res, typename Res2, typename Error>
-    constexpr auto return_fail_change_result(const result<Res2, Error>& res) {
+    constexpr auto return_fail_change_result(const result<Res2, Error>& res) const {
         using T = std::decay_t<Res>;
         if constexpr (error_handling) {
             return result<T, Error>(std::in_place_index<0>, res.error());
@@ -85,21 +85,21 @@ struct parser_state_simple {
     }
 
     template <typename Res, typename Error>
-    constexpr auto return_fail_result_default(const result<Res, Error>& res) {
+    constexpr auto return_fail_result_default(const result<Res, Error>& res) const {
         return return_fail_change_result<default_result_type>(res);
     }
 
     template <typename Res, typename Error>
-    constexpr auto return_fail_result(const result<Res, Error>& res) {
+    constexpr auto return_fail_result(const result<Res, Error>& res) const {
         return return_fail_change_result<Res>(res);
     }
 
     template <typename Res>
-    constexpr auto return_fail() {
+    constexpr auto return_fail() const {
         return return_fail_error<Res>("Parsing error");
     }
 
-    constexpr auto return_fail() { return return_fail<default_result_type>(); }
+    constexpr auto return_fail() const { return return_fail<default_result_type>(); }
 };
 
 /**

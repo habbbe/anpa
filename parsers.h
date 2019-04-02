@@ -15,7 +15,7 @@ namespace parse {
  * Parser that always succeeds
  */
 inline constexpr auto success() {
-    return parser([](auto& s) {
+    return parser([](const auto& s) {
         return s.template return_success_emplace<none>();
     });
 }
@@ -25,7 +25,7 @@ inline constexpr auto success() {
  */
 template <typename T = bool>
 inline constexpr auto fail() {
-    return parser([](auto& s) {
+    return parser([](const auto& s) {
         return s.template return_fail<T>();
     });
 }
@@ -34,7 +34,7 @@ inline constexpr auto fail() {
  * Parser for the empty sequence
  */
 inline constexpr auto empty() {
-    return parser([](auto& s) {
+    return parser([](const auto& s) {
         if (s.empty()) {
             return s.template return_success_emplace<none>();
         }
@@ -242,7 +242,7 @@ inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
  */
 inline constexpr auto rest() {
     return parser([](auto& s) {
-        auto start_pos = s.position;;
+        auto start_pos = s.position;
         s.set_position(s.end);
         return s.return_success(s.convert(start_pos, s.position));
     });
