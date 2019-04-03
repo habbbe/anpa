@@ -34,7 +34,7 @@ struct parser_state_simple {
     }
 
     constexpr bool empty() const {return position == end;}
-    constexpr decltype(auto) get_at(Iterator it) const {return *it;}
+    constexpr decltype(auto) get_at(const Iterator& it) const {return *it;}
     constexpr decltype(auto) front() const {return get_at(position);}
     constexpr decltype(auto) convert(Iterator begin, Iterator end) const {return settings::conversion_function(begin, end);}
     constexpr decltype(auto) convert(Iterator begin, size_t size) const {return convert(begin, std::next(begin, size));}

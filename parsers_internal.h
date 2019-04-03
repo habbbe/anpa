@@ -17,10 +17,10 @@ inline constexpr auto item(State& s, const ItemType& c) {
             if constexpr (Not) return a != b;
             else return a == b;
         };
-        auto front = s.position;
-        if (comp(c, *front)) {
+        const auto& front = s.front();
+        if (comp(c, front)) {
             s.advance(1);
-            return s.return_success(*front);
+            return s.return_success(front);
         }
     }
     return s.template return_fail<std::decay_t<decltype(s.front())>>();
