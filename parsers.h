@@ -391,16 +391,16 @@ inline constexpr auto number() {
  */
 template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
-    auto p = fold<true, true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}),
-                              std::pair<Integral, unsigned>(0, 1), [](auto& r, auto&& c) {
-        if constexpr (IncludeDoubleDivisor) {
-            r.second *= 10;
-        }
-        r.first = r.first * 10 + c - '0';
-    });
 
-    auto res_parser = [p](bool neg) {
-        return lift([=](auto&& res) {
+    auto res_parser = [](bool neg) {
+        auto p = fold<true, true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}),
+                                  std::pair<Integral, unsigned>(0, 1), [](auto& r, auto&& c) {
+            if constexpr (IncludeDoubleDivisor) {
+                r.second *= 10;
+            }
+            r.first = r.first * 10 + c - '0';
+        });
+        return lift([=](auto res) {
             if (neg) res.first = -res.first;
             if constexpr (IncludeDoubleDivisor) {
                 return res;
