@@ -400,14 +400,14 @@ inline constexpr auto integer() {
     });
 
     auto res_parser = [p](bool neg) {
-        return p >>= [=](auto&& res) {
+        return lift([=](auto&& res) {
             if (neg) res.first = -res.first;
             if constexpr (IncludeDoubleDivisor) {
-                return mreturn(std::move(res));
+                return res;
             } else {
-                return mreturn(res.first);
+                return res.first;
             }
-        };
+        }, p);
     };
     if constexpr (std::is_signed_v<Integral>) {
         return succeed(item<'-'>()) >>= [=](auto&& neg) {

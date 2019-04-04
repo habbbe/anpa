@@ -30,12 +30,12 @@ inline constexpr auto operator>=(Parser p, Value&& v) {
 /*
  * Combine two parser, ignoring the result of the second one.
  * This is an optimized version. Using
- * `p1 >>= [](auto&& r) { return p2 >> Parser1::mreturn(r); }`
- * works, but does unecessary copying.
+ * `p1 >>= [=](auto&& r) { return p2 >> Parser1::mreturn(std::forward<decltype(r)>(r)); }`
+ * works, but doesn't optmize nearly as well.
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
-    return parse::parser([=](auto& s) {
+    return parser([=](auto& s) {
         auto result = apply(p1, s);
         if (result) {
             if (auto result2 = apply(p2, s)) {
@@ -84,6 +84,21 @@ inline constexpr auto lift_internal(F f, P p, Ps... ps) {
 template <typename F, typename... Ps>
 inline constexpr auto lift_prepare(F f, Ps... ps) {
     return lift_internal(curry_n<sizeof...(Ps)>(f), ps...);
+}
+
+/**
+ * Monadic bind for multiple monads. Use this to reduce indentation
+ * level if you need to evaluate multiple monads and use all results
+ * in the same context.
+ * Example:
+ * parse::combine([](auto&& a, auto&& b, auto&&c) {
+ *     do something with a, b, c;
+ *     return some_new_monad;
+ * }, p1, p2, p3);
+ */
+template <typename F, typename Parser, typename... Parsers>
+inline constexpr auto bind(F f, Parser p, Parsers... ps) {
+    return lift_prepare(f, p, ps...);
 }
 
 /**
@@ -149,7 +164,7 @@ inline constexpr auto lift_shared(Parser p) {
 
 template <typename Parser>
 inline constexpr auto lift_lazy(Parser p) {
-    return lift([](auto&& s){
+    return lift([](auto&& s) {
         return lazy::make_lazy(std::forward<decltype(s)>(s));
     }, p);
 }
