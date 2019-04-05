@@ -9,33 +9,35 @@
 #include "time_measure.h"
 
 struct row {
-    template <typename StringType1, typename StringType2>
-    constexpr row(StringType1 firstName, StringType2 lastName) : firstName{firstName}, lastName{lastName} {}
-
     std::string_view firstName;
     std::string_view lastName;
+    template <typename StringType1, typename StringType2>
+    constexpr row(StringType1 firstName, StringType2 lastName) :
+        firstName{firstName},
+        lastName{lastName} {}
 };
 
 struct action {
     std::string_view name;
     std::string_view com;
     template <typename S1, typename S2>
-    constexpr action(S1&& name, S2&& com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
+    constexpr action(S1 name, S2 com) : name{name}, com{com} {}
 };
 
 struct info {
     std::string_view name;
     std::string_view com;
     template <typename S1, typename S2>
-    constexpr info(S1&& name, S2&& com) : name{std::forward<S1>(name)}, com{std::forward<S2>(com)} {}
+    constexpr info(S1 name, S2 com) : name{name}, com{com} {}
 };
 
 struct separator {};
 struct space {};
+
 struct syntax_error {
-    template <typename StringType>
-    constexpr syntax_error(StringType s) : description{s} {}
     std::string_view description;
+    template <typename StringType>
+    constexpr syntax_error(StringType s) : description(s) {}
 };
 
 using item = std::variant<
@@ -60,7 +62,6 @@ double test()
     constexpr auto parse_separator = parse::sequence("Separator") >> parse::empty() >> parse::mreturn_emplace<separator>();
     constexpr auto parse_space = parse::sequence("Space") >> parse::empty() >> parse::mreturn_emplace<space>();
     constexpr auto parse_comment = parse::item('#');
-
     constexpr auto parse_error = parse::lift_value<syntax_error>(parse::rest());
     constexpr auto entry_parser = parse_comment || parse::lift_or_state(add_to_state, parse_action, parse_info, parse_separator, parse_space, parse_error);
 
