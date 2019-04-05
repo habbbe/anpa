@@ -19,7 +19,7 @@ namespace parse {
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto& s) {
-        if (const auto& result = apply(p, s)) {
+        if (auto&& result = apply(p, s)) {
             return s.return_success(std::optional(std::move(*result)));
         } else {
             return s.return_success(std::optional<std::decay_t<decltype(*result)>>());

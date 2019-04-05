@@ -36,10 +36,10 @@ struct parser;
 template <typename Parser, typename F>
 inline constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto& s) {
-        if (const auto& result = apply(p, s)) {
-            return apply(f(std::move(*result)), s);
+        if (auto&& result = apply(p, s)) {
+            return apply(f(*std::forward<decltype(result)>(result)), s);
         } else {
-            using new_return_type = std::decay_t<decltype(*apply(f(std::move(*result)), s))>;
+            using new_return_type = std::decay_t<decltype(*apply(f(*std::forward<decltype(result)>(result)), s))>;
             return s.template return_fail_change_result<new_return_type>(result);
         }
     });

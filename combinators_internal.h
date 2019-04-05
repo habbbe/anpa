@@ -24,7 +24,7 @@ inline constexpr auto many(State& s,
     bool successes = false;
 
     for (;;) {
-        const auto& result = apply(p, s);
+        auto&& result = apply(p, s);
 
         if (!result) {
             if constexpr (FailOnNoSuccess) {
@@ -53,7 +53,7 @@ template <typename State, typename Parser>
 inline constexpr auto times(State& s, size_t n, Parser p) {
     auto start = s.position;
     for (size_t i = 0; i < n; ++i) {
-        if (const auto& result = apply(p, s); !result) return s.return_fail_result_default(result);
+        if (auto&& result = apply(p, s); !result) return s.return_fail_result_default(result);
     }
     return s.return_success(s.convert(start, s.position));
 }
@@ -63,7 +63,7 @@ inline constexpr auto times(State& s, size_t n, Parser p) {
  */
 template <typename State, typename Iterator, typename Parser, typename... Parsers>
 inline constexpr auto get_parsed_recursive(State& s, Iterator original_position, Parser p, Parsers... ps) {
-    if (const auto& result = apply(p, s)) {
+    if (auto&& result = apply(p, s)) {
         if constexpr (sizeof...(Parsers) == 0) {
             return s.return_success(s.convert(original_position, s.position));
         } else {
@@ -78,7 +78,7 @@ inline constexpr auto get_parsed_recursive(State& s, Iterator original_position,
 template <typename State, typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_rec(State& s, F f, Parser p, Parsers... ps) {
     auto start_pos = s.position;
-    if (const auto& result = apply(p, s)) {
+    if (auto&& result = apply(p, s)) {
         return s.return_success(f(std::move(*result)));
     } else {
         s.set_position(start_pos);

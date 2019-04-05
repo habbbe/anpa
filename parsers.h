@@ -15,7 +15,7 @@ namespace parse {
  * Parser that always succeeds
  */
 inline constexpr auto success() {
-    return parser([](const auto& s) {
+    return parser([](auto& s) {
         return s.template return_success_emplace<none>();
     });
 }
@@ -25,7 +25,7 @@ inline constexpr auto success() {
  */
 template <typename T = bool>
 inline constexpr auto fail() {
-    return parser([](const auto& s) {
+    return parser([](auto& s) {
         return s.template return_fail<T>();
     });
 }
@@ -34,7 +34,7 @@ inline constexpr auto fail() {
  * Parser for the empty sequence
  */
 inline constexpr auto empty() {
-    return parser([](const auto& s) {
+    return parser([](auto& s) {
         if (s.empty()) {
             return s.template return_success_emplace<none>();
         }
@@ -400,10 +400,10 @@ inline constexpr auto integer() {
             }
             r.first = r.first * 10 + c - '0';
         });
-        return lift([=](auto res) {
+        return lift([=](auto&& res) {
             if (neg) res.first = -res.first;
             if constexpr (IncludeDoubleDivisor) {
-                return res;
+                return std::forward<decltype(res)>(res);
             } else {
                 return res.first;
             }
@@ -428,7 +428,7 @@ inline constexpr auto floating() {
         auto dec = item<'.'>() >> integer<unsigned int, true>();
         return (dec >>= [=](auto&& p) {
             // ((0 <= n) - (n < 0)) returns -1 for n < 0 otherwise 1
-            return mreturn(n + (((0 <= n) - (n < 0)) * (int(p.first)) / FloatType(p.second)));
+            return mreturn(n + ((0 <= n) - (n < 0)) * int(p.first) / FloatType(p.second));
         }) || mreturn_emplace<FloatType>(n);
     };
 
