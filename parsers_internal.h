@@ -126,6 +126,4 @@ inline constexpr auto custom(State& s, Result&& result) {
 
 }
 
-
-
 #endif // PARSER_PARSERS_INTERNAL_H

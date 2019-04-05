@@ -20,9 +20,10 @@ template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto& s) {
         if (auto&& result = apply(p, s)) {
-            return s.return_success(std::optional(std::move(*result)));
+            return s.template return_success_emplace
+                    <std::optional<std::decay_t<decltype(*result)>>>(*std::forward<decltype(result)>(result));
         } else {
-            return s.return_success(std::optional<std::decay_t<decltype(*result)>>());
+            return s.template return_success_emplace<std::optional<std::decay_t<decltype(*result)>>>();
         }
     });
 }
@@ -322,7 +323,7 @@ inline constexpr auto many_to_array(Parser p,
         internal::many(s, p, sep, [&arr, &i](auto&& res) {
             arr[i++] = res;
         });
-        return s.return_success(std::pair(std::move(arr), i));
+        return s.template return_success_emplace<std::pair<std::array<result_type, size>, size_t>>(std::move(arr), i);
     });
 }
 
