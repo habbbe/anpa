@@ -35,10 +35,7 @@ inline constexpr auto equal(Iterator begin) {
  */
 template <auto... vs, typename Iterator>
 inline constexpr auto equal(Iterator begin, Iterator end) {
-    auto op = [=](const auto& x, const auto& v) {
-        return x != end && *x == v;
-    };
-    return (op(begin++, vs) && ...);
+    return ((begin != end && *begin++ == vs) && ...);
 }
 
 /**

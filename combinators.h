@@ -171,8 +171,8 @@ inline constexpr auto operator||(P1 p1, P2 p2) {
     });
 }
 
-template <typename ... Parsers>
-inline constexpr auto first(Parsers ... ps) {
+template <typename... Parsers>
+inline constexpr auto first(Parsers... ps) {
     return (ps || ...);
 }
 
