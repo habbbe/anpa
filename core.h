@@ -37,9 +37,9 @@ template <typename Parser, typename F>
 inline constexpr auto operator>>=(Parser p, F f) {
     return parser([=](auto& s) {
         if (auto&& result = apply(p, s)) {
-            return apply(f(*std::forward<decltype(result)>(result)), s);
+            return apply(f(std::move(*result)), s);
         } else {
-            using new_return_type = std::decay_t<decltype(*apply(f(*std::forward<decltype(result)>(result)), s))>;
+            using new_return_type = std::decay_t<decltype(*apply(f(std::move(*result)), s))>;
             return s.template return_fail_change_result<new_return_type>(result);
         }
     });

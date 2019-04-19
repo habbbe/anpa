@@ -126,8 +126,8 @@ inline constexpr auto not_empty(Parser p) {
  * Make a parser that evaluates an arbitrary number of parsers, and returns the successfully parsed text upon
  * success.
  */
-template <typename Parser, typename ... Parsers>
-inline constexpr auto get_parsed(Parser p, Parsers ... ps) {
+template <typename Parser, typename... Parsers>
+inline constexpr auto get_parsed(Parser p, Parsers... ps) {
     return parser([=](auto& s) {
         return internal::get_parsed_recursive(s, s.position, p, ps...);
     });

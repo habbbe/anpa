@@ -50,8 +50,8 @@ syntax_error
 
 double test()
 {
-    constexpr auto add_to_state = [](auto& s, auto&&... args) {
-        s.emplace_back(std::forward<decltype(args)>(args)...);
+    constexpr auto add_to_state = [](auto& s, auto&& arg) {
+        s.emplace_back(std::forward<decltype(arg)>(arg));
         return true;
     };
 

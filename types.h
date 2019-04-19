@@ -16,7 +16,7 @@ using none = std::tuple<>;
 
 namespace parse::types {
 
-template <typename T, typename ... Ts>
+template <typename T, typename... Ts>
 constexpr bool is_one_of = (std::is_same_v<T, Ts> || ...);
 
 template <typename T>
