@@ -91,8 +91,8 @@ inline constexpr auto lift_prepare(F f, Ps... ps) {
  * level if you need to evaluate multiple monads and use all results
  * in the same context.
  * Example:
- * parse::combine([](auto&& a, auto&& b, auto&&c) {
- *     do something with a, b, c;
+ * parse::bind([](auto&& a, auto&& b, auto&& c) {
+ *     do_something_with(a, b, c);
  *     return some_new_monad;
  * }, p1, p2, p3);
  */
