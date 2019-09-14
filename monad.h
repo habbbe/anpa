@@ -28,7 +28,7 @@ inline constexpr auto operator>=(Parser p, Value&& v) {
 }
 
 /*
- * Combine two parser, ignoring the result of the second one.
+ * Combine two parsers, ignoring the result of the second one.
  * This is an optimized version. Using
  * `p1 >>= [=](auto&& r) { return p2 >> Parser1::mreturn(std::forward<decltype(r)>(r)); }`
  * works, but doesn't optmize nearly as well.
