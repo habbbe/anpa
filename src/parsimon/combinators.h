@@ -275,14 +275,17 @@ inline constexpr auto many_general(Parser p,
 
 /**
  * Create a parser that applies a parser until it fails and returns the result in an `std::vector`.
+ * Use template argument `reserve` to reserve storage before parsing.
  */
-template <typename Parser,
+template <size_t reserve = 0,
+          typename Parser,
           typename ParserSep = none>
 inline constexpr auto many_to_vector(Parser p,
                                      ParserSep sep = {}) {
     return parser([=](auto& s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
+        r.reserve(reserve);
         internal::many(s, p, sep, [&r](auto&& res) {
             r.emplace_back(std::forward<decltype(res)>(res));
         });

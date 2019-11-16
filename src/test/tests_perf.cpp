@@ -60,38 +60,27 @@ syntax_error
  */
 double test()
 {
-    constexpr auto add_to_state = [](auto& s, auto&& arg) {
-        s.emplace_back(std::forward<decltype(arg)>(arg));
-        return true;
-    };
-
+    constexpr auto until_eol = parse::until_item<'\n', false>();
     constexpr auto parse_name = parse::until_item('=');
-    constexpr auto parse_cmd = parse::not_empty(parse::rest());
-    constexpr auto parse_action = parse::try_parser(parse::sequence("Com:") >> parse::lift_value<action>(parse_name, parse_cmd));
-    constexpr auto parse_info = parse::try_parser(parse::sequence("Info:") >> parse::lift_value<info>(parse_name, parse_cmd));
-    constexpr auto parse_separator = parse::sequence("Separator") >> parse::empty() >> parse::mreturn_emplace<separator>();
-    constexpr auto parse_space = parse::sequence("Space") >> parse::empty() >> parse::mreturn_emplace<space>();
+    constexpr auto parse_cmd = parse::not_empty(until_eol);
+    constexpr auto parse_action = parse::sequence("Com:") >> parse::lift_value<action>(parse_name, parse_cmd);
+    constexpr auto parse_info = parse::sequence("Info:") >> parse::lift_value<info>(parse_name, parse_cmd);
+    constexpr auto parse_separator = parse::sequence("Separator") >> parse::mreturn_emplace<separator>();
+    constexpr auto parse_space = parse::sequence("Space") >> parse::mreturn_emplace<space>();
     constexpr auto parse_comment = parse::item('#');
-    constexpr auto parse_error = parse::lift_value<syntax_error>(parse::rest());
-    constexpr auto entry_parser = parse_comment || parse::lift_or_state(add_to_state, parse_action, parse_info, parse_separator, parse_space, parse_error);
+    constexpr auto parse_error = parse::lift_value<syntax_error>(until_eol);
+    constexpr auto entry_parser = parse_comment || parse::lift_or_value<item>(parse_action, parse_info, parse_separator, parse_space, parse_error);
+    constexpr auto parser = parse::many_to_vector<1000000>(entry_parser >> (parse::item<'\n'>() || parse::empty()));
 
-    std::vector<item> r;
-    r.reserve(1000000);
     std::ifstream t("test_input/hub");
-
-    std::vector<std::string> lines;
-    lines.reserve(1000000);
-    std::string line;
-    while (std::getline(t, line)) {
-        lines.push_back(line);
-    }
+    std::string input((std::istreambuf_iterator<char>(t)),
+                     std::istreambuf_iterator<char>());
 
     TICK;
-    for (auto& l : lines) {
-        entry_parser.parse_with_state(l.begin(), l.end(), r);
+    auto res = parser.parse(input);
+    if (res.second) {
+        std::cout << "Size: " << res.second.get_value().size() << std::endl;
     }
-
-    std::cout << "Size: " << r.size() << std::endl;
     TOCK("hub");
 
     return fp_ms.count();
