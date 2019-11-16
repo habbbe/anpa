@@ -21,9 +21,9 @@ inline constexpr auto success() {
 }
 
 /**
- * Parser that always fails
+ * Parser with result type `T` that always fails.
  */
-template <typename T = bool>
+template <typename T = none>
 inline constexpr auto fail() {
     return parser([](auto& s) {
         return s.template return_fail<T>();
@@ -47,70 +47,59 @@ inline constexpr auto empty() {
  */
 inline constexpr auto any_item() {
     return parser([](auto& s) {
-        if (s.empty())
-            return s.template return_fail<decltype(s.front())>();
-
-        auto front_iterator = s.position;
-        s.advance(1);
-        return s.return_success(s.get_at(front_iterator));
+        return internal::item(s, [](const auto&) {return true;});
     });
 }
 
 /**
- * Parser for a single item
+ * Parser for a single item equal to `i`
  */
 template <typename ItemType>
 inline constexpr auto item(ItemType&& i) {
     return parser([i = std::forward<ItemType>(i)](auto& s) {
-        return internal::item(s, i);
+        return internal::item(s, [&i](const auto &c) {return c == i;});
     });
 }
 
 /**
  * Parser for a single item. Templated version.
- * This is faster than the above due to less copying.
+ * This might be faster than the non-templated version due to less copying.
  */
 template <auto i>
 inline constexpr auto item() {
     return parser([](auto& s) {
-        return internal::item(s, i);
+        return internal::item(s, [](const auto &c) {return c == i;});
     });
 }
 
 /**
- * Parser for a single item
+ * Parser for a single item not equal to `i`
  */
 template <typename ItemType>
 inline constexpr auto not_item(ItemType&& i) {
     return parser([i = std::forward<ItemType>(i)](auto& s) {
-        return internal::item<true>(s, i);
+        return internal::item(s, [&i](const auto &c) {return c != i;});
     });
 }
 
 /**
  * Parser for a single item. Templated version.
- * This is faster than the above due to less copying.
+ * This might be faster than the non-templated version due to less copying.
  */
 template <auto i>
 inline constexpr auto not_item() {
     return parser([](auto& s) {
-        return internal::item<true>(s, i);
+        return internal::item(s, [](const auto &c) {return c != i;});
     });
 }
 
 /**
- * Parser for a single item matching the provided predicate.
+ * Parser for a single item matching the provided predicate
  */
 template <typename Pred>
 inline constexpr auto item_if(Pred pred) {
     return parser([=](auto& s) {
-        const auto& c = s.front();
-        if (pred(c)) {
-            s.advance(1);
-            return s.return_success(c);
-        } else {
-            return s.template return_fail<std::decay_t<decltype(c)>>();
-        }
+        return internal::item(s, pred);
     });
 }
 
@@ -127,7 +116,7 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
 
 /**
  * Parser for the sequence described by the template parameters.
- * This might give better performance due to less copying.
+ * This might give better performance than the non-templated version due to less copying.
  */
 template <auto v, auto... vs>
 inline constexpr auto sequence() {
@@ -166,7 +155,7 @@ inline constexpr auto any_of() {
 }
 
 /**
- * Parser for consuming n items
+ * Parser for consuming `n` items
  */
 inline constexpr auto consume(size_t n) {
     return parser([=](auto& s) {
@@ -280,7 +269,7 @@ inline constexpr auto while_in(const ItemType (&items)[N]) {
 
 /**
  * Parser that consumes all items contained in set described by the template parameters.
- * This might be faster than the above.
+ * This might be faster than the non-templated version due to less copying.
  */
 template <auto v, auto... vs>
 inline constexpr auto while_in() {
@@ -329,7 +318,7 @@ inline constexpr auto between_items(const ItemType start, const ItemType end) {
 
 /**
  * Create a custom parser.
- * custom_parser should be a callable with the following signature
+ * custom_parser should be a functor with the following signature
  * std::pair<Iterator, std::optional<Result>>(Iterator position, Iterator End)
  * where the first element is the new iterator position, and the second the result, where
  * and empty optional signals a failed parse.
@@ -343,7 +332,7 @@ inline constexpr auto custom(Parser custom_parser) {
 
 /**
  * Create a custom parser.
- * custom_parser should be a callable with the following signature
+ * custom_parser should be a functor with the following signature
  * std::pair<Iterator, std::optional<Result>>(Iterator position, Iterator End, State& state)
  * where the first element is the new iterator position, and the second the result, where
  * and empty optional signals a failed parse.
@@ -387,7 +376,7 @@ inline constexpr auto number() {
 
 /**
  * Parser for an integer.
- * Parses negative numbers if the template argument is signed.
+ * Use template parameter `Integral` to specify which type of integer to parse.
  */
 template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
@@ -420,9 +409,10 @@ inline constexpr auto integer() {
 
 /**
  * Parser for a floating number.
- * Use template parameter AllowScientific to enable/disable support for scientific notation.
+ * Use template parameter `FloatType` to specify which type of floating number to parse.
+ * Use template parameter `AllowScientific` to enable/disable support for scientific notation.
  */
-template <bool AllowScientific = true, typename FloatType = double>
+template <typename FloatType = double, bool AllowScientific = true>
 inline constexpr auto floating() {
     constexpr auto floating_part = integer() >>= [](auto&& n) {
         auto dec = item<'.'>() >> integer<unsigned int, true>();
@@ -433,10 +423,10 @@ inline constexpr auto floating() {
     };
 
     if constexpr (AllowScientific) {
-        return floating_part >>= [](auto&& d) {
+        return floating_part >>= [](auto&& f) {
             auto exp = any_of<'e', 'E'>() >> integer();
-            return lift([=](auto&& e) { return d * internal::pow_table<FloatType>::pow(e); }, exp)
-                    || mreturn(std::forward<decltype(d)>(d));
+            return lift([=](auto&& e) { return f * internal::pow_table<FloatType>::pow(e); }, exp)
+                    || mreturn(std::forward<decltype(f)>(f));
         };
     } else {
         return floating_part;

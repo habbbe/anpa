@@ -65,14 +65,16 @@ inline constexpr auto change_error(Parser p, Error error) {
 }
 
 /**
- * Make a parser that doesn't consume its input on failure
+ * Make a parser non-consuming.
+ * Set `FailureOnly` if you want the resulting parser to be non-consuming
+ * on failure only (this is the same as `try_parser`).
  */
-template <typename Parser>
-inline constexpr auto try_parser(Parser p) {
+template <bool FailureOnly = false, typename Parser>
+inline constexpr auto no_consume(Parser p) {
     return parser([=](auto& s) {
         auto old_position = s.position;
         auto result = apply(p, s);
-        if (!result) {
+        if (!FailureOnly || !result) {
             s.set_position(old_position);
         }
         return result;
@@ -80,21 +82,16 @@ inline constexpr auto try_parser(Parser p) {
 }
 
 /**
- * Make a parser non-consuming
+ * Make a parser that doesn't consume its input on failure
  */
 template <typename Parser>
-inline constexpr auto no_consume(Parser p) {
-    return parser([=](auto& s) {
-        auto old_position = s.position;
-        auto result = apply(p, s);
-        s.set_position(old_position);
-        return result;
-    });
+inline constexpr auto try_parser(Parser p) {
+    return no_consume<true>(p);
 }
 
 /**
  * Constrain a parser.
- * Takes in addition to a parser a predicate that takes the resulting type of the parser as argument.
+ * Takes in addition to a parser a predicate that takes the result type of the parser as argument.
  */
 template <typename Parser, typename Predicate>
 inline constexpr auto constrain(Parser p, Predicate pred) {
@@ -109,7 +106,7 @@ inline constexpr auto constrain(Parser p, Predicate pred) {
 
 /**
  * Transform a parser to a parser that fails on a successful, but empty result (as decided by std::empty
- * or == 0 if integral)
+ * or == 0 if integral (as decided by `std::is_integral`)
  */
 template <typename Parser>
 inline constexpr auto not_empty(Parser p) {
@@ -171,6 +168,9 @@ inline constexpr auto operator||(P1 p1, P2 p2) {
     });
 }
 
+/**
+ * Variadic version of `||` for easier typing.
+ */
 template <typename... Parsers>
 inline constexpr auto first(Parsers... ps) {
     return (ps || ...);
@@ -212,7 +212,7 @@ inline constexpr auto set_in_state(Parser p, Accessor acc) {
 /**
  * Apply a provided function to the state after evaluating a number of parsers in sequence.
  * The function provided shall have the state as its first argument (by reference) and
- * then a number of arguments that matches the number of parsers (or variadic arguments)
+ * then a number of arguments that matches the number of parsers (or variadic arguments).
  */
 template <typename Fun, typename... Parsers>
 inline constexpr auto apply_to_state(Fun f, Parsers...ps) {
@@ -229,40 +229,25 @@ inline constexpr auto apply_to_state(Fun f, Parsers...ps) {
  * Emplace a value in the state with `emplace` with the results of a number
  * of parsers evaluated in sequence to the user supplied state accessed by `acc`.
  */
-template <typename Accessor, typename... Parsers>
+template <bool Back = false, typename Accessor, typename... Parsers>
 inline constexpr auto emplace_to_state(Accessor acc, Parsers... ps) {
     return apply_to_state([acc](auto& s, auto&&...args) {
-        return acc(s).emplace(std::forward<decltype(args)>(args)...);
+        if constexpr (Back) {
+            return acc(s).emplace_back(std::forward<decltype(args)>(args)...);
+        } else {
+            return acc(s).emplace(std::forward<decltype(args)>(args)...);
+        }
     }, ps...);
 }
 
 /**
  * Emplace a value in the state with `emplace` with the results of a number
  * of parsers evaluated in sequence to the user supplied state.
+ * Set template argument `Back` to `true` to use `emplace_back` instead.
  */
-template <typename... Parsers>
+template <bool Back = false, typename... Parsers>
 inline constexpr auto emplace_to_state_direct(Parsers... ps) {
-    return emplace_to_state([](auto& s) -> auto& {return s;}, ps...);
-}
-
-/**
- * Emplace a value in the state with `emplace_back` with the results of a number
- * of parsers evaluated in sequence to the user supplied state accessed by `acc`.
- */
-template <typename Accessor, typename... Parsers>
-inline constexpr auto emplace_back_to_state(Accessor acc, Parsers... ps) {
-    return apply_to_state([acc](auto& s, auto&&...args) {
-        return acc(s).emplace_back(std::forward<decltype(args)>(args)...);
-    }, ps...);
-}
-
-/**
- * Emplace a value in the state with `emplace_back` with the results of a number
- * of parsers evaluated in sequence to the user supplied state.
- */
-template <typename... Parsers>
-inline constexpr auto emplace_back_to_state_direct(Parsers... ps) {
-    return emplace_back_to_state([](auto& s) -> auto& {return s;}, ps...);
+    return emplace_to_state<Back>([](auto& s) -> auto& {return s;}, ps...);
 }
 
 /**
@@ -321,7 +306,7 @@ inline constexpr auto many_to_array(Parser p,
         std::array<result_type, size> arr{};
         size_t i = 0;
         internal::many(s, p, sep, [&arr, &i](auto&& res) {
-            arr[i++] = res;
+            arr[i++] = std::forward<decltype(res)>(res);
         });
         return s.template return_success_emplace<std::pair<std::array<result_type, size>, size_t>>(std::move(arr), i);
     });
@@ -331,7 +316,7 @@ inline constexpr auto many_to_array(Parser p,
  * Create a parser that applies a parser until it fails and returns the result in an
  * `std::unordered_map`.
  * Use the first template argument to specify unordered or not. Default is unordered.
- * Key and value are retrieved from the result using std::tuple_element.
+ * Key and value types are retrieved from the result using std::tuple_element.
  */
 template <bool Unordered = true,
           typename Parser,
@@ -354,7 +339,7 @@ inline constexpr auto many_to_map(Parser p,
 
 /**
  * Create a parser that applies a parser until it fails, and for each successful parse
- * calls the provided callable `f` which should take the result of a successful parse with ´p´ as its
+ * calls the provided functor `f` which should take the result of a successful parse with ´p´ as its
  * argument.
  * The parse result is the parsed range as returned by the provided conversion function.
  */
@@ -386,7 +371,7 @@ inline constexpr auto many(Parser p,
 
 /**
  * Create a parser that applies a parser until it fails, and for each successful parse
- * calls the provided callable `f` which should take the user state by reference as its
+ * calls the provided functor `f` which should take the user state by reference as its
  * first parameter, and the result of a successful parse as its second.
  * The parse result is the parsed range as returned by the provided conversion function.
  */

@@ -10,15 +10,11 @@ namespace parse::internal {
 /**
  * Parser for a single item
  */
-template <bool Not = false, typename State, typename ItemType>
-inline constexpr auto item(State& s, const ItemType& c) {
+template <typename State, typename Predicate>
+inline constexpr auto item(State& s, Predicate pred) {
     if (!s.empty()) {
-        auto comp = [](const auto& a, const auto& b) {
-            if constexpr (Not) return a != b;
-            else return a == b;
-        };
         const auto& front = s.front();
-        if (comp(c, front)) {
+        if (pred(front)) {
             s.advance(1);
             return s.return_success(front);
         }

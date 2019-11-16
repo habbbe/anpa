@@ -7,7 +7,6 @@
 #include "parser.h"
 #include "state.h"
 #include "types.h"
-#include "lazy.h"
 
 template <typename Parser>
 constexpr auto eat(Parser p) {
@@ -21,7 +20,7 @@ constexpr auto string_parser = []() {
     return parse::lift_value<json_string>(eat(parse::item<'"'>()) >> parse::many(notEnd) << parse::item<'"'>());
 }();
 
-constexpr auto number_parser = eat(parse::floating<true, json_number>());
+constexpr auto number_parser = eat(parse::floating<json_number, true>());
 constexpr auto bool_parser = eat((parse::sequence<'t','r','u','e'>() >= true) ||
                                  (parse::sequence<'f','a','l','s','e'>() >= false));
 constexpr auto null_parser = eat(parse::sequence<'n','u','l','l'>() >= json_null());

@@ -190,7 +190,7 @@ TEST_CASE("emplace_to_state_direct") {
 }
 
 TEST_CASE("emplace_back_to_state") {
-    auto p = parse::emplace_back_to_state([](auto& s) -> auto& {
+    auto p = parse::emplace_to_state<true>([](auto& s) -> auto& {
         return s;
     }, parse::sequence("abc") + parse::sequence("de"));
 
@@ -204,7 +204,7 @@ TEST_CASE("emplace_back_to_state") {
 }
 
 TEST_CASE("emplace_back_to_state_direct") {
-    auto p = parse::emplace_back_to_state_direct(parse::sequence("abc") + parse::sequence("de"));
+    auto p = parse::emplace_to_state_direct<true>(parse::sequence("abc") + parse::sequence("de"));
 
     std::vector<std::string> state;
     state.push_back("a");
