@@ -1,5 +1,5 @@
-#ifndef PARSER_SETTINGS_H
-#define PARSER_SETTINGS_H
+#ifndef PARSIMON_SETTINGS_H
+#define PARSIMON_SETTINGS_H
 
 #include <type_traits>
 #include <iterator>
@@ -23,4 +23,4 @@ struct parser_settings {
 
 }
 
-#endif // PARSER_SETTINGS_H
+#endif // PARSIMON_SETTINGS_H

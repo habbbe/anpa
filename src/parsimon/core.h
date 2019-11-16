@@ -1,5 +1,5 @@
-#ifndef PARSER_CORE_H
-#define PARSER_CORE_H
+#ifndef PARSIMON_CORE_H
+#define PARSIMON_CORE_H
 
 #include <functional>
 #include <string_view>
@@ -209,4 +209,4 @@ struct parser {
 
 }
 
-#endif // PARSER_CORE_H
+#endif // PARSIMON_CORE_H

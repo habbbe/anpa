@@ -1,5 +1,5 @@
-#ifndef PARSER_STATE_H
-#define PARSER_STATE_H
+#ifndef PARSIMON_STATE_H
+#define PARSIMON_STATE_H
 
 #include <iterator>
 #include "result.h"
@@ -123,4 +123,4 @@ parser_state<Iterator, Settings, UserState>;
 
 }
 
-#endif // PARSER_STATE_H
+#endif // PARSIMON_STATE_H

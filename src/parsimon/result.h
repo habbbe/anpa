@@ -1,5 +1,5 @@
-#ifndef PARSER_RESULT_H
-#define PARSER_RESULT_H
+#ifndef PARSIMON_RESULT_H
+#define PARSIMON_RESULT_H
 
 #include <type_traits>
 #include <variant>
@@ -57,4 +57,4 @@ using default_error_type = const char*;
 
 }
 
-#endif // PARSER_RESULT_H
+#endif // PARSIMON_RESULT_H

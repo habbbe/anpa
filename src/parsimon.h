@@ -1,5 +1,5 @@
-#ifndef PARSER_INCLUDE_H
-#define PARSER_INCLUDE_H
+#ifndef PARSIMON_INCLUDE_H
+#define PARSIMON_INCLUDE_H
 
 #include "parsimon/lazy.h"
 #include "parsimon/monad.h"
@@ -10,4 +10,4 @@
 #include "parsimon/combinators.h"
 #include "parsimon/parsers.h"
 
-#endif // TOKEN_PARSER_H
+#endif // TOKEN_PARSIMON_H

@@ -5,7 +5,7 @@
 #include <memory>
 #include <variant>
 #include <catch2/catch.hpp>
-#include "parser.h"
+#include "parsimon.h"
 #include "time_measure.h"
 
 struct row {
@@ -58,7 +58,7 @@ syntax_error
  * Separator
  * Space
  */
-double test()
+void test()
 {
     using namespace parsimon;
     constexpr auto until_eol = until_item<'\n', false>();
@@ -83,8 +83,6 @@ double test()
         std::cout << "Size: " << res.second.get_value().size() << std::endl;
     }
     TOCK("hub");
-
-    return fp_ms.count();
 }
 
 TEST_CASE("performance") {

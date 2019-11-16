@@ -1,15 +1,14 @@
 #ifndef JSON_PARSER_H
 #define JSON_PARSER_H
 
-#include <variant>
-#include <functional>
 #include "json_value.h"
-#include "parser.h"
-#include "state.h"
-#include "types.h"
+#include "parsimon.h"
 
 using namespace parsimon;
 
+/**
+ * Remove whitespace (if any) before evaluating `p`
+ */
 template <typename Parser>
 constexpr auto eat(Parser p) {
     return whitespace() >> p;
