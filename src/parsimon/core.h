@@ -8,7 +8,7 @@
 #include "settings.h"
 #include "types.h"
 
-namespace parse {
+namespace parsimon {
 
 template <typename Result, typename ErrorType, typename State, typename Iterator, typename Settings = parser_settings>
 using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, Settings>, parser_state<Iterator, State, Settings>>&)>;
@@ -181,7 +181,7 @@ struct parser {
      */
     template <typename T, typename... Args>
     static inline constexpr auto mreturn_emplace(Args&&... args) {
-        return parse::mreturn_emplace<T>(std::forward<Args>(args)...);
+        return parsimon::mreturn_emplace<T>(std::forward<Args>(args)...);
     }
 
     /**
@@ -189,7 +189,7 @@ struct parser {
      */
     template <typename T>
     static inline constexpr auto mreturn(T&& v) {
-        return parse::mreturn(std::forward<T>(v));
+        return parsimon::mreturn(std::forward<T>(v));
     }
 
     /**
@@ -198,7 +198,7 @@ struct parser {
      * Note that any pointer type is also an output iterator.
      */
     template <typename T,
-              typename = std::enable_if_t<parse::types::iterator_is_category_v<T, std::output_iterator_tag>>>
+              typename = std::enable_if_t<types::iterator_is_category_v<T, std::output_iterator_tag>>>
     constexpr auto operator[](T t) const {
         return *this >>= [=](auto&& s) {
             *t = std::forward<decltype(s)>(s);

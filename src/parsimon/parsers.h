@@ -9,7 +9,7 @@
 #include "internal/parsers_internal.h"
 #include "internal/pow10.h"
 
-namespace parse {
+namespace parsimon {
 
 /**
  * Parser that always succeeds
@@ -139,7 +139,7 @@ inline constexpr auto sequence(const ItemType (&seq)[N]) {
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto any_of(const ItemType (&seq)[N]) {
-    return parse::item_if([b = std::begin(seq), e = std::end(seq) - 1](const auto& c) {
+    return item_if([b = std::begin(seq), e = std::end(seq) - 1](const auto& c) {
         return algorithm::contains(b, e, c);
     });
 }
@@ -149,7 +149,7 @@ inline constexpr auto any_of(const ItemType (&seq)[N]) {
  */
 template <auto v, auto... vs>
 inline constexpr auto any_of() {
-    return parse::item_if([](const auto& c) {
+    return item_if([](const auto& c) {
         return algorithm::contains<v, vs...>(c);
     });
 }

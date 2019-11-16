@@ -40,7 +40,7 @@ struct syntax_error {
     constexpr syntax_error(StringType s) : description(s) {}
 };
 
-using item = std::variant<
+using entry = std::variant<
 action,
 info,
 separator,
@@ -60,17 +60,18 @@ syntax_error
  */
 double test()
 {
-    constexpr auto until_eol = parse::until_item<'\n', false>();
-    constexpr auto parse_name = parse::until_item('=');
-    constexpr auto parse_cmd = parse::not_empty(until_eol);
-    constexpr auto parse_action = parse::sequence("Com:") >> parse::lift_value<action>(parse_name, parse_cmd);
-    constexpr auto parse_info = parse::sequence("Info:") >> parse::lift_value<info>(parse_name, parse_cmd);
-    constexpr auto parse_separator = parse::sequence("Separator") >> parse::mreturn_emplace<separator>();
-    constexpr auto parse_space = parse::sequence("Space") >> parse::mreturn_emplace<space>();
-    constexpr auto parse_comment = parse::item('#');
-    constexpr auto parse_error = parse::lift_value<syntax_error>(until_eol);
-    constexpr auto entry_parser = parse_comment || parse::lift_or_value<item>(parse_action, parse_info, parse_separator, parse_space, parse_error);
-    constexpr auto parser = parse::many_to_vector<1000000>(entry_parser >> (parse::item<'\n'>() || parse::empty()));
+    using namespace parsimon;
+    constexpr auto until_eol = until_item<'\n', false>();
+    constexpr auto parse_name = until_item('=');
+    constexpr auto parse_cmd = not_empty(until_eol);
+    constexpr auto parse_action = sequence("Com:") >> lift_value<action>(parse_name, parse_cmd);
+    constexpr auto parse_info = sequence("Info:") >> lift_value<info>(parse_name, parse_cmd);
+    constexpr auto parse_separator = sequence("Separator") >> mreturn_emplace<separator>();
+    constexpr auto parse_space = sequence("Space") >> mreturn_emplace<space>();
+    constexpr auto parse_comment = item('#');
+    constexpr auto parse_error = lift_value<syntax_error>(until_eol);
+    constexpr auto entry_parser = parse_comment || lift_or_value<entry>(parse_action, parse_info, parse_separator, parse_space, parse_error);
+    constexpr auto parser = many_to_vector<1000000>(entry_parser >> (item<'\n'>() || empty()));
 
     std::ifstream t("test_input/hub");
     std::string input((std::istreambuf_iterator<char>(t)),

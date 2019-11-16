@@ -5,7 +5,7 @@
 #include <variant>
 #include <optional>
 
-namespace parse {
+namespace parsimon {
 template <typename R, typename ErrorType>
 struct result {
     constexpr static auto has_error_handling = !std::is_void_v<ErrorType>;

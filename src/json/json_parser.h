@@ -8,36 +8,38 @@
 #include "state.h"
 #include "types.h"
 
+using namespace parsimon;
+
 template <typename Parser>
 constexpr auto eat(Parser p) {
-    return parse::whitespace() >> p;
+    return whitespace() >> p;
 }
 
 constexpr auto string_parser = []() {
-    constexpr auto unicode = parse::item<'u'>() >> parse::times<4>(parse::item_if([](const auto& f) {return std::isxdigit(f);}));
-    constexpr auto escaped = parse::item<'\\'>() >> (unicode || parse::any_of<'"','\\','/','b','f','n','r','t'>());
-    constexpr auto notEnd = escaped || parse::not_item<'"'>();
-    return parse::lift_value<json_string>(eat(parse::item<'"'>()) >> parse::many(notEnd) << parse::item<'"'>());
+    constexpr auto unicode = item<'u'>() >> times<4>(item_if([](const auto& f) {return std::isxdigit(f);}));
+    constexpr auto escaped = item<'\\'>() >> (unicode || any_of<'"','\\','/','b','f','n','r','t'>());
+    constexpr auto notEnd = escaped || not_item<'"'>();
+    return lift_value<json_string>(eat(item<'"'>()) >> many(notEnd) << item<'"'>());
 }();
 
-constexpr auto number_parser = eat(parse::floating<json_number, true>());
-constexpr auto bool_parser = eat((parse::sequence<'t','r','u','e'>() >= true) ||
-                                 (parse::sequence<'f','a','l','s','e'>() >= false));
-constexpr auto null_parser = eat(parse::sequence<'n','u','l','l'>() >= json_null());
+constexpr auto number_parser = eat(floating<json_number, true>());
+constexpr auto bool_parser = eat((sequence<'t','r','u','e'>() >= true) ||
+                                 (sequence<'f','a','l','s','e'>() >= false));
+constexpr auto null_parser = eat(sequence<'n','u','l','l'>() >= json_null());
 
 template <typename F>
 constexpr auto get_object_parser(F value_parser) {
-    auto pair_parser = parse::lift_value<json_object_pair>(string_parser, eat(parse::item<':'>() >> value_parser));
-    return eat(parse::item<'{'>()) >> parse::many_to_map(pair_parser, eat(parse::item<','>())) << eat(parse::item<'}'>());
+    auto pair_parser = lift_value<json_object_pair>(string_parser, eat(item<':'>() >> value_parser));
+    return eat(item<'{'>()) >> many_to_map(pair_parser, eat(item<','>())) << eat(item<'}'>());
 }
 
 template <typename F>
 constexpr auto get_array_parser(F value_parser) {
-    return eat(parse::item<'['>()) >> parse::many_to_vector(value_parser, eat(parse::item<','>())) << eat(parse::item<']'>());
+    return eat(item<'['>()) >> many_to_vector(value_parser, eat(item<','>())) << eat(item<']'>());
 }
 
-constexpr auto json_parser = parse::recursive<json_value>([](auto val_parser) {
-        return parse::lift_or_value<json_value>(string_parser, number_parser,
+constexpr auto json_parser = recursive<json_value>([](auto val_parser) {
+        return lift_or_value<json_value>(string_parser, number_parser,
                                                 get_object_parser(val_parser), get_array_parser(val_parser),
                                                 bool_parser, null_parser);
 });

@@ -10,7 +10,7 @@
 #include "monad.h"
 #include "internal/combinators_internal.h"
 
-namespace parse {
+namespace parsimon {
 
 /**
  * Transform a parser to a parser that always succeeds.
@@ -538,7 +538,7 @@ template <typename ReturnType, typename F>
 constexpr auto recursive(F f) {
     return parser([f](auto& s) {
         auto rec = [f, &s](auto self)
-                -> parse::result<ReturnType, typename std::decay_t<decltype(s)>::error_type> {
+                -> result<ReturnType, typename std::decay_t<decltype(s)>::error_type> {
             auto p = parser([self](auto&) { // The actual parser sent to the caller.
                 return self(self);
             });

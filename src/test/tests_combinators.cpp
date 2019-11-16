@@ -4,25 +4,28 @@
 #include "parser.h"
 
 TEST_CASE("succeed") {
-    static_assert(parse::succeed(parse::fail()).parse("").second);
-    static_assert(parse::succeed(parse::success()).parse("").second);
+    using namespace parsimon;
+    static_assert(succeed(fail()).parse("").second);
+    static_assert(succeed(success()).parse("").second);
 }
 
 struct with_error_handling {
     constexpr static bool error_handling = true;
-    constexpr static auto conversion_function = parse::string_view_convert;
+    constexpr static auto conversion_function = parsimon::string_view_convert;
 };
 
 TEST_CASE("change_error") {
-    constexpr auto p = parse::change_error(parse::fail(), "new error");
+    using namespace parsimon;
+    constexpr auto p = change_error(fail(), "new error");
     constexpr auto res = p.parse<with_error_handling>(std::string_view(""));
     static_assert(res.second.has_error_handling);
     static_assert(res.second.error() == std::string_view("new error"));
 }
 
 TEST_CASE("not_empty") {
-    constexpr auto p = parse::while_in("f");
-    constexpr auto pNotEmpty = parse::not_empty(p);
+    using namespace parsimon;
+    constexpr auto p = while_in("f");
+    constexpr auto pNotEmpty = not_empty(p);
     constexpr auto res = p.parse("abcde");
     constexpr auto resNotEmpty = pNotEmpty.parse("abcde");
     static_assert(res.second);
@@ -30,7 +33,8 @@ TEST_CASE("not_empty") {
 }
 
 TEST_CASE("try_parser") {
-    constexpr auto p = parse::try_parser(parse::sequence("abc") >> parse::sequence("df"));
+    using namespace parsimon;
+    constexpr auto p = try_parser(sequence("abc") >> sequence("df"));
     constexpr std::string_view str("abcde");
     constexpr auto res = p.parse(str);
     static_assert(!res.second);
@@ -38,7 +42,8 @@ TEST_CASE("try_parser") {
 }
 
 TEST_CASE("no_consume") {
-    constexpr auto p = parse::no_consume(parse::sequence("abcde"));
+    using namespace parsimon;
+    constexpr auto p = no_consume(sequence("abcde"));
     constexpr std::string_view str("abcde");
     constexpr auto res = p.parse(str);
     static_assert(res.second);
@@ -47,11 +52,12 @@ TEST_CASE("no_consume") {
 }
 
 TEST_CASE("constrain") {
+    using namespace parsimon;
     auto pred = [](auto& r) {
         return r == 1;
     };
 
-    constexpr auto p = parse::constrain(parse::integer(), pred);
+    constexpr auto p = constrain(integer(), pred);
 
     constexpr auto res1 = p.parse("1");
     constexpr auto res2 = p.parse("2");
@@ -64,8 +70,9 @@ TEST_CASE("constrain") {
 
 TEST_CASE("get_parsed") {
 
-    constexpr auto p1 = parse::get_parsed(parse::integer(), parse::sequence("abc"), parse::item('}'));
-    constexpr auto p2 = parse::integer() + parse::sequence("abc") + parse::item('}');
+    using namespace parsimon;
+    constexpr auto p1 = get_parsed(integer(), sequence("abc"), item('}'));
+    constexpr auto p2 = integer() + sequence("abc") + item('}');
 
     constexpr std::string_view str("123abc}bc");
 
@@ -82,8 +89,9 @@ TEST_CASE("get_parsed") {
 }
 
 TEST_CASE("first") {
-    constexpr auto p1 = parse::first(parse::item('a'), parse::item('b'));
-    constexpr auto p2 = parse::item('a') || parse::item('b');
+    using namespace parsimon;
+    constexpr auto p1 = first(item('a'), item('b'));
+    constexpr auto p2 = item('a') || item('b');
 
     constexpr std::string_view str1("ab");
     constexpr std::string_view str2("ba");
@@ -112,8 +120,9 @@ TEST_CASE("first") {
 }
 
 TEST_CASE("modify_state") {
-    constexpr auto p = parse::item('a') >>= [](auto&& r) {
-        return parse::modify_state([=](auto& s) {
+    using namespace parsimon;
+    constexpr auto p = item('a') >>= [](auto&& r) {
+        return modify_state([=](auto& s) {
             s = 123;
             return r + 1;
         });
@@ -131,11 +140,12 @@ TEST_CASE("modify_state") {
 }
 
 TEST_CASE("set_in_state") {
+    using namespace parsimon;
     struct state {
         char c = 'b';
     };
 
-    constexpr auto p = parse::set_in_state(parse::item('a'), [](auto& s) -> auto& {return s.c;});
+    constexpr auto p = set_in_state(item('a'), [](auto& s) -> auto& {return s.c;});
 
     constexpr auto res1 = p.parse_with_state("abc", state());
 
@@ -150,8 +160,9 @@ TEST_CASE("set_in_state") {
 }
 
 TEST_CASE("apply_to_state") {
-    constexpr auto intParser = parse::item('#') >> parse::integer();
-    constexpr auto p = parse::apply_to_state([](auto& s, auto i, auto j, auto k) {
+    using namespace parsimon;
+    constexpr auto intParser = item('#') >> integer();
+    constexpr auto p = apply_to_state([](auto& s, auto i, auto j, auto k) {
         s = i + j + k;
         return 321;
     }, intParser, intParser, intParser);
@@ -164,9 +175,10 @@ TEST_CASE("apply_to_state") {
 }
 
 TEST_CASE("emplace_to_state") {
-    auto p = parse::emplace_to_state([](auto& s) -> auto& {
+    using namespace parsimon;
+    auto p = emplace_to_state([](auto& s) -> auto& {
         return s;
-    }, parse::sequence("abc") + parse::sequence("de"));
+    }, sequence("abc") + sequence("de"));
 
     std::stack<std::string> state;
     state.push("a");
@@ -178,7 +190,8 @@ TEST_CASE("emplace_to_state") {
 }
 
 TEST_CASE("emplace_to_state_direct") {
-    auto p = parse::emplace_to_state_direct(parse::sequence("abc") + parse::sequence("de"));
+    using namespace parsimon;
+    auto p = emplace_to_state_direct(sequence("abc") + sequence("de"));
 
     std::stack<std::string> state;
     state.push("a");
@@ -190,9 +203,10 @@ TEST_CASE("emplace_to_state_direct") {
 }
 
 TEST_CASE("emplace_back_to_state") {
-    auto p = parse::emplace_to_state<true>([](auto& s) -> auto& {
+    using namespace parsimon;
+    auto p = emplace_to_state<true>([](auto& s) -> auto& {
         return s;
-    }, parse::sequence("abc") + parse::sequence("de"));
+    }, sequence("abc") + sequence("de"));
 
     std::vector<std::string> state;
     state.push_back("a");
@@ -204,7 +218,8 @@ TEST_CASE("emplace_back_to_state") {
 }
 
 TEST_CASE("emplace_back_to_state_direct") {
-    auto p = parse::emplace_to_state_direct<true>(parse::sequence("abc") + parse::sequence("de"));
+    using namespace parsimon;
+    auto p = emplace_to_state_direct<true>(sequence("abc") + sequence("de"));
 
     std::vector<std::string> state;
     state.push_back("a");
@@ -217,8 +232,8 @@ TEST_CASE("emplace_back_to_state_direct") {
 
 TEST_CASE("many_to_vector") {
     std::string str("#100#20#3def");
-    auto intParser = parse::item('#') >> parse::integer();
-    auto p = parse::many_to_vector(intParser);
+    auto intParser = parsimon::item('#') >> parsimon::integer();
+    auto p = parsimon::many_to_vector(intParser);
     auto res = p.parse(str);
     REQUIRE(res.second);
     REQUIRE(res.second->size() == 3);
@@ -229,9 +244,10 @@ TEST_CASE("many_to_vector") {
 }
 
 TEST_CASE("many_to_array") {
+    using namespace parsimon;
     constexpr std::string_view str("#100#20#3def");
-    constexpr auto intParser = parse::item('#') >> parse::integer();
-    constexpr auto p = parse::many_to_array<100>(intParser);
+    constexpr auto intParser = item('#') >> integer();
+    constexpr auto p = many_to_array<100>(intParser);
     constexpr auto res = p.parse(str);
     static_assert(res.second);
     static_assert(res.second->second == 3);
@@ -242,9 +258,10 @@ TEST_CASE("many_to_array") {
 }
 
 TEST_CASE("many_to_array with separator") {
-    constexpr auto intParser = parse::integer();
+    using namespace parsimon;
+    constexpr auto intParser = integer();
 
-    constexpr auto p = parse::many_to_array<10>(intParser, parse::sequence("#%"));
+    constexpr auto p = many_to_array<10>(intParser, sequence("#%"));
 
     constexpr auto res = p.parse_with_state("100#%20#%3", 0);
     static_assert(res.second);
@@ -257,9 +274,9 @@ TEST_CASE("many_to_array with separator") {
 
 TEST_CASE("many_to_map") {
     std::string str("#1=a#2=b#3=c");
-    auto pairParser = parse::lift_value<std::pair<int, char>>(parse::item('#') >> parse::integer(),
-                                                              parse::item('=') >> parse::any_item());
-    auto p = parse::many_to_map(pairParser);
+    auto pairParser = parsimon::lift_value<std::pair<int, char>>(parsimon::item('#') >> parsimon::integer(),
+                                                                 parsimon::item('=') >> parsimon::any_item());
+    auto p = parsimon::many_to_map(pairParser);
     auto res = p.parse(str);
     REQUIRE(res.second);
     REQUIRE(res.second->size() == 3);
@@ -270,14 +287,15 @@ TEST_CASE("many_to_map") {
 }
 
 TEST_CASE("many_general") {
+    using namespace parsimon;
     struct val {
         int i = 0;
         char is[100] = {};
     };
     constexpr std::string_view str("#1=a#4=b#7=c");
-    constexpr auto pairParser = parse::lift_value<std::pair<int, char>>(parse::item('#') >> parse::integer(),
-                                                              parse::item('=') >> parse::any_item());
-    constexpr auto p = parse::many_general<val>(pairParser, [](auto& s, auto&& r) {
+    constexpr auto pairParser = lift_value<std::pair<int, char>>(item('#') >> integer(),
+                                                              item('=') >> any_item());
+    constexpr auto p = many_general<val>(pairParser, [](auto& s, auto&& r) {
         s.is[r.first] = r.second;
     });
 
@@ -290,13 +308,14 @@ TEST_CASE("many_general") {
 }
 
 TEST_CASE("many_state") {
+    using namespace parsimon;
     struct state {
         int i = 0;
         int is[100] = {};
     };
 
-    constexpr auto intParser = parse::item('#') >> parse::integer();
-    constexpr auto p = parse::many_state(intParser, [](auto& s, auto i) {
+    constexpr auto intParser = item('#') >> integer();
+    constexpr auto p = many_state(intParser, [](auto& s, auto i) {
         s.is[s.i++] = i;
     });
     constexpr auto res = p.parse_with_state("#100#20#3", state());
@@ -310,18 +329,20 @@ TEST_CASE("many_state") {
 }
 
 TEST_CASE("fold") {
+    using namespace parsimon;
     constexpr std::string_view str("#100#20#3");
-    constexpr auto intParser = parse::item<'#'>() >> parse::integer();
-    constexpr auto p = parse::fold(intParser, 0, [](auto a, auto b) {return a + b;});
+    constexpr auto intParser = item<'#'>() >> integer();
+    constexpr auto p = fold(intParser, 0, [](auto a, auto b) {return a + b;});
     constexpr auto res = p.parse(str);
     static_assert(res.second);
     static_assert(*res.second == 123);
 }
 
 TEST_CASE("lift_or") {
-    constexpr auto atParser = parse::item('@') >> parse::integer();
-    constexpr auto percentParser = parse::item('%') >> parse::any_item();
-    constexpr auto hashParser = parse::item('#') >> parse::while_in("abc");
+    using namespace parsimon;
+    constexpr auto atParser = item('@') >> integer();
+    constexpr auto percentParser = item('%') >> any_item();
+    constexpr auto hashParser = item('#') >> while_in("abc");
 
     struct f {
         constexpr auto operator()(int) {
@@ -337,7 +358,7 @@ TEST_CASE("lift_or") {
         }
     };
 
-    constexpr auto p = parse::lift_or(f(), atParser, percentParser, hashParser);
+    constexpr auto p = lift_or(f(), atParser, percentParser, hashParser);
 
     constexpr auto res1 = p.parse("@123");
     static_assert(res1.second);
@@ -353,9 +374,10 @@ TEST_CASE("lift_or") {
 }
 
 TEST_CASE("lift_or_state") {
-    constexpr auto atParser = parse::item('@') >> parse::integer();
-    constexpr auto percentParser = parse::item('%') >> parse::any_item();
-    constexpr auto hashParser = parse::item('#') >> parse::while_in("abc");
+    using namespace parsimon;
+    constexpr auto atParser = item('@') >> integer();
+    constexpr auto percentParser = item('%') >> any_item();
+    constexpr auto hashParser = item('#') >> while_in("abc");
 
     struct f {
         constexpr auto operator()(int& s, int) const {
@@ -374,7 +396,7 @@ TEST_CASE("lift_or_state") {
         }
     };
 
-    constexpr auto p = parse::lift_or_state(f(), atParser, percentParser, hashParser);
+    constexpr auto p = lift_or_state(f(), atParser, percentParser, hashParser);
 
 
     constexpr auto res1 = p.parse_with_state("@123", 0);
@@ -394,16 +416,17 @@ TEST_CASE("lift_or_state") {
 }
 
 TEST_CASE("lift_or_value") {
+    using namespace parsimon;
     struct t {
         size_t i;
         constexpr t(std::string_view s): i{s.length()} {}
         constexpr t(size_t i): i{i} {}
     };
 
-    constexpr auto atParser = parse::item('@') >> parse::rest();
-    constexpr auto hashParser = parse::item('#') >> parse::integer();
+    constexpr auto atParser = item('@') >> rest();
+    constexpr auto hashParser = item('#') >> integer();
 
-    constexpr auto p = parse::lift_or_value<t>(atParser, hashParser);
+    constexpr auto p = lift_or_value<t>(atParser, hashParser);
 
     constexpr auto res1 = p.parse("@123");
     static_assert(res1.second);
@@ -415,11 +438,12 @@ TEST_CASE("lift_or_value") {
 }
 
 TEST_CASE("parse_result") {
-    constexpr auto between = parse::between_items('{', '}');
+    using namespace parsimon;
+    constexpr auto between = between_items('{', '}');
     constexpr std::string_view str("{#100#20#3def}");
-    constexpr auto intParser = parse::many_to_array<10>(parse::item('#') >> parse::integer());
+    constexpr auto intParser = many_to_array<10>(item('#') >> integer());
 
-    constexpr auto p = parse::parse_result(between, intParser);
+    constexpr auto p = parse_result(between, intParser);
 
     constexpr auto res = p.parse(str);
 
@@ -432,11 +456,12 @@ TEST_CASE("parse_result") {
 }
 
 TEST_CASE("parse_result state") {
-    constexpr auto between = parse::between_items('{', '}');
+    using namespace parsimon;
+    constexpr auto between = between_items('{', '}');
     constexpr std::string_view str("{#100#20#3def}");
-    constexpr auto intParser = parse::many_to_array<10>(parse::item('#') >> parse::integer());
+    constexpr auto intParser = many_to_array<10>(item('#') >> integer());
 
-    constexpr auto p = parse::parse_result(between, intParser);
+    constexpr auto p = parse_result(between, intParser);
 
     constexpr auto res = p.parse_with_state(str, 0);
 
@@ -449,8 +474,9 @@ TEST_CASE("parse_result state") {
 }
 
 TEST_CASE("until eat no include") {
-    constexpr auto parseNumber = parse::parse_result(parse::between_items('{', '}'), parse::integer());
-    constexpr auto p = parse::until(parseNumber);
+    using namespace parsimon;
+    constexpr auto parseNumber = parse_result(between_items('{', '}'), integer());
+    constexpr auto p = until(parseNumber);
     constexpr std::string_view str("abc{123}");
 
     constexpr auto res = p.parse(str);
@@ -459,7 +485,7 @@ TEST_CASE("until eat no include") {
     static_assert(*res.second == "abc");
     static_assert(res.first.position == str.end());
 
-    constexpr auto pFail = parse::until(parse::until_item('#'));
+    constexpr auto pFail = until(until_item('#'));
 
     constexpr auto resFail = pFail.parse(str);
 
@@ -468,8 +494,9 @@ TEST_CASE("until eat no include") {
 }
 
 TEST_CASE("until no eat no include") {
-    constexpr auto parseNumber = parse::parse_result(parse::between_items('{', '}'), parse::integer());
-    constexpr auto p = parse::until<false, false>(parseNumber);
+    using namespace parsimon;
+    constexpr auto parseNumber = parse_result(between_items('{', '}'), integer());
+    constexpr auto p = until<false, false>(parseNumber);
     constexpr std::string_view str("abc{123}");
 
     constexpr auto res = p.parse(str);
@@ -480,8 +507,9 @@ TEST_CASE("until no eat no include") {
 }
 
 TEST_CASE("until eat include") {
-    constexpr auto parseNumber = parse::parse_result(parse::between_items('{', '}'), parse::integer());
-    constexpr auto p = parse::until<true, true>(parseNumber);
+    using namespace parsimon;
+    constexpr auto parseNumber = parse_result(between_items('{', '}'), integer());
+    constexpr auto p = until<true, true>(parseNumber);
     constexpr std::string_view str("abc{123}");
     constexpr auto res = p.parse(str);
 
@@ -491,8 +519,9 @@ TEST_CASE("until eat include") {
 }
 
 TEST_CASE("until no eat include") {
-    constexpr auto parseNumber = parse::parse_result(parse::between_items('{', '}'), parse::integer());
-    constexpr auto p = parse::until<false, true>(parseNumber);
+    using namespace parsimon;
+    constexpr auto parseNumber = parse_result(between_items('{', '}'), integer());
+    constexpr auto p = until<false, true>(parseNumber);
     constexpr std::string_view str("abc{123}");
 
     constexpr auto res = p.parse(str);
@@ -503,7 +532,8 @@ TEST_CASE("until no eat include") {
 }
 
 TEST_CASE("until end") {
-    constexpr auto untilEnd = parse::until(parse::empty());
+    using namespace parsimon;
+    constexpr auto untilEnd = until(empty());
     constexpr std::string_view str("abc{123}");
     constexpr auto res = untilEnd.parse(str);
     static_assert(res.second);
@@ -511,7 +541,8 @@ TEST_CASE("until end") {
 }
 
 TEST_CASE("until end empty") {
-    constexpr auto untilEnd = parse::until(parse::empty());
+    using namespace parsimon;
+    constexpr auto untilEnd = until(empty());
     constexpr std::string_view str("");
     constexpr auto res = untilEnd.parse(str);
     static_assert(res.second);
@@ -519,12 +550,13 @@ TEST_CASE("until end empty") {
 }
 
 TEST_CASE("many_f with separator") {
-    constexpr auto intParser = parse::integer();
+    using namespace parsimon;
+    constexpr auto intParser = integer();
 
     int result = 0;
-    auto p = parse::many_f(intParser, [&result](auto i) {
+    auto p = many_f(intParser, [&result](auto i) {
         result += i;
-    }, parse::sequence("#%"));
+    }, sequence("#%"));
 
     auto res = p.parse("100#%20#%3");
 
@@ -534,11 +566,12 @@ TEST_CASE("many_f with separator") {
 }
 
 TEST_CASE("many_state with separator") {
-    constexpr auto intParser = parse::integer();
+    using namespace parsimon;
+    constexpr auto intParser = integer();
 
-    constexpr auto p = parse::many_state(intParser, [](auto& s, auto i) {
+    constexpr auto p = many_state(intParser, [](auto& s, auto i) {
         s += i;
-    }, parse::sequence("#%"));
+    }, sequence("#%"));
 
     constexpr auto res = p.parse_with_state("100#%20#%3", 0);
     static_assert(res.second);
@@ -547,9 +580,10 @@ TEST_CASE("many_state with separator") {
 }
 
 TEST_CASE("recursive") {
+    using namespace parsimon;
     constexpr std::string_view str("{{{{{{{{123}}}}}}}}");
-    constexpr auto rec_parser = parse::recursive<int>([](auto p) {
-        return parse::integer() || (parse::item<'{'>() >> p << parse::item<'}'>());
+    constexpr auto rec_parser = recursive<int>([](auto p) {
+        return integer() || (item<'{'>() >> p << item<'}'>());
     });
     constexpr auto res = rec_parser.parse(str);
     static_assert(res.second);

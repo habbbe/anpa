@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <iterator>
 
-namespace parse {
+namespace parsimon {
 
 /**
  * Empty type used to denote empty-ish results.
@@ -14,7 +14,7 @@ using none = std::tuple<>;
 
 }
 
-namespace parse::types {
+namespace parsimon::types {
 
 template <typename T, typename... Ts>
 constexpr bool is_one_of = (std::is_same_v<T, Ts> || ...);

@@ -7,7 +7,7 @@
 #include "lazy.h"
 #include "core.h"
 
-namespace parse {
+namespace parsimon {
 
 /**
  * Combine two monads, ignoring the result of the first one
@@ -91,7 +91,7 @@ inline constexpr auto lift_prepare(F f, Ps... ps) {
  * level if you need to evaluate multiple monads and use all results
  * in the same context.
  * Example:
- * parse::bind([](auto&& a, auto&& b, auto&& c) {
+ * parsimon::bind([](auto&& a, auto&& b, auto&& c) {
  *     do_something_with(a, b, c);
  *     return some_new_monad;
  * }, p1, p2, p3);

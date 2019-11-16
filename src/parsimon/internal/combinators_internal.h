@@ -6,7 +6,7 @@
 #include <valgrind/callgrind.h>
 #include "../types.h"
 
-namespace parse::internal {
+namespace parsimon::internal {
 
 /**
  * General helper for evaluating a parser multiple times with an optional separator.

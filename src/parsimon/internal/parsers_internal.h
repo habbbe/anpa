@@ -5,7 +5,7 @@
 #include <limits>
 #include "algorithm.h"
 
-namespace parse::internal {
+namespace parsimon::internal {
 
 /**
  * Parser for a single item

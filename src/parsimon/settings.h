@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <iterator>
 
-namespace parse {
+namespace parsimon {
 
 constexpr auto string_view_convert = [](auto begin, auto end) {
     using type = std::decay_t<decltype(*begin)>;

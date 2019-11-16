@@ -3,7 +3,7 @@
 
 #include <limits>
 
-namespace parse::internal {
+namespace parsimon::internal {
 
 template <typename Floating>
 struct pow_table_instance {

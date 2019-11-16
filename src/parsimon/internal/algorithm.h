@@ -8,7 +8,7 @@
 /**
  * constexpr variants of some algorithms
  */
-namespace parse::algorithm {
+namespace parsimon::algorithm {
 
 /**
  * constexpr version of `std::equal` (1)
@@ -106,7 +106,7 @@ template <typename Iterator>
 inline constexpr auto contains_elements(Iterator begin, Iterator end, long n) {
     // If we have a random access iterator, just use std::distance, otherwise
     // iterate so that we don't have to go all the way to end
-    if constexpr (parse::types::iterator_is_category_v<Iterator, std::random_access_iterator_tag>) {
+    if constexpr (types::iterator_is_category_v<Iterator, std::random_access_iterator_tag>) {
         return std::distance(begin, end) >= n;
     } else {
         auto start = begin;

@@ -14,7 +14,7 @@ using json_object = std::unordered_map<json_string, json_value>;
 using json_object_pair = std::pair<json_string, json_value>;
 using json_array = std::vector<json_value>;
 using json_number = double;
-using json_null = parse::none;
+using json_null = parsimon::none;
 
 using json_value_variant = std::variant<
 json_null,
@@ -44,7 +44,7 @@ struct json_value {
     size_t size() const {
         return std::visit([](const auto& v) {
             using type = std::decay_t<decltype(v)>;
-            if constexpr (parse::types::is_one_of<type, json_array, json_object, json_string>) return v.size();
+            if constexpr (parsimon::types::is_one_of<type, json_array, json_object, json_string>) return v.size();
             else return size_t(0);
         }, *val);
     }

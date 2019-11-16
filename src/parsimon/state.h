@@ -5,7 +5,7 @@
 #include "result.h"
 #include "internal/algorithm.h"
 
-namespace parse {
+namespace parsimon {
 
 /**
  * Class for the parser state.
