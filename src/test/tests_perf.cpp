@@ -4,7 +4,7 @@
 #include <streambuf>
 #include <memory>
 #include <variant>
-#include "test/catch.hpp"
+#include <catch2/catch.hpp>
 #include "parser.h"
 #include "time_measure.h"
 
@@ -48,6 +48,16 @@ space,
 syntax_error
 >;
 
+/**
+ * Performance test for a simple syntax intended for a application launcher/information dashboard:
+ *
+ * Each row can be either of the following:
+ *
+ * Com:LABEL=COMMAND
+ * Info:LABEL=COMMAND
+ * Separator
+ * Space
+ */
 double test()
 {
     constexpr auto add_to_state = [](auto& s, auto&& arg) {
@@ -67,15 +77,8 @@ double test()
 
     std::vector<item> r;
     r.reserve(1000000);
-    std::ifstream t("hub");
+    std::ifstream t("test_input/hub");
 
-//    constexpr auto add_to_state = [] (auto& s, auto&&... args) {
-//        s.emplace_back(args...);
-//        return true;
-//    };
-//    constexpr auto entry_parser = parse::string("Entry:") >> parse::apply_to_state(add_to_state, parse::until_token(':'), parse::until_token(';'));
-//    std::vector<row> r;
-//    std::ifstream t("test");
     std::vector<std::string> lines;
     lines.reserve(1000000);
     std::string line;

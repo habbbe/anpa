@@ -3,7 +3,7 @@
 
 #include <iterator>
 #include "result.h"
-#include "algorithm.h"
+#include "internal/algorithm.h"
 
 namespace parse {
 

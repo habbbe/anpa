@@ -2,12 +2,12 @@
 #define PARSER_PARSERS_H
 
 #include <charconv>
-#include "algorithm.h"
+#include "internal/algorithm.h"
 #include "core.h"
 #include "types.h"
 #include "combinators.h"
-#include "parsers_internal.h"
-#include "pow10.h"
+#include "internal/parsers_internal.h"
+#include "internal/pow10.h"
 
 namespace parse {
 

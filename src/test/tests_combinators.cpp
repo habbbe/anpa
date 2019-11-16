@@ -1,6 +1,6 @@
 #include <stack>
 #include <iostream>
-#include "test/catch.hpp"
+#include <catch2/catch.hpp>
 #include "parser.h"
 
 TEST_CASE("succeed") {

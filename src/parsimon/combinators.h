@@ -8,7 +8,7 @@
 #include <memory>
 #include "core.h"
 #include "monad.h"
-#include "combinators_internal.h"
+#include "internal/combinators_internal.h"
 
 namespace parse {
 
