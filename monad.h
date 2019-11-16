@@ -9,7 +9,7 @@
 
 namespace parse {
 
-/*
+/**
  * Combine two monads, ignoring the result of the first one
  */
 template <typename Parser1, typename Parser2>
@@ -19,15 +19,15 @@ inline constexpr auto operator>>(Parser1 p1, Parser2 p2) {
     };
 }
 
-/*
- * Put the provided value in the parser monad on successful computation
+/**
+ * Put the provided value `v' in the parser monad on successful computation of `p`.
  */
 template <typename Parser, typename Value>
 inline constexpr auto operator>=(Parser p, Value&& v) {
     return p >> Parser::mreturn(std::forward<Value>(v));
 }
 
-/*
+/**
  * Combine two parsers, ignoring the result of the second one.
  * This is an optimized version. Using
  * `p1 >>= [=](auto&& r) { return p2 >> Parser1::mreturn(std::forward<decltype(r)>(r)); }`
