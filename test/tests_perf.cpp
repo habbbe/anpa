@@ -57,31 +57,49 @@ syntax_error
  * Info:LABEL=COMMAND
  * Separator
  * Space
+ * # COMMENT
+ *
+ *
+ * This parser uses an external state and is invoked on each line of input.
+ *
  */
 void test()
 {
     using namespace parsimon;
-    constexpr auto until_eol = until_item<'\n', false>();
+
+    constexpr auto add_to_state = [](auto& s, auto&& arg) {
+        s.emplace_back(std::forward<decltype(arg)>(arg));
+    };
+
     constexpr auto parse_name = until_item('=');
-    constexpr auto parse_cmd = not_empty(until_eol);
+    constexpr auto parse_cmd = not_empty(rest());
     constexpr auto parse_action = sequence("Com:") >> lift_value<action>(parse_name, parse_cmd);
     constexpr auto parse_info = sequence("Info:") >> lift_value<info>(parse_name, parse_cmd);
     constexpr auto parse_separator = sequence("Separator") >> mreturn_emplace<separator>();
     constexpr auto parse_space = sequence("Space") >> mreturn_emplace<space>();
-    constexpr auto parse_comment = item('#');
-    constexpr auto parse_error = lift_value<syntax_error>(until_eol);
-    constexpr auto entry_parser = parse_comment || lift_or_value<entry>(parse_action, parse_info, parse_separator, parse_space, parse_error);
-    constexpr auto parser = many_to_vector<1000000>(entry_parser >> (item<'\n'>() || empty()));
+    constexpr auto parse_error = lift_value<syntax_error>(rest());
+    constexpr auto ignore = empty() || (item('#') >> rest());
+    constexpr auto entry_parser = ignore || lift_or_state(add_to_state, parse_action, parse_info, parse_separator, parse_space, parse_error);
 
     std::ifstream t("hub");
-    std::string input((std::istreambuf_iterator<char>(t)),
-                     std::istreambuf_iterator<char>());
+
+    std::vector<entry> state;
+    state.reserve(1000000);
+
+    std::vector<std::string> lines;
+    lines.reserve(1000000);
+    std::string line;
+    while (std::getline(t, line)) {
+        lines.push_back(line);
+    }
 
     TICK;
-    auto res = parser.parse(input);
-    if (res.second) {
-        std::cout << "Size: " << res.second.get_value().size() << std::endl;
+
+    for (auto& l : lines) {
+        entry_parser.parse_with_state(l, state);
     }
+
+    std::cout << "Size: " << state.size() << std::endl;
     TOCK("hub");
 }
 

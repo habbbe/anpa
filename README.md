@@ -13,8 +13,11 @@ This enables compile time parsing as long as dereferencing and incrementing the 
 
 ### Example
 
-See the provided [JSON parser](test/json/json_parser.h) for a simple but functional JSON parser. It's only ~30 LOC and gives
-a good overview on how to use the library.
+See the provided test parsers
+- [JSON parser](test/json/json_parser.h): barebones but functional JSON parser. It's only ~30 LOC and gives
+a good overview on how to use the library, including recursive parsers.
+- [Simple syntax parser](test/tests_perf.cpp): a parser for a simple example syntax inteded for an application
+launcher/information dashboard.
 
 ### Dependencies
 
