@@ -78,16 +78,23 @@ inline constexpr auto get_parsed_recursive(State& s, Iterator original_position,
 template <typename State, typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift_or_rec(State& s, F f, Parser p, Parsers... ps) {
     auto start_pos = s.position;
+    using result_type = std::decay_t<decltype(f(std::move(*apply(p, s))))>;
+    constexpr auto return_void = std::is_void_v<result_type>;
     if (auto&& result = apply(p, s)) {
-        return s.return_success(f(std::move(*result)));
+        if constexpr (return_void) {
+            f(std::move(*result));
+            return s.template return_success_emplace<none>();
+        } else {
+            return s.return_success(f(std::move(*result)));
+        }
     } else {
         s.set_position(start_pos);
         if constexpr (sizeof...(ps) > 0) {
             return lift_or_rec(s, f, ps...);
         } else {
             // All parsers failed
-            using result_type = std::decay_t<decltype(f(std::move(*result)))>;
-            return s.template return_fail_change_result<result_type>(result);
+            using actual_result_type = std::conditional_t<std::is_void_v<result_type>, none, result_type>;
+            return s.template return_fail_change_result<actual_result_type>(result);
         }
     }
 }
