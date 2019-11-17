@@ -2,15 +2,16 @@ cmake_minimum_required(VERSION 3.8)
 
 project(parsimon)
 
-set(CMAKE_CXX_STANDARD 17)
-
 add_library(parsimon INTERFACE)
+
+target_compile_features(parsimon INTERFACE cxx_std_17)
+
 target_include_directories(parsimon INTERFACE include/)
+
 
 install(
     DIRECTORY include/parsimon
-    DESTINATION include
-    )
+    DESTINATION include)
 
 
 option(RUN_TESTS "Builds the tests" true)
