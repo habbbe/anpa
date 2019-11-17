@@ -4,15 +4,18 @@ project(parsimon)
 
 set(CMAKE_CXX_STANDARD 17)
 
-include_directories(src)
-include_directories(src/parsimon)
+add_library(parsimon INTERFACE)
+target_include_directories(parsimon INTERFACE include/)
 
-set(TEST_SOURCES
-    src/test/tests_main.cpp
-    src/test/tests_parsers.cpp
-    src/test/tests_combinators.cpp
-    src/test/tests_perf.cpp
-    src/test/tests_json.cpp
-) 
+install(
+    DIRECTORY include/parsimon
+    DESTINATION include
+    )
 
-add_executable(parsimon_test ${TEST_SOURCES} )
+
+option(BUILD_TESTS "Builds the tests" true)
+
+if(${BUILD_TESTS})
+    enable_testing()
+    add_subdirectory(test)
+endif(${BUILD_TESTS})

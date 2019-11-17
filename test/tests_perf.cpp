@@ -5,7 +5,7 @@
 #include <memory>
 #include <variant>
 #include <catch2/catch.hpp>
-#include "parsimon.h"
+#include "parsimon/parsimon.h"
 #include "time_measure.h"
 
 struct row {
@@ -73,7 +73,7 @@ void test()
     constexpr auto entry_parser = parse_comment || lift_or_value<entry>(parse_action, parse_info, parse_separator, parse_space, parse_error);
     constexpr auto parser = many_to_vector<1000000>(entry_parser >> (item<'\n'>() || empty()));
 
-    std::ifstream t("test_input/hub");
+    std::ifstream t("hub");
     std::string input((std::istreambuf_iterator<char>(t)),
                      std::istreambuf_iterator<char>());
 

@@ -7,10 +7,12 @@ Makefile*
 
 .*.swp
 
-parsimon_test
+build
 
 ##
 CMakeFiles
 CMakeCache.txt
 CMakeLists.txt.user
 cmake_install.cmake
+CTestTestfile.cmake
+Testing

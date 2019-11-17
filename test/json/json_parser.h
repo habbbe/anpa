@@ -2,7 +2,7 @@
 #define JSON_PARSER_H
 
 #include "json_value.h"
-#include "parsimon.h"
+#include "parsimon/parsimon.h"
 
 using namespace parsimon;
 

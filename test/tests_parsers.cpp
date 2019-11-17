@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include "parsimon.h"
+#include "parsimon/parsimon.h"
 
 using namespace parsimon;
 

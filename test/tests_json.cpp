@@ -1,6 +1,6 @@
 #include <fstream>
 #include <catch2/catch.hpp>
-#include "json_example/json_parser.h"
+#include "json/json_parser.h"
 #include "time_measure.h"
 
 template <typename T, typename Str>
@@ -70,7 +70,7 @@ TEST_CASE("json_general") {
 }
 
 TEST_CASE("performance_json") {
-    std::ifstream t1("test_input/canada.json");
+    std::ifstream t1("canada.json");
     std::string str1((std::istreambuf_iterator<char>(t1)),
                      std::istreambuf_iterator<char>());
 

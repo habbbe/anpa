@@ -1,7 +1,7 @@
 #include <stack>
 #include <iostream>
 #include <catch2/catch.hpp>
-#include "parsimon.h"
+#include "parsimon/parsimon.h"
 
 TEST_CASE("succeed") {
     using namespace parsimon;
