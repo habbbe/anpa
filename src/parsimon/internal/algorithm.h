@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <iterator>
-#include "../types.h"
+#include "parsimon/types.h"
 
 /**
  * constexpr variants of some algorithms

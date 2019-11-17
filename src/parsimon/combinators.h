@@ -6,9 +6,9 @@
 #include <map>
 #include <vector>
 #include <memory>
-#include "core.h"
-#include "monad.h"
-#include "internal/combinators_internal.h"
+#include "parsimon/core.h"
+#include "parsimon/monad.h"
+#include "parsimon/internal/combinators_internal.h"
 
 namespace parsimon {
 

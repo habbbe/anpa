@@ -4,8 +4,8 @@
 #include <type_traits>
 #include <utility>
 #include <memory>
-#include "lazy.h"
-#include "core.h"
+#include "parsimon/lazy.h"
+#include "parsimon/core.h"
 
 namespace parsimon {
 

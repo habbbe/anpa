@@ -2,8 +2,8 @@
 #define PARSIMON_STATE_H
 
 #include <iterator>
-#include "result.h"
-#include "internal/algorithm.h"
+#include "parsimon/result.h"
+#include "parsimon/internal/algorithm.h"
 
 namespace parsimon {
 

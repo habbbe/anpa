@@ -2,12 +2,12 @@
 #define PARSIMON_PARSERS_H
 
 #include <charconv>
-#include "internal/algorithm.h"
-#include "core.h"
-#include "types.h"
-#include "combinators.h"
-#include "internal/parsers_internal.h"
-#include "internal/pow10.h"
+#include "parsimon/internal/algorithm.h"
+#include "parsimon/core.h"
+#include "parsimon/types.h"
+#include "parsimon/combinators.h"
+#include "parsimon/internal/parsers_internal.h"
+#include "parsimon/internal/pow10.h"
 
 namespace parsimon {
 

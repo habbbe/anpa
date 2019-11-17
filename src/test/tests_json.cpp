@@ -1,6 +1,6 @@
 #include <fstream>
 #include <catch2/catch.hpp>
-#include "json/json_parser.h"
+#include "json_example/json_parser.h"
 #include "time_measure.h"
 
 template <typename T, typename Str>

@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(src)
 include_directories(src/parsimon)
 
-set(SOURCES
+set(TEST_SOURCES
     src/test/tests_main.cpp
     src/test/tests_parsers.cpp
     src/test/tests_combinators.cpp
@@ -15,4 +15,4 @@ set(SOURCES
     src/test/tests_json.cpp
 ) 
 
-add_executable(parsimon_test ${SOURCES} )
+add_executable(parsimon_test ${TEST_SOURCES} )
