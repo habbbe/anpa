@@ -42,6 +42,7 @@ instead.
 
 ### TODO
 
+- Make it possible to use non-copyable types as parse results
 - Add "Getting started" to README.md
 - More extensive test cases
 - Proper documentation

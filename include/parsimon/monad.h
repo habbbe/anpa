@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <utility>
 #include <memory>
+#include "parsimon/internal/monad_internal.h"
 #include "parsimon/lazy.h"
 #include "parsimon/core.h"
 
@@ -49,44 +50,6 @@ inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
 }
 
 /**
- * Currying of an arbitrary function
- */
-template <std::size_t num_args, typename F>
-inline constexpr auto curry_n(F f) {
-    if constexpr (num_args > 1) {
-        return [=](auto&& v) {
-            return curry_n<num_args-1>([&](auto&&...vs) {
-                return f(std::forward<decltype(v)>(v), std::forward<decltype(vs)>(vs)...);
-            });
-        };
-    } else {
-        return f;
-    }
-}
-
-/**
- * Recursive lifting of functions
- */
-template <typename F, typename P, typename... Ps>
-inline constexpr auto lift_internal(F f, P p, Ps... ps) {
-    return p >>= [=](auto&& r) {
-        if constexpr (sizeof...(ps) == 0) {
-            return f(std::forward<decltype(r)>(r));
-        } else {
-            return lift_internal(f(std::forward<decltype(r)>(r)), ps...);
-        }
-    };
-}
-
-/**
- * Intermediate step for lifting
- */
-template <typename F, typename... Ps>
-inline constexpr auto lift_prepare(F f, Ps... ps) {
-    return lift_internal(curry_n<sizeof...(Ps)>(f), ps...);
-}
-
-/**
  * Monadic bind for multiple monads. Use this to reduce indentation
  * level if you need to evaluate multiple monads and use all results
  * in the same context.
@@ -110,7 +73,7 @@ inline constexpr auto lift(F f, Parser p, Parsers... ps) {
     auto fun = [=](auto&&... ps) {
         return Parser::mreturn(f(std::forward<decltype(ps)>(ps)...));
     };
-    return lift_prepare(fun, p, ps...);
+    return internal::lift_prepare(fun, p, ps...);
 }
 
 /**
@@ -133,7 +96,7 @@ inline constexpr auto lift_value(Parser p, Parsers... ps) {
     constexpr auto fun = [](auto&&... ps) {
         return Parser::template mreturn_emplace<T>(std::forward<decltype(ps)>(ps)...);
     };
-    return lift_prepare(fun, p, ps...);
+    return internal::lift_prepare(fun, p, ps...);
 }
 
 /**

@@ -18,9 +18,9 @@ using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_
  * This application unwraps arbitrary layers of callables so that one can
  * wrap the parser to enable recursion.
  */
-template <typename P, typename S>
-constexpr auto apply(P p, S& s) {
-    if constexpr (std::is_invocable_v<P>) {
+template <typename Parser, typename S>
+constexpr auto apply(Parser p, S& s) {
+    if constexpr (std::is_invocable_v<Parser>) {
         return apply(p(), s);
     } else {
         return p(s);
