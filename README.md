@@ -16,7 +16,12 @@ This enables compile time parsing as long as dereferencing and incrementing the 
 See the provided [JSON parser](test/json/json_parser.h) for a simple but functional JSON parser. It's only ~30 LOC and gives
 a good overview on how to use the library.
 
+### Dependencies
+
+Catch2 (tests only)
+
 ### Installing
+
 
 ```
 $ git clone https://github.com/habbbe/parsimon
@@ -38,6 +43,7 @@ instead.
 ### TODO
 
 - Add "Getting started" to README.md
+- More extensive test cases
 - Proper documentation
 - Improve compilation errors. The combined parsers are type checked first when a
 parse is commenced with some input. If a deeply nested parser doesn't type check, a flywheel scroll
