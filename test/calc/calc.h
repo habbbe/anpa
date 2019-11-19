@@ -1,9 +1,9 @@
 #ifndef CALC_H
 #define CALC_H
 
+#include <sstream>
 #include "parsimon/parsimon.h"
 
-using namespace parsimon;
 
 template <typename T>
 constexpr auto const_pow(T a, T b) {
@@ -12,7 +12,7 @@ constexpr auto const_pow(T a, T b) {
     return result;
 }
 
-constexpr auto expr = recursive<int>([](auto p) {
+constexpr auto expr = parsimon::recursive<int>([](auto p) {
     constexpr auto ops = [](auto c) {
         return [c](auto a, auto b) {
             switch (c) {
@@ -21,11 +21,11 @@ constexpr auto expr = recursive<int>([](auto p) {
             case '*': return a * b;
             case '/': return a / b;
             case '^': return const_pow(a, b);
-            default: return 0; // This can't happen
             }
         };
     };
 
+    using namespace parsimon;
     constexpr auto addOp = lift(ops, item<'+'>() || item<'-'>());
     constexpr auto mulOp = lift(ops, item<'*'>() || item<'/'>());
     constexpr auto expOp = lift(ops, item<'^'>());

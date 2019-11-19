@@ -529,7 +529,16 @@ inline constexpr auto until(Parser p) {
 
 
 /**
+ * (Description inspired by Parsec's `chainl1`)
+ * Chain one or more `p` separated by `op`.
+ * `op` is a parser that returns a binary functor taking as arguments the
+ * return type of `p`.
  *
+ * This parser will return the repeated left associative application of
+ * the functor returned by `op` applied to the results of `p`.
+ *
+ * This parser can be used to eliminate left recursion, for example in expression
+ * grammars.
  */
 template <typename Parser, typename OpParser>
 constexpr auto chain(Parser p, OpParser op) {
