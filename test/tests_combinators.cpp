@@ -1,5 +1,6 @@
 #include <stack>
 #include <iostream>
+#include <functional>
 #include <catch2/catch.hpp>
 #include "parsimon/parsimon.h"
 
@@ -588,5 +589,19 @@ TEST_CASE("recursive") {
     constexpr auto res = rec_parser.parse(str);
     static_assert(res.second);
     static_assert(*res.second == 123);
+    static_assert(res.first.position == str.end());
+}
+
+TEST_CASE("chain") {
+    using namespace parsimon;
+    constexpr std::string_view str("8/2/2");
+
+    constexpr auto op = item<'/'>() >= std::divides<>();
+
+    constexpr auto parser = chain(integer(), op);
+
+    constexpr auto res = parser.parse(str);
+    static_assert(res.second);
+    static_assert(*res.second == 2);
     static_assert(res.first.position == str.end());
 }

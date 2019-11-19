@@ -526,6 +526,30 @@ inline constexpr auto until(Parser p) {
     });
 }
 
+
+
+/**
+ *
+ */
+template <typename Parser, typename OpParser>
+constexpr auto chain(Parser p, OpParser op) {
+    return parser([=](auto& s) {
+        auto result1 = apply(p, s);
+        if (!result1) return result1;
+
+        auto r = *result1;
+        for (;;) {
+            auto opRes = apply(op, s);
+            if (!opRes) return s.return_success(r);
+
+            auto result2 = apply(p, s);
+            if (!result2) return s.return_success(r);
+
+            r = (*opRes)(r, *result2);
+        }
+    });
+}
+
 /**
  * Create a recursive parser.
  * Provide a callable taking an `auto` as its parameter, and returning

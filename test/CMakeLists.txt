@@ -1,6 +1,8 @@
 project(parsimon_tests)
 
-include_directories(json) 
+include_directories(
+    json
+    calc)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -12,7 +14,8 @@ set(SOURCES
     tests_combinators.cpp
     tests_perf.cpp
     tests_json.cpp
-) 
+    tests_calc.cpp
+    )
 
 set(TEST_TARGET parsimon_tests)
 add_executable(${TEST_TARGET} ${SOURCES})
