@@ -25,7 +25,3 @@ add_test(
     NAME ${TEST_TARGET} 
     COMMAND ${TEST_TARGET}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data)
-
-add_custom_target(run_unit_test ALL
-    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-    DEPENDS ${TEST_TARGET})

@@ -14,9 +14,9 @@ install(
     DESTINATION include)
 
 
-option(RUN_TESTS "Builds the tests" true)
+option(BUILD_TESTS "Builds the tests" false)
 
-if(${RUN_TESTS})
+if(${BUILD_TESTS})
     enable_testing()
     add_subdirectory(test)
-endif(${RUN_TESTS})
+endif(${BUILD_TESTS})

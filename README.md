@@ -35,12 +35,12 @@ $ make install
 
 ```
 
-If you don't want to build and run the tests, use
+If you want to build and run the tests, use
 ```
-$ cmake -DCMAKE_INSTALL_PREFIX=<PREFIX> -DRUN_TESTS=OFF ..
+$ cmake -DCMAKE_INSTALL_PREFIX=<PREFIX> -DBUILD_TESTS=ON ..
+make all test
 
 ```
-instead.
 
 
 ### TODO
