@@ -177,6 +177,16 @@ inline constexpr auto first(Parsers... ps) {
 }
 
 /**
+ * Use the supplied user state to construct a new parser
+ */
+template <typename Fun>
+inline constexpr auto with_state(Fun f) {
+    return parser([=](auto& s) {
+        return apply(f(s.user_state), s);
+    });
+}
+
+/**
  * Modify the supplied user state.
  * Will use the returned value from the user supplied function as result,
  * or `none` if return type is `void`.

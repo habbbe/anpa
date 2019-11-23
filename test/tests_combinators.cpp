@@ -1,6 +1,7 @@
 #include <stack>
 #include <iostream>
 #include <functional>
+#include <string>
 #include <catch2/catch.hpp>
 #include "parsimon/parsimon.h"
 
@@ -119,6 +120,65 @@ TEST_CASE("first") {
     static_assert(*res4.second == 'b');
     static_assert(res4.first.position == str2.begin() + 1);
 }
+
+TEST_CASE("with_state constexpr") {
+    using namespace parsimon;
+    struct state {
+        char x = 'a';
+    };
+
+    constexpr auto char_progression = with_state([](auto &s) {
+        char c = s.x;
+        s.x++;
+        return item(c);
+    });
+
+    constexpr auto p = many(char_progression, item<' '>());
+
+    constexpr auto res1 = p.parse_with_state("a b c d e f", state());
+
+    static_assert(res1.second);
+    static_assert (*res1.second == "a b c d e f");
+
+    constexpr auto res2 = p.parse_with_state("a b c c d e", state());
+
+    static_assert(res2.second);
+    static_assert (*res2.second == "a b c ");
+}
+
+TEST_CASE("with_state") {
+    using namespace parsimon;
+    struct state {
+        int n = 0;
+        int step = 1;
+        constexpr state(int start, int step) : n{start}, step{step} {}
+    };
+
+    constexpr auto int_progression = with_state([](auto &s) {
+
+        constexpr auto parse_int = [](int i) {
+            auto str = std::to_string(i);
+            return sequence(str.begin(), str.end());
+        };
+
+        int i = s.n;
+        s.n += s.step;
+        return parse_int(i);
+    });
+
+    constexpr auto p = many(int_progression, item<' '>());
+
+    auto res1 = p.parse_with_state("1 2 3 4 5 6 7", state(1, 1));
+
+    REQUIRE(res1.second);
+    REQUIRE(*res1.second == "1 2 3 4 5 6 7");
+
+    auto res2 = p.parse_with_state("2 5 8 11 14 17", state(2, 3));
+
+    REQUIRE(res2.second);
+    REQUIRE(*res2.second == "2 5 8 11 14 17");
+}
+
 
 TEST_CASE("modify_state") {
     using namespace parsimon;
