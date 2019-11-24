@@ -29,19 +29,24 @@ Catch2 (tests only)
 ```
 $ git clone https://github.com/habbbe/parsimon
 $ cd parsimon
-$ mkdir build && cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=<PREFIX> ..
-$ make install
+$ cmake -B <BUILD_DIR> -DCMAKE_INSTALL_PREFIX=<PREFIX>
+$ cmake --install build
 
 ```
 
-If you want to build and run the tests, use
+If you want to build and run the tests instead, use
 ```
-$ cmake -DCMAKE_INSTALL_PREFIX=<PREFIX> -DBUILD_TESTS=ON ..
-make all test
+$ cmake -B <BUILD_DIR> -DBUILD_TESTS=ON
+$ cmake --build <BUILD_DIR> -j <NUM_OF_PARALLEL_JOBS> --target parsimon_tests test
 
 ```
 
+### Tips
+
+Try increasing the inlining limit for your compiler for better performance (your mileage may vary).
+
+As an example, using `-finline-limit=2000` in GCC 9.2.0 resulted in a ~50% performance increase for 
+the [JSON parser](test/json/json_parser.h) on my machine.
 
 ### TODO
 
