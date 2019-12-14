@@ -177,7 +177,7 @@ inline constexpr auto first(Parsers... ps) {
 }
 
 /**
- * Use the supplied user state to construct a new parser
+ * Use the user state to construct a new parser.
  */
 template <typename Fun>
 inline constexpr auto with_state(Fun f) {
@@ -301,6 +301,22 @@ inline constexpr auto many_to_vector(Parser p,
         });
         return s.return_success(std::move(r));
     });
+}
+
+/**
+ * Shorthand for `many_to_vector`
+ */
+template <typename Lambda>
+inline constexpr auto operator*(parser<Lambda> p) {
+    return many_to_vector(p);
+}
+
+/**
+ * Shorthand for `not_empty(many_to_vector)`
+ */
+template <typename Lambda>
+inline constexpr auto operator+(parser<Lambda> p) {
+    return not_empty(many_to_vector(p));
 }
 
 /**

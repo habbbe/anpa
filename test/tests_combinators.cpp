@@ -36,7 +36,7 @@ TEST_CASE("not_empty") {
 
 TEST_CASE("try_parser") {
     using namespace parsimon;
-    constexpr auto p = try_parser(sequence("abc") >> sequence("df"));
+    constexpr auto p = try_parser(seq("abc") >> seq("df"));
     constexpr std::string_view str("abcde");
     constexpr auto res = p.parse(str);
     static_assert(!res.second);
@@ -45,7 +45,7 @@ TEST_CASE("try_parser") {
 
 TEST_CASE("no_consume") {
     using namespace parsimon;
-    constexpr auto p = no_consume(sequence("abcde"));
+    constexpr auto p = no_consume(seq("abcde"));
     constexpr std::string_view str("abcde");
     constexpr auto res = p.parse(str);
     static_assert(res.second);
@@ -73,8 +73,8 @@ TEST_CASE("constrain") {
 TEST_CASE("get_parsed") {
 
     using namespace parsimon;
-    constexpr auto p1 = get_parsed(integer(), sequence("abc"), item('}'));
-    constexpr auto p2 = integer() + sequence("abc") + item('}');
+    constexpr auto p1 = get_parsed(integer(), seq("abc"), item('}'));
+    constexpr auto p2 = integer() + seq("abc") + item('}');
 
     constexpr std::string_view str("123abc}bc");
 
@@ -144,6 +144,8 @@ TEST_CASE("with_state constexpr") {
 
     static_assert(res2.second);
     static_assert (*res2.second == "a b c ");
+
+
 }
 
 TEST_CASE("with_state") {
@@ -158,7 +160,7 @@ TEST_CASE("with_state") {
 
         constexpr auto parse_int = [](int i) {
             auto str = std::to_string(i);
-            return sequence(str.begin(), str.end());
+            return seq(str.begin(), str.end());
         };
 
         int i = s.n;
@@ -239,7 +241,7 @@ TEST_CASE("emplace_to_state") {
     using namespace parsimon;
     auto p = emplace_to_state([](auto& s) -> auto& {
         return s;
-    }, sequence("abc") + sequence("de"));
+    }, seq("abc") + seq("de"));
 
     std::stack<std::string> state;
     state.push("a");
@@ -252,7 +254,7 @@ TEST_CASE("emplace_to_state") {
 
 TEST_CASE("emplace_to_state_direct") {
     using namespace parsimon;
-    auto p = emplace_to_state_direct(sequence("abc") + sequence("de"));
+    auto p = emplace_to_state_direct(seq("abc") + seq("de"));
 
     std::stack<std::string> state;
     state.push("a");
@@ -267,7 +269,7 @@ TEST_CASE("emplace_back_to_state") {
     using namespace parsimon;
     auto p = emplace_to_state<true>([](auto& s) -> auto& {
         return s;
-    }, sequence("abc") + sequence("de"));
+    }, seq("abc") + seq("de"));
 
     std::vector<std::string> state;
     state.push_back("a");
@@ -280,7 +282,7 @@ TEST_CASE("emplace_back_to_state") {
 
 TEST_CASE("emplace_back_to_state_direct") {
     using namespace parsimon;
-    auto p = emplace_to_state_direct<true>(sequence("abc") + sequence("de"));
+    auto p = emplace_to_state_direct<true>(seq("abc") + seq("de"));
 
     std::vector<std::string> state;
     state.push_back("a");
@@ -294,7 +296,7 @@ TEST_CASE("emplace_back_to_state_direct") {
 TEST_CASE("many_to_vector") {
     std::string str("#100#20#3def");
     auto intParser = parsimon::item('#') >> parsimon::integer();
-    auto p = parsimon::many_to_vector(intParser);
+    auto p = *intParser;
     auto res = p.parse(str);
     REQUIRE(res.second);
     REQUIRE(res.second->size() == 3);
@@ -322,7 +324,7 @@ TEST_CASE("many_to_array with separator") {
     using namespace parsimon;
     constexpr auto intParser = integer();
 
-    constexpr auto p = many_to_array<10>(intParser, sequence("#%"));
+    constexpr auto p = many_to_array<10>(intParser, seq("#%"));
 
     constexpr auto res = p.parse_with_state("100#%20#%3", 0);
     static_assert(res.second);
@@ -331,7 +333,6 @@ TEST_CASE("many_to_array with separator") {
     static_assert(res.second->first[1] == 20);
     static_assert(res.second->first[2] == 3);
 }
-
 
 TEST_CASE("many_to_map") {
     std::string str("#1=a#2=b#3=c");
@@ -350,7 +351,6 @@ TEST_CASE("many_to_map") {
 TEST_CASE("many_general") {
     using namespace parsimon;
     struct val {
-        int i = 0;
         char is[100] = {};
     };
     constexpr std::string_view str("#1=a#4=b#7=c");
@@ -617,7 +617,7 @@ TEST_CASE("many_f with separator") {
     int result = 0;
     auto p = many_f(intParser, [&result](auto i) {
         result += i;
-    }, sequence("#%"));
+    }, seq("#%"));
 
     auto res = p.parse("100#%20#%3");
 
@@ -632,7 +632,7 @@ TEST_CASE("many_state with separator") {
 
     constexpr auto p = many_state(intParser, [](auto& s, auto i) {
         s += i;
-    }, sequence("#%"));
+    }, seq("#%"));
 
     constexpr auto res = p.parse_with_state("100#%20#%3", 0);
     static_assert(res.second);

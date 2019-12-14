@@ -22,9 +22,9 @@ constexpr auto string_parser = []() {
 }();
 
 constexpr auto number_parser = eat(floating<json_number, true>());
-constexpr auto bool_parser = eat((sequence<'t','r','u','e'>() >= true) ||
-                                 (sequence<'f','a','l','s','e'>() >= false));
-constexpr auto null_parser = eat(sequence<'n','u','l','l'>() >= json_null());
+constexpr auto bool_parser = eat((seq<'t','r','u','e'>() >= true) ||
+                                 (seq<'f','a','l','s','e'>() >= false));
+constexpr auto null_parser = eat(seq<'n','u','l','l'>() >= json_null());
 
 template <typename F>
 constexpr auto get_object_parser(F value_parser) {

@@ -89,20 +89,20 @@ TEST_CASE("custom_state") {
 
 TEST_CASE("sequence") {
     constexpr std::string_view str("abcde");
-    constexpr auto resSuccess = sequence("abc").parse(str);
+    constexpr auto resSuccess = seq("abc").parse(str);
     static_assert(resSuccess.second);
     static_assert(*resSuccess.second == "abc");
     static_assert(resSuccess.first.position == str.begin() + 3);
 
-    constexpr auto resPartialFail = sequence("abce").parse(str);
+    constexpr auto resPartialFail = seq("abce").parse(str);
     static_assert(!resPartialFail.second);
     static_assert(resPartialFail.first.position == str.begin());
 
-    constexpr auto resTooLong = sequence("abcdef").parse(str);
+    constexpr auto resTooLong = seq("abcdef").parse(str);
     static_assert(!resTooLong.second);
     static_assert(resTooLong.first.position == str.begin());
 
-    constexpr auto resFail = sequence("b").parse(str);
+    constexpr auto resFail = seq("b").parse(str);
     static_assert(!resFail.second);
     static_assert(resFail.first.position == str.begin());
 }

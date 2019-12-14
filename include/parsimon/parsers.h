@@ -107,9 +107,9 @@ inline constexpr auto item_if(Pred pred) {
  * Parser for the sequence described by [begin, end)
  */
 template <typename Iterator>
-inline constexpr auto sequence(Iterator begin, Iterator end) {
+inline constexpr auto seq(Iterator begin, Iterator end) {
     return parser([=](auto& s) {
-        return internal::sequence(s, std::distance(begin, end),
+        return internal::seq(s, std::distance(begin, end),
                                   [=](auto& i) {return algorithm::equal(begin, end, i);});
     });
 }
@@ -119,9 +119,9 @@ inline constexpr auto sequence(Iterator begin, Iterator end) {
  * This might give better performance than the non-templated version due to less copying.
  */
 template <auto v, auto... vs>
-inline constexpr auto sequence() {
+inline constexpr auto seq() {
     return parser([](auto& s) {
-        return internal::sequence(s, sizeof...(vs) + 1,
+        return internal::seq(s, sizeof...(vs) + 1,
                                   [](auto& i){return algorithm::equal<v, vs...>(i);});
     });
 }
@@ -130,9 +130,11 @@ inline constexpr auto sequence() {
  * Parser for a sequence described by a string literal
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
-inline constexpr auto sequence(const ItemType (&seq)[N]) {
-    return sequence(std::begin(seq), std::end(seq) - 1);
+inline constexpr auto seq(const ItemType (&items)[N]) {
+    return seq(std::begin(items), std::end(items) - 1);
 }
+
+
 
 /**
  * Parser for any item contained in the set described by the provided string literal
@@ -206,7 +208,7 @@ inline constexpr auto until_item() {
 template <bool Eat = true, bool Include = false, typename Iterator>
 inline constexpr auto until_sequence(Iterator begin, Iterator end) {
     return parser([=](auto& s) {
-        return internal::until_sequence<Eat, Include>(s,
+        return internal::until_seq<Eat, Include>(s,
                     [=](auto& b, auto& e) {return algorithm::search(b, e, begin, end);});
     });
 }
