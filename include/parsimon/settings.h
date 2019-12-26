@@ -6,6 +6,10 @@
 
 namespace parsimon {
 
+constexpr auto default_convert = [](auto begin, auto end) {
+    return std::make_pair(begin, end);
+};
+
 constexpr auto string_view_convert = [](auto begin, auto end) {
     using type = std::decay_t<decltype(*begin)>;
     auto distance = std::distance(begin, end);
@@ -16,10 +20,13 @@ constexpr auto string_view_convert = [](auto begin, auto end) {
     }
 };
 
+template <bool ErrorHandling = false, auto& Convert = string_view_convert>
 struct parser_settings {
-    constexpr static bool error_handling = false;
-    constexpr static auto conversion_function = string_view_convert;
+    constexpr static bool error_handling = ErrorHandling;
+    constexpr static auto conversion_function = Convert;
 };
+
+using default_parser_settings = parser_settings<false, string_view_convert>;
 
 }
 

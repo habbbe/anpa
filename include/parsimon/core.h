@@ -10,9 +10,6 @@
 
 namespace parsimon {
 
-template <typename Result, typename ErrorType, typename State, typename Iterator, typename Settings = parser_settings>
-using type = std::function<result<Result, ErrorType>(std::conditional_t<std::is_void<State>::value, parser_state_simple<Iterator, Settings>, parser_state<Iterator, State, Settings>>&)>;
-
 /**
  * Apply a parser to a state and return the result.
  * This application unwraps arbitrary layers of callables so that one can
@@ -108,7 +105,7 @@ struct parser {
      * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
-    template <typename Settings = parser_settings, typename Iterator, typename State>
+    template <typename Settings = default_parser_settings, typename Iterator, typename State>
     constexpr auto parse_with_state(Iterator begin,
                                     Iterator end,
                                     State&& user_state) const {
@@ -121,7 +118,7 @@ struct parser {
      * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
-    template <typename Settings = parser_settings, typename SequenceType, typename State>
+    template <typename Settings = default_parser_settings, typename SequenceType, typename State>
     constexpr auto parse_with_state(const SequenceType& sequence,
                                     State&& user_state) const {
         return parse_with_state<Settings>(std::begin(sequence),
@@ -135,7 +132,7 @@ struct parser {
      * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
-    template <typename Settings = parser_settings, typename ItemType, size_t N, typename State>
+    template <typename Settings = default_parser_settings, typename ItemType, size_t N, typename State>
     constexpr auto parse_with_state(const ItemType (&sequence)[N],
                                     State&& user_state) const {
         return parse_with_state<Settings>(sequence,
@@ -149,7 +146,7 @@ struct parser {
      * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
-    template <typename Settings = parser_settings, typename Iterator>
+    template <typename Settings = default_parser_settings, typename Iterator>
     constexpr auto parse(Iterator begin, Iterator end) const {
         return parse_internal(parser_state_simple(begin, end, Settings()));
     }
@@ -160,7 +157,7 @@ struct parser {
      * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
-    template <typename Settings = parser_settings, typename SequenceType>
+    template <typename Settings = default_parser_settings, typename SequenceType>
     constexpr auto parse(const SequenceType& sequence) const {
         return parse<Settings>(std::begin(sequence), std::end(sequence));
     }
@@ -171,7 +168,7 @@ struct parser {
      * The result is a std::pair with the parser state as the first
      * element and the result of the parse as the second.
      */
-    template <typename Settings = parser_settings, typename ItemType, size_t N>
+    template <typename Settings = default_parser_settings, typename ItemType, size_t N>
     constexpr auto parse(const ItemType (&sequence)[N]) const {
         return parse<Settings>(sequence, sequence + N - 1);
     }

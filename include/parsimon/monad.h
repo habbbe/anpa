@@ -5,7 +5,6 @@
 #include <utility>
 #include <memory>
 #include "parsimon/internal/monad_internal.h"
-#include "parsimon/lazy.h"
 #include "parsimon/core.h"
 
 namespace parsimon {
@@ -77,15 +76,6 @@ inline constexpr auto lift(F f, Parser p, Parsers... ps) {
 }
 
 /**
- * Apply a function f to the results of the parsers (evaluated left to right) and
- * put the result as a lazy value in the parser monad
- */
-template <typename F, typename... Parsers>
-inline constexpr auto lift_lazy(F f, Parsers... ps) {
-    return lift(lazy::make_lazy_forward_fun(f), std::forward<Parsers>(ps)...);
-}
-
-/**
  * Create an object by passing the results of the monads (evaluated left to right)
  * to its constructor, then put the object in the monad.
  * This is a specialized version of lift that avoids unnecessary copying by constructing
@@ -97,39 +87,6 @@ inline constexpr auto lift_value(Parser p, Parsers... ps) {
         return Parser::template mreturn_emplace<T>(std::forward<decltype(ps)>(ps)...);
     };
     return internal::lift_prepare(fun, p, ps...);
-}
-
-/**
- * Create an object by passing the lazy results of the monads (evaluated left to right)
- * to its constructor, then put it as a lazy value in the monad.
- */
-template <typename T, typename... Parsers>
-inline constexpr auto lift_value_lazy(Parsers... ps) {
-    return lift(lazy::make_lazy_value_forward_fun<T>(), std::forward<Parsers>(ps)...);
-}
-
-/**
- * Create an object by passing the non-lazy results of the monads (evaluated left to right)
- * to its constructer, then put it as a lazy value in the monad.
- */
-template <typename T, typename... Parsers>
-inline constexpr auto lift_value_lazy_raw(Parsers... ps) {
-    return lift(lazy::make_lazy_value_forward_fun_raw<T>(), std::forward<Parsers>(ps)...);
-}
-
-template <typename Parser>
-inline constexpr auto lift_shared(Parser p) {
-    return lift([](auto&& s){
-        using type = std::decay_t<decltype(s)>;
-        return std::make_shared<type>(std::forward<decltype(s)>(s));
-    }, p);
-}
-
-template <typename Parser>
-inline constexpr auto lift_lazy(Parser p) {
-    return lift([](auto&& s) {
-        return lazy::make_lazy(std::forward<decltype(s)>(s));
-    }, p);
 }
 
 }

@@ -486,22 +486,6 @@ inline constexpr auto lift_or_value(Parser p, Parsers... ps) {
 }
 
 /**
- * Lift a type to the parser monad after applying the first successful parser's
- * result to its constructor. The constructor must provide an overload for every
- * parser result type.
- * This version applies the constructor to a lazy argument
- */
-template <typename T, typename Parser, typename... Parsers>
-inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
-    return parser([=](auto& s) {
-        constexpr auto construct = [](auto arg) {
-            return T(arg());
-        };
-        return internal::lift_or_rec(s, construct, p, ps...);
-    });
-}
-
-/**
  * Create a parser that parses the result of `p1` with `p2`.
  * Useful for parsing the content between brackets.
  * Currently only working if the return type from the provided conversion function

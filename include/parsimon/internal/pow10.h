@@ -13,7 +13,7 @@ struct pow_table_instance {
     static constexpr int size = max - min + 1;
     Floating table[size] = {};
     constexpr auto fill() {
-        for (int i = 0; i<=max; ++i) {
+        for (int i = 0; i <= max; ++i) {
             if (i == 0) {
                 table[-min + i] = 1;
             } else {
@@ -24,7 +24,7 @@ struct pow_table_instance {
             table[-min + i] = table[-min + i + 1] / 10;
         }
     }
-    constexpr pow_table_instance(): table() {fill();}
+    constexpr pow_table_instance() : table() {fill();}
 
     constexpr auto pow(std::size_t n) const {
         return table[-min + n];
