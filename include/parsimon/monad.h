@@ -1,5 +1,5 @@
-#ifndef MONAD_H
-#define MONAD_H
+#ifndef PARSIMON_MONAD_H
+#define PARSIMON_MONAD_H
 
 #include <type_traits>
 #include <utility>
@@ -12,8 +12,8 @@ namespace parsimon {
 /**
  * Combine two monads, ignoring the result of the first one
  */
-template <typename Parser1, typename Parser2>
-inline constexpr auto operator>>(Parser1 p1, Parser2 p2) {
+template <typename P1, typename P2>
+inline constexpr auto operator>>(parser<P1> p1, parser<P2> p2) {
     return p1 >>= [=](auto&&) {
         return p2;
     };
@@ -22,19 +22,19 @@ inline constexpr auto operator>>(Parser1 p1, Parser2 p2) {
 /**
  * Put the provided value `v' in the parser monad on successful computation of `p`.
  */
-template <typename Parser, typename Value>
-inline constexpr auto operator>=(Parser p, Value&& v) {
-    return p >> Parser::mreturn(std::forward<Value>(v));
+template <typename P, typename Value>
+inline constexpr auto operator>=(parser<P> p, Value&& v) {
+    return p >> parser<P>::mreturn(std::forward<Value>(v));
 }
 
 /**
  * Combine two parsers, ignoring the result of the second one.
  * This is an optimized version. Using
- * `p1 >>= [=](auto&& r) { return p2 >> Parser1::mreturn(std::forward<decltype(r)>(r)); }`
+ * `p1 >>= [=](auto&& r) { return p2 >> parser<P1>::mreturn(std::forward<decltype(r)>(r)); }`
  * works, but doesn't optimize nearly as well.
  */
-template <typename Parser1, typename Parser2>
-inline constexpr auto operator<<(Parser1 p1, Parser2 p2) {
+template <typename P1, typename P2>
+inline constexpr auto operator<<(parser<P1> p1, parser<P2> p2) {
     return parser([=](auto& s) {
         auto result = apply(p1, s);
         if (result) {
@@ -92,4 +92,4 @@ inline constexpr auto lift_value(Parser p, Parsers... ps) {
 }
 
 
-#endif // MONAD_H
+#endif // PARSIMON_MONAD_H

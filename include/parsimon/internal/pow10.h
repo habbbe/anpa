@@ -1,5 +1,5 @@
-#ifndef POW10_H
-#define POW10_H
+#ifndef PARSIMON_INTERNAL_POW10_H
+#define PARSIMON_INTERNAL_POW10_H
 
 #include <limits>
 
@@ -40,4 +40,4 @@ struct pow_table {
 };
 }
 
-#endif // POW10_H
+#endif // PARSIMON_INTERNAL_POW10_H

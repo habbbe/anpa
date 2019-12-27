@@ -1,5 +1,5 @@
-#ifndef PARSE_UTILS_H
-#define PARSE_UTILS_H
+#ifndef PARSIMON_INTERNAL_ALGORITHM_H
+#define PARSIMON_INTERNAL_ALGORITHM_H
 
 #include <algorithm>
 #include <iterator>
@@ -118,4 +118,4 @@ inline constexpr auto contains_elements(Iterator begin, Iterator end, long n) {
 
 }
 
-#endif // PARSE_UTILS_H
+#endif // PARSIMON_INTERNAL_ALGORITHM_H

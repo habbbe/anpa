@@ -1,5 +1,5 @@
-#ifndef PARSER_PARSERS_INTERNAL_H
-#define PARSER_PARSERS_INTERNAL_H
+#ifndef PARSIMON_INTERNAL_PARSERS_INTERNAL_H
+#define PARSIMON_INTERNAL_PARSERS_INTERNAL_H
 
 #include <tuple>
 #include <limits>
@@ -122,4 +122,4 @@ inline constexpr auto custom(State& s, Result&& result) {
 
 }
 
-#endif // PARSER_PARSERS_INTERNAL_H
+#endif // PARSIMON_INTERNAL_PARSERS_INTERNAL_H

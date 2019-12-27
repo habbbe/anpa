@@ -1,5 +1,5 @@
-#ifndef MONAD_INTERNAL_H
-#define MONAD_INTERNAL_H
+#ifndef PARSIMON_INTERNAL_MONAD_INTERNAL_H
+#define PARSIMON_INTERNAL_MONAD_INTERNAL_H
 
 #include <utility>
 
@@ -45,4 +45,4 @@ inline constexpr auto lift_prepare(F f, Parsers... ps) {
 
 }
 
-#endif // MONAD_INTERNAL_H
+#endif // PARSIMON_INTERNAL_MONAD_INTERNAL_H

@@ -30,8 +30,8 @@ struct parser;
 /**
  * Monadic bind for the parser
  */
-template <typename Parser, typename F>
-inline constexpr auto operator>>=(Parser p, F f) {
+template <typename P, typename F>
+inline constexpr auto operator>>=(parser<P> p, F f) {
     return parser([=](auto& s) {
         if (auto&& result = apply(p, s)) {
             return apply(f(*std::forward<decltype(result)>(result)), s);

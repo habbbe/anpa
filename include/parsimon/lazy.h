@@ -1,5 +1,5 @@
-#ifndef LAZY_VALUE_H
-#define LAZY_VALUE_H
+#ifndef PARSIMON_LAZY_VALUE_H
+#define PARSIMON_LAZY_VALUE_H
 
 #include <utility>
 #include "parsimon/monad.h"
@@ -151,4 +151,4 @@ inline constexpr auto lift_or_value_from_lazy(Parser p, Parsers... ps) {
 }
 
 }
-#endif // LAZY_VALUE_H
+#endif // PARSIMON_LAZY_VALUE_H

@@ -1,5 +1,5 @@
-#ifndef PARSER_COMBINATORS_INTERNAL_H
-#define PARSER_COMBINATORS_INTERNAL_H
+#ifndef PARSIMON_INTERNAL_COMBINATORS_INTERNAL_H
+#define PARSIMON_INTERNAL_COMBINATORS_INTERNAL_H
 
 #include <type_traits>
 #include <utility>
@@ -102,4 +102,4 @@ inline constexpr auto lift_or_rec(State& s, F f, Parser p, Parsers... ps) {
 
 }
 
-#endif // PARSER_COMBINATORS_INTERNAL_H
+#endif // PARSIMON_INTERNAL_COMBINATORS_INTERNAL_H

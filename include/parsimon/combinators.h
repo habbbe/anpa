@@ -1,5 +1,5 @@
-#ifndef PARSER_COMBINATORS_H
-#define PARSER_COMBINATORS_H
+#ifndef PARSIMON_COMBINATORS_H
+#define PARSIMON_COMBINATORS_H
 
 #include <type_traits>
 #include <unordered_map>
@@ -134,7 +134,7 @@ inline constexpr auto get_parsed(Parser p, Parsers... ps) {
  * Make a parser that evaluates two parsers, and returns the successfully parsed text upon success.
  */
 template <typename P1, typename P2>
-inline constexpr auto operator+(P1 p1, P2 p2) {
+inline constexpr auto operator+(parser<P1> p1, parser<P2> p2) {
     return get_parsed(p1, p2);
 }
 
@@ -143,7 +143,7 @@ inline constexpr auto operator+(P1 p1, P2 p2) {
  * If the two parsers return different types the return value will instead be `none`.
  */
 template <typename P1, typename P2>
-inline constexpr auto operator||(P1 p1, P2 p2) {
+inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
     return parser([=](auto& s) {
         using R1 = decltype(*apply(p1, s));
         using R2 = decltype(*apply(p2, s));
@@ -306,16 +306,16 @@ inline constexpr auto many_to_vector(Parser p,
 /**
  * Shorthand for `many_to_vector`
  */
-template <typename Lambda>
-inline constexpr auto operator*(parser<Lambda> p) {
+template <typename P>
+inline constexpr auto operator*(parser<P> p) {
     return many_to_vector(p);
 }
 
 /**
  * Shorthand for `not_empty(many_to_vector)`
  */
-template <typename Lambda>
-inline constexpr auto operator+(parser<Lambda> p) {
+template <typename P>
+inline constexpr auto operator+(parser<P> p) {
     return not_empty(many_to_vector(p));
 }
 
@@ -593,4 +593,4 @@ constexpr auto recursive(F f) {
 
 }
 
-#endif // PARSER_COMBINATORS_H
+#endif // PARSIMON_COMBINATORS_H
