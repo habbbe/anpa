@@ -34,7 +34,8 @@ inline constexpr auto many(State& s,
             }
             break;
         }
-        successes = true;
+
+        if constexpr (FailOnNoSuccess) successes = true;
 
         if constexpr (!std::is_empty_v<std::decay_t<Fun>>) {
             f(std::move(*result)); // We're done with the result here so we can move it.

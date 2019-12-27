@@ -11,8 +11,8 @@ namespace parsimon::internal {
 template <std::size_t num_args, typename F>
 inline constexpr auto curry_n(F f) {
     if constexpr (num_args > 1) {
-        return [=](auto&& v) {
-            return curry_n<num_args-1>([&](auto&&...vs) {
+        return [f](auto&& v) {
+            return curry_n<num_args-1>([&v, f](auto&&...vs) {
                 return f(std::forward<decltype(v)>(v), std::forward<decltype(vs)>(vs)...);
             });
         };
