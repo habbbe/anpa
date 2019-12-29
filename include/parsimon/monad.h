@@ -24,7 +24,7 @@ inline constexpr auto operator>>(parser<P1> p1, parser<P2> p2) {
  */
 template <typename P, typename Value>
 inline constexpr auto operator>=(parser<P> p, Value&& v) {
-    return p >> parser<P>::mreturn(std::forward<Value>(v));
+    return p >> mreturn(std::forward<Value>(v));
 }
 
 /**
@@ -36,9 +36,9 @@ inline constexpr auto operator>=(parser<P> p, Value&& v) {
 template <typename P1, typename P2>
 inline constexpr auto operator<<(parser<P1> p1, parser<P2> p2) {
     return parser([=](auto& s) {
-        auto result = apply(p1, s);
+        auto result = p1(s);
         if (result) {
-            if (auto result2 = apply(p2, s)) {
+            if (auto result2 = p2(s)) {
                 return result;
             } else {
                 return s.template return_fail_change_result<std::decay_t<decltype(*result)>>(result2);
@@ -70,7 +70,7 @@ inline constexpr auto bind(F f, Parser p, Parsers... ps) {
 template <typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift(F f, Parser p, Parsers... ps) {
     auto fun = [=](auto&&... ps) {
-        return Parser::mreturn(f(std::forward<decltype(ps)>(ps)...));
+        return mreturn(f(std::forward<decltype(ps)>(ps)...));
     };
     return internal::lift_prepare(fun, p, ps...);
 }
@@ -84,7 +84,7 @@ inline constexpr auto lift(F f, Parser p, Parsers... ps) {
 template <typename T, typename Parser, typename... Parsers>
 inline constexpr auto lift_value(Parser p, Parsers... ps) {
     constexpr auto fun = [](auto&&... ps) {
-        return Parser::template mreturn_emplace<T>(std::forward<decltype(ps)>(ps)...);
+        return mreturn_emplace<T>(std::forward<decltype(ps)>(ps)...);
     };
     return internal::lift_prepare(fun, p, ps...);
 }

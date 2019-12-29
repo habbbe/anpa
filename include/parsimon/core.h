@@ -10,20 +10,6 @@
 
 namespace parsimon {
 
-/**
- * Apply a parser to a state and return the result.
- * This application unwraps arbitrary layers of callables so that one can
- * wrap the parser to enable recursion.
- */
-template <typename Parser, typename S>
-constexpr auto apply(Parser p, S& s) {
-    if constexpr (std::is_invocable_v<Parser>) {
-        return apply(p(), s);
-    } else {
-        return p(s);
-    }
-}
-
 template <typename P>
 struct parser;
 
@@ -33,10 +19,10 @@ struct parser;
 template <typename P, typename F>
 inline constexpr auto operator>>=(parser<P> p, F f) {
     return parser([=](auto& s) {
-        if (auto&& result = apply(p, s)) {
-            return apply(f(*std::forward<decltype(result)>(result)), s);
+        if (auto&& result = p(s)) {
+            return f(*std::forward<decltype(result)>(result))(s);
         } else {
-            using new_return_type = std::decay_t<decltype(*apply(f(*std::forward<decltype(result)>(result)), s))>;
+            using new_return_type = std::decay_t<decltype(*f(*std::forward<decltype(result)>(result))(s))>;
             return s.template return_fail_change_result<new_return_type>(result);
         }
     });
@@ -91,12 +77,12 @@ struct parser {
 
     template <typename State>
     constexpr auto operator()(State& s) const {
-        return apply(p, s);
+        return P(p)(s);
     }
 
     template <typename InternalState>
     constexpr auto parse_internal(InternalState&& state) const {
-        return std::pair(std::forward<InternalState>(state), apply(p, state));
+        return std::pair(std::forward<InternalState>(state), P(p)(state));
     }
 
     /**
@@ -174,31 +160,15 @@ struct parser {
     }
 
     /**
-     * Class member of mreturn_emplace. For general monad use.
-     */
-    template <typename T, typename... Args>
-    static inline constexpr auto mreturn_emplace(Args&&... args) {
-        return parsimon::mreturn_emplace<T>(std::forward<Args>(args)...);
-    }
-
-    /**
-     * Class member of mreturn. For general monad use.
-     */
-    template <typename T>
-    static inline constexpr auto mreturn(T&& v) {
-        return parsimon::mreturn(std::forward<T>(v));
-    }
-
-    /**
      * Make this parser a parser that assigns its result to the provided output iterator
      * upon success, as well as returning `none` as the result of the parse.
      * Note that any pointer type is also an output iterator.
      */
-    template <typename T,
-              typename = std::enable_if_t<types::iterator_is_category_v<T, std::output_iterator_tag>>>
-    constexpr auto operator[](T t) const {
-        return *this >>= [=](auto&& s) {
-            *t = std::forward<decltype(s)>(s);
+    template <typename It,
+              typename = std::enable_if_t<types::iterator_is_category_v<It, std::output_iterator_tag>>>
+    constexpr auto operator[](It it) const {
+        return *this >>= [=](auto&& r) {
+            *it = std::forward<decltype(r)>(r);
             return mreturn_emplace<none>();
         };
     }
