@@ -1,7 +1,6 @@
 #ifndef PARSIMON_INCLUDE_H
 #define PARSIMON_INCLUDE_H
 
-#include "parsimon/lazy.h"
 #include "parsimon/monad.h"
 #include "parsimon/result.h"
 #include "parsimon/state.h"
