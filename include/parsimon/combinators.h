@@ -19,7 +19,7 @@ namespace parsimon {
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto& s) {
-        if (auto&& result = p(s)) {
+        if (auto&& result = apply(p, s)) {
             return s.template return_success_emplace
                     <std::optional<std::decay_t<decltype(*result)>>>(*std::forward<decltype(result)>(result));
         } else {
@@ -55,7 +55,7 @@ inline constexpr auto times(Parser p) {
 template <typename Parser, typename Error>
 inline constexpr auto change_error(Parser p, Error error) {
     return parser([=](auto& s) {
-        if (auto result = p(s)) {
+        if (auto result = apply(p, s)) {
             return result;
         } else {
             using return_type = std::decay_t<decltype(*result)>;
@@ -73,7 +73,7 @@ template <bool FailureOnly = false, typename Parser>
 inline constexpr auto no_consume(Parser p) {
     return parser([=](auto& s) {
         auto old_position = s.position;
-        auto result = p(s);
+        auto result = apply(p, s);
         if (!FailureOnly || !result) {
             s.set_position(old_position);
         }
@@ -96,7 +96,7 @@ inline constexpr auto try_parser(Parser p) {
 template <typename Parser, typename Predicate>
 inline constexpr auto constrain(Parser p, Predicate pred) {
     return parser([=](auto& s) {
-        if (auto result = p(s); !result || pred(*result)) {
+        if (auto result = apply(p, s); !result || pred(*result)) {
             return result;
         } else {
             return s.template return_fail<std::decay_t<decltype(*result)>>();
@@ -145,22 +145,22 @@ inline constexpr auto operator+(parser<P1> p1, parser<P2> p2) {
 template <typename P1, typename P2>
 inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
     return parser([=](auto& s) {
-        using R1 = decltype(*p1(s));
-        using R2 = decltype(*p2(s));
+        using R1 = decltype(*apply(p1, s));
+        using R2 = decltype(*apply(p2, s));
         auto original_position = s.position;
         if constexpr (std::is_same_v<R1, R2>) {
-            if (auto result1 = p1(s)) {
+            if (auto result1 = apply(p1, s)) {
                 return result1;
             } else {
                 s.set_position(original_position);
-                return p2(s);
+                return apply(p2, s);
             }
         } else {
-            if (p1(s)) {
+            if (apply(p1, s)) {
                 return s.template return_success_emplace<none>();
             } else {
                 s.set_position(original_position);
-                auto result2 = p2(s);
+                auto result2 = apply(p2, s);
                 return result2 ? s.template return_success_emplace<none>() :
                                       s.template return_fail_change_result<none>(result2);
             }
@@ -182,7 +182,7 @@ inline constexpr auto first(Parsers... ps) {
 template <typename Fun>
 inline constexpr auto with_state(Fun f) {
     return parser([=](auto& s) {
-        return f(s.user_state)(s);
+        return apply(f(s.user_state), s);
     });
 }
 
@@ -211,7 +211,7 @@ inline constexpr auto modify_state(Fun f) {
 template <typename Parser, typename Accessor>
 inline constexpr auto set_in_state(Parser p, Accessor acc) {
     return parser([=](auto& s) {
-        auto result = p(s);
+        auto result = apply(p, s);
         if (result) {
             acc(s.user_state) = *result;
         }
@@ -231,7 +231,7 @@ inline constexpr auto apply_to_state(Fun f, Parsers...ps) {
         auto to_apply = [f, &state] (auto&&... vals) {
             return f(state, std::forward<decltype(vals)>(vals)...);
         };
-        return lift(to_apply, ps...)(s);
+        return apply(lift(to_apply, ps...), s);
     });
 }
 
@@ -293,7 +293,7 @@ template <size_t reserve = 0,
 inline constexpr auto many_to_vector(Parser p,
                                      ParserSep sep = {}) {
     return parser([=](auto& s) {
-        using result_type = std::decay_t<decltype(*p(s))>;
+        using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
         r.reserve(reserve);
         internal::many(s, p, sep, [&r](auto&& res) {
@@ -331,7 +331,7 @@ template <size_t size,
 inline constexpr auto many_to_array(Parser p,
                                     ParserSep sep = {}) {
     return parser([=](auto& s) {
-        using result_type = std::decay_t<decltype(*p(s))>;
+        using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::array<result_type, size> arr{};
         size_t i = 0;
         internal::many(s, p, sep, [&arr, &i](auto&& res) {
@@ -353,7 +353,7 @@ template <bool Unordered = true,
 inline constexpr auto many_to_map(Parser p,
                                   ParserSep sep = {}) {
     return parser([=](auto& s) {
-        using result_type = std::decay_t<decltype(*p(s))>;
+        using result_type = std::decay_t<decltype(*apply(p, s))>;
         using key = std::tuple_element_t<0, result_type>;
         using value = std::tuple_element_t<1, result_type>;
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
@@ -494,14 +494,14 @@ inline constexpr auto lift_or_value(Parser p, Parsers... ps) {
 template <typename Parser1, typename Parser2>
 inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
     return parser([=](auto& s) {
-        if (auto&& result = p1(s)) {
+        if (auto&& result = apply(p1, s)) {
             auto result_text = std::move(*result);
             using state_type = std::decay_t<decltype(s)>;
             state_type new_state(std::begin(result_text), std::end(result_text), s);
-            auto new_result = p2(new_state);
+            auto new_result = apply(p2, new_state);
             return new_result;
         } else {
-            return s.template return_fail_change_result<std::decay_t<decltype(*p2(s))>>(result);
+            return s.template return_fail_change_result<std::decay_t<decltype(*apply(p2, s))>>(result);
         }
     });
 }
@@ -518,7 +518,7 @@ inline constexpr auto until(Parser p) {
     return parser([=](auto& s) {
         auto position_start = s.position;
         auto position_end = position_start;
-        for (auto result = p(s); !result; result = p(s)) {
+        for (auto result = apply(p, s); !result; result = apply(p, s)) {
             if (s.empty()) {
                 s.set_position(position_start);
                 return s.return_fail_result_default(result);
@@ -553,15 +553,15 @@ inline constexpr auto until(Parser p) {
 template <typename Parser, typename OpParser>
 constexpr auto chain(Parser p, OpParser op) {
     return parser([=](auto& s) {
-        auto result1 = p(s);
+        auto result1 = apply(p, s);
         if (!result1) return result1;
 
         auto r = *result1;
         for (;;) {
-            auto opRes = op(s);
+            auto opRes = apply(op, s);
             if (!opRes) return s.return_success(r);
 
-            auto result2 = p(s);
+            auto result2 = apply(p, s);
             if (!result2) return s.return_success(r);
 
             r = (*opRes)(r, *result2);
@@ -585,7 +585,7 @@ constexpr auto recursive(F f) {
             auto p = parser([self](auto&) { // The actual parser sent to the caller.
                 return self(self);
             });
-            return f(p)(s);
+            return apply(f(p), s);
         };
         return rec(rec);
     });

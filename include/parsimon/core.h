@@ -10,6 +10,20 @@
 
 namespace parsimon {
 
+/**
+ * Apply a parser to a state and return the result.
+ * This application unwraps arbitrary layers of callables so that one can
+ * wrap the parser to enable recursion.
+ */
+template <typename Parser, typename S>
+constexpr auto apply(Parser p, S& s) {
+    if constexpr (std::is_invocable_v<Parser>) {
+        return apply(p(), s);
+    } else {
+        return p(s);
+    }
+}
+
 template <typename P>
 struct parser;
 
@@ -19,10 +33,10 @@ struct parser;
 template <typename P, typename F>
 inline constexpr auto operator>>=(parser<P> p, F f) {
     return parser([=](auto& s) {
-        if (auto&& result = p(s)) {
-            return f(*std::forward<decltype(result)>(result))(s);
+        if (auto&& result = apply(p, s)) {
+            return apply(f(*std::forward<decltype(result)>(result)), s);
         } else {
-            using new_return_type = std::decay_t<decltype(*f(*std::forward<decltype(result)>(result))(s))>;
+            using new_return_type = std::decay_t<decltype(*apply(f(*std::forward<decltype(result)>(result)), s))>;
             return s.template return_fail_change_result<new_return_type>(result);
         }
     });
@@ -77,12 +91,12 @@ struct parser {
 
     template <typename State>
     constexpr auto operator()(State& s) const {
-        return P(p)(s);
+        return apply(p, s);
     }
 
     template <typename InternalState>
     constexpr auto parse_internal(InternalState&& state) const {
-        return std::pair(std::forward<InternalState>(state), P(p)(state));
+        return std::pair(std::forward<InternalState>(state), apply(p, state));
     }
 
     /**
@@ -167,8 +181,8 @@ struct parser {
     template <typename It,
               typename = std::enable_if_t<types::iterator_is_category_v<It, std::output_iterator_tag>>>
     constexpr auto operator[](It it) const {
-        return *this >>= [=](auto&& r) {
-            *it = std::forward<decltype(r)>(r);
+        return *this >>= [it](auto&& s) {
+            *it = std::forward<decltype(s)>(s);
             return mreturn_emplace<none>();
         };
     }
