@@ -19,7 +19,7 @@ struct result {
 
     constexpr result() : res{std::nullopt} {}
 
-    constexpr decltype(auto) get_value() {
+    constexpr decltype(auto) get_value() & {
         if constexpr (has_error_handling) {
             return std::get<1>(res);
         } else {
@@ -27,10 +27,12 @@ struct result {
         }
     }
 
-    constexpr decltype(auto) get_value() const { return const_cast<result*>(this)->get_value(); }
+    constexpr decltype(auto) get_value() && { return std::move(get_value()); }
+    constexpr decltype(auto) get_value() const& { return const_cast<result*>(this)->get_value(); }
 
-    constexpr decltype(auto) operator*() { return get_value(); }
-    constexpr decltype(auto) operator*() const { return get_value(); }
+    constexpr decltype(auto) operator*() & { return get_value(); }
+    constexpr decltype(auto) operator*() && { return static_cast<result&&>(*this).get_value(); }
+    constexpr decltype(auto) operator*() const& { return get_value(); }
 
     constexpr decltype(auto) operator->() { return &get_value(); }
     constexpr decltype(auto) operator->() const { return &get_value(); }

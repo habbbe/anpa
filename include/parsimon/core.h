@@ -47,9 +47,9 @@ inline constexpr auto operator>>=(parser<P> p, F f) {
  */
 template <typename T, typename... Args>
 constexpr auto mreturn_emplace(Args&&... args) {
-    return parser([args = std::make_tuple(std::forward<Args>(args)...)](auto& s) mutable {
+    return parser([args = std::tuple(std::forward<Args>(args)...)](auto& s) mutable {
         return std::apply([&s](auto&&... args){
-            return s.template return_success_emplace<T>(std::forward<Args>(args)...);
+            return s.template return_success_emplace<T>(std::forward<decltype(args)>(args)...);
         }, std::move(args));
     });
 }
