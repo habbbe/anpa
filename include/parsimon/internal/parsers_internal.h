@@ -48,7 +48,7 @@ inline constexpr auto until_item(State& s, const ItemType& c) {
  * Helper for parsing of sequences
  */
 template <typename State, typename Eq>
-inline constexpr auto seq(State& s, const size_t& size, Eq equal) {
+inline constexpr auto seq(State& s, size_t size, Eq equal) {
     auto orig_pos = s.position;
     if (s.has_at_least(size) && equal(orig_pos)) {
         s.advance(size);

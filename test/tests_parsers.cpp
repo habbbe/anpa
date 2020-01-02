@@ -153,19 +153,19 @@ TEST_CASE("until_item no eat include") {
 
 TEST_CASE("until_sequence eat no include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_sequence("cd").parse(str);
+    constexpr auto res = until_seq("cd").parse(str);
     static_assert(res.second);
     static_assert(*res.second == "ab");
     static_assert(res.first.position == str.begin() + 4);
 
-    constexpr auto resFail = until_sequence("cdf").parse(str);
+    constexpr auto resFail = until_seq("cdf").parse(str);
     static_assert(!resFail.second);
     static_assert(resFail.first.position == str.begin());
 }
 
 TEST_CASE("until_sequence no eat no include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_sequence<false, false>("cd").parse(str);
+    constexpr auto res = until_seq<false, false>("cd").parse(str);
     static_assert(res.second);
     static_assert(*res.second == "ab");
     static_assert(res.first.position == str.begin() + 2);
@@ -173,7 +173,7 @@ TEST_CASE("until_sequence no eat no include") {
 
 TEST_CASE("until_sequence eat include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_sequence<true, true>("cd").parse(str);
+    constexpr auto res = until_seq<true, true>("cd").parse(str);
     static_assert(res.second);
     static_assert(*res.second == "abcd");
     static_assert(res.first.position == str.begin() + 4);
@@ -181,7 +181,7 @@ TEST_CASE("until_sequence eat include") {
 
 TEST_CASE("until_sequence no eat include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_sequence<false, true>("cd").parse(str);
+    constexpr auto res = until_seq<false, true>("cd").parse(str);
     static_assert(res.second);
     static_assert(*res.second == "abcd");
     static_assert(res.first.position == str.begin() + 2);

@@ -35,10 +35,8 @@ inline constexpr auto fail() {
  */
 inline constexpr auto empty() {
     return parser([](auto& s) {
-        if (s.empty()) {
-            return s.template return_success_emplace<none>();
-        }
-        return s.template return_fail<none>();
+        return s.empty() ? s.template return_success_emplace<none>() :
+                           s.template return_fail<none>();
     });
 }
 
@@ -110,7 +108,7 @@ template <typename Iterator>
 inline constexpr auto seq(Iterator begin, Iterator end) {
     return parser([=](auto& s) {
         return internal::seq(s, std::distance(begin, end),
-                                  [=](auto& i) {return algorithm::equal(begin, end, i);});
+                             [=](auto i) {return algorithm::equal(begin, end, i);});
     });
 }
 
@@ -122,7 +120,7 @@ template <auto v, auto... vs>
 inline constexpr auto seq() {
     return parser([](auto& s) {
         return internal::seq(s, sizeof...(vs) + 1,
-                                  [](auto& i){return algorithm::equal<v, vs...>(i);});
+                             [](auto i){return algorithm::equal<v, vs...>(i);});
     });
 }
 
@@ -206,10 +204,10 @@ inline constexpr auto until_item() {
  * This may be faster than using until(sequence()).
  */
 template <bool Eat = true, bool Include = false, typename Iterator>
-inline constexpr auto until_sequence(Iterator begin, Iterator end) {
+inline constexpr auto until_seq(Iterator begin, Iterator end) {
     return parser([=](auto& s) {
         return internal::until_seq<Eat, Include>(s,
-                    [=](auto& b, auto& e) {return algorithm::search(b, e, begin, end);});
+                    [=](auto b, auto e) {return algorithm::search(b, e, begin, end);});
     });
 }
 
@@ -224,8 +222,8 @@ template <bool Eat = true,
           bool Include = false,
           typename ItemType, size_t N,
           typename = types::enable_if_string_literal_type<ItemType>>
-inline constexpr auto until_sequence(const ItemType (&seq)[N]) {
-    return until_sequence<Eat, Include>(std::begin(seq), std::end(seq) - 1);
+inline constexpr auto until_seq(const ItemType (&seq)[N]) {
+    return until_seq<Eat, Include>(std::begin(seq), std::end(seq) - 1);
 }
 
 /**
@@ -258,7 +256,7 @@ inline constexpr auto while_predicate(Predicate predicate) {
  */
 template <typename Iterator>
 inline constexpr auto while_in(Iterator start, Iterator end) {
-    return while_predicate([=](const auto& val){return algorithm::find(start, end, val) != end;});
+    return while_predicate([=](const auto& val){return algorithm::contains(start, end, val);});
 }
 
 /**

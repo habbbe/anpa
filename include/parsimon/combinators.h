@@ -31,9 +31,9 @@ inline constexpr auto succeed(Parser p) {
 /**
  * Apply a parser `n` times and return the parsed result.
  */
-template <typename Parser>
-inline constexpr auto times(size_t n, Parser p) {
-    return parser([=](auto& s) {
+template <typename Size, typename Parser>
+inline constexpr auto times(Size&& n, Parser p) {
+    return parser([n = std::forward<Size>(n), p](auto& s) {
         return internal::times(s, n, p);
     });
 }

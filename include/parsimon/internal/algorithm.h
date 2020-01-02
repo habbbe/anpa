@@ -103,14 +103,14 @@ inline constexpr std::pair<Iterator1, Iterator1> search(Iterator1 begin1, Iterat
  * Check if a range contains at least `n` elements.
  */
 template <typename Iterator>
-inline constexpr auto contains_elements(Iterator begin, Iterator end, long n) {
+inline constexpr auto contains_elements(Iterator begin, Iterator end, size_t n) {
     // If we have a random access iterator, just use std::distance, otherwise
     // iterate so that we don't have to go all the way to end
     if constexpr (types::iterator_is_category_v<Iterator, std::random_access_iterator_tag>) {
         return std::distance(begin, end) >= n;
     } else {
         auto start = begin;
-        for (long i = 0; i<n; ++i, ++start)
+        for (size_t i = 0; i < n; ++i, ++start)
             if (start == end) return false;
         return true;
     }

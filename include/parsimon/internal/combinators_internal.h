@@ -48,10 +48,10 @@ inline constexpr auto many(State& s,
 }
 
 
-template <typename State, typename Parser>
-inline constexpr auto times(State& s, size_t n, Parser p) {
+template <typename State, typename Size, typename Parser>
+inline constexpr auto times(State& s, Size n, Parser p) {
     auto start = s.position;
-    for (size_t i = 0; i < n; ++i) {
+    for (Size i = 0; i < n; ++i) {
         if (auto&& result = apply(p, s); !result) return s.return_fail_result_default(result);
     }
     return s.return_success(s.convert(start, s.position));
