@@ -28,8 +28,9 @@ constexpr auto null_parser = seq<'n','u','l','l'>() >= json_null();
 
 template <typename F>
 constexpr auto get_object_parser(F value_parser) {
-    auto pair_parser = lift_value<json_object_pair>(string_parser, eat(item<':'>() >> value_parser));
-    return item<'{'>() >> many_to_map(eat(pair_parser), eat(item<','>())) << eat(item<'}'>());
+    return item<'{'>() >> many_to_map(eat(string_parser),
+                                      eat(item<':'>() >> value_parser),
+                                      eat(item<','>())) << eat(item<'}'>());
 }
 
 template <typename F>
@@ -38,9 +39,9 @@ constexpr auto get_array_parser(F value_parser) {
 }
 
 constexpr auto json_parser = recursive<json_value>([](auto val_parser) {
-        return eat(lift_or_value<json_value>(string_parser, number_parser,
-                                                get_object_parser(val_parser), get_array_parser(val_parser),
-                                                bool_parser, null_parser));
+    return eat(lift_or_value<json_value>(string_parser, number_parser,
+                                         get_object_parser(val_parser), get_array_parser(val_parser),
+                                         bool_parser, null_parser));
 });
 
 constexpr auto array_parser = get_array_parser(json_parser);

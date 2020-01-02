@@ -5,6 +5,8 @@
 #include <utility>
 #include <valgrind/callgrind.h>
 #include "parsimon/types.h"
+#include "parsimon/monad.h"
+
 
 namespace parsimon::internal {
 
@@ -13,33 +15,29 @@ namespace parsimon::internal {
  */
 template <bool FailOnNoSuccess = false,
           typename State,
-          typename Parser,
           typename Sep = none,
-          typename Fun = none>
+          typename Fun = none,
+          typename Parser,
+          typename... Parsers>
 inline constexpr auto many(State& s,
-                           Parser p,
-                           [[maybe_unused]] Sep sep = {},
-                           [[maybe_unused]] Fun f = {}) {
+                            [[maybe_unused]] Sep sep,
+                            Fun f,
+                            Parser p,
+                            Parsers... ps ) {
     auto start = s.position;
     bool successes = false;
 
     for (;;) {
-        auto&& result = apply(p, s);
-
-        if (!result) {
+        if (auto&& result = apply(lift(f, p, ps...), s); !result) {
             if constexpr (FailOnNoSuccess) {
                 if (!successes) {
-                    return s.return_fail();
+                    return s.return_fail_result_default(result);
                 }
             }
             break;
         }
 
         if constexpr (FailOnNoSuccess) successes = true;
-
-        if constexpr (!std::is_empty_v<std::decay_t<Fun>>) {
-            f(std::move(*result)); // We're done with the result here so we can move it.
-        }
 
         if constexpr (!std::is_empty_v<std::decay_t<Sep>>) {
             if (!apply(sep, s)) break;

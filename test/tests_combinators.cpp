@@ -336,9 +336,9 @@ TEST_CASE("many_to_array with separator") {
 
 TEST_CASE("many_to_map") {
     std::string str("#1=a#2=b#3=c");
-    auto pairParser = parsimon::lift_value<std::pair<int, char>>(parsimon::item('#') >> parsimon::integer(),
-                                                                 parsimon::item('=') >> parsimon::any_item());
-    auto p = parsimon::many_to_map(pairParser);
+    auto keyParser = parsimon::item<'#'>() >> parsimon::integer();
+    auto valueParser = parsimon::item<'='>() >> parsimon::any_item();
+    auto p = parsimon::many_to_map(keyParser, valueParser);
     auto res = p.parse(str);
     REQUIRE(res.second);
     REQUIRE(res.second->size() == 3);

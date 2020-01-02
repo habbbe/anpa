@@ -69,8 +69,15 @@ inline constexpr auto bind(F f, Parser p, Parsers... ps) {
  */
 template <typename F, typename Parser, typename... Parsers>
 inline constexpr auto lift(F f, Parser p, Parsers... ps) {
-    auto fun = [=](auto&&... ps) {
-        return mreturn(f(std::forward<decltype(ps)>(ps)...));
+    auto fun = [=](auto&&... rs) {
+        if constexpr (types::no_arg<F>) {
+            return mreturn_emplace<none>();
+        } else if constexpr (std::is_void_v<decltype(f(std::forward<decltype(rs)>(rs)...))>) {
+            f(std::forward<decltype(rs)>(rs)...);
+            return mreturn_emplace<none>();
+        } else {
+            return mreturn(f(std::forward<decltype(rs)>(rs)...));
+        }
     };
     return internal::lift_prepare(fun, p, ps...);
 }

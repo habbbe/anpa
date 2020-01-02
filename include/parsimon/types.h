@@ -16,6 +16,9 @@ using none = std::tuple<>;
 
 namespace parsimon::types {
 
+template <typename T>
+constexpr bool no_arg = std::is_same_v<std::decay_t<T>, none>;
+
 template <typename T, typename... Ts>
 constexpr bool is_one_of = (std::is_same_v<T, Ts> || ...);
 

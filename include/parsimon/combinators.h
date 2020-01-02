@@ -276,9 +276,9 @@ inline constexpr auto many_general(Parser p,
                                    ParserSep sep = {}) {
     return parser([=](auto& s) {
         Container c;
-        internal::many(s, p, sep, [&c, inserter](auto&& res) {
+        internal::many(s, sep, [&c, inserter](auto&& res) {
             inserter(c, std::forward<decltype(res)>(res));
-        });
+        }, p);
         return s.return_success(std::move(c));
     });
 }
@@ -296,9 +296,9 @@ inline constexpr auto many_to_vector(Parser p,
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::vector<result_type> r;
         r.reserve(reserve);
-        internal::many(s, p, sep, [&r](auto&& res) {
+        internal::many(s, sep, [&r](auto&& res) {
             r.emplace_back(std::forward<decltype(res)>(res));
-        });
+        }, p);
         return s.return_success(std::move(r));
     });
 }
@@ -334,34 +334,48 @@ inline constexpr auto many_to_array(Parser p,
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::array<result_type, size> arr{};
         size_t i = 0;
-        internal::many(s, p, sep, [&arr, &i](auto&& res) {
+        internal::many(s, sep, [&arr, &i](auto&& res) {
             arr[i++] = std::forward<decltype(res)>(res);
-        });
+        }, p);
         return s.template return_success_emplace<std::pair<std::array<result_type, size>, size_t>>(std::move(arr), i);
     });
 }
 
 /**
  * Create a parser that applies a parser until it fails and returns the result in an
- * `std::unordered_map`.
- * Use the first template argument to specify unordered or not. Default is unordered.
- * Key and value types are retrieved from the result using std::tuple_element.
+ * `std::unordered_map` (or `std::map` if first template argument is `false`).
+ * By default uses the result of the first parser as key and the result of the
+ * second parser as value.
+ * To customize how an object is inserted, provide parameter `inserter`. This should
+ * be a functor with the following signature `void (auto& map, auto&& result1, auto&& result2)`
  */
 template <bool Unordered = true,
-          typename Parser,
-          typename ParserSep = none>
-inline constexpr auto many_to_map(Parser p,
-                                  ParserSep sep = {}) {
+          typename Parser1,
+          typename Parser2,
+          typename ParserSep = none,
+          typename Inserter = none>
+inline constexpr auto many_to_map(Parser1 p1,
+                                  Parser2 p2,
+                                  ParserSep sep = {},
+                                  Inserter inserter = {}) {
     return parser([=](auto& s) {
-        using result_type = std::decay_t<decltype(*apply(p, s))>;
-        using key = std::tuple_element_t<0, result_type>;
-        using value = std::tuple_element_t<1, result_type>;
+        using key = std::decay_t<decltype(*apply(p1, s))>;
+        using value = std::decay_t<decltype(*apply(p2, s))>;
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
         map_type m;
-        internal::many(s, p, sep, [&m](auto&& r) {
-            m.emplace(std::get<0>(std::forward<decltype(r)>(r)),
-                      std::get<1>(std::forward<decltype(r)>(r)));
-        });
+        auto ins = [inserter]() {
+            if constexpr (types::no_arg<Inserter>) {
+                return [](auto& map, auto&& r1, auto&& r2) {
+                    map.emplace(std::forward<decltype(r1)>(r1),
+                              std::forward<decltype(r2)>(r2));
+                };
+            } else {
+                return inserter;
+            }
+        }();
+        internal::many(s, sep, [&m, ins](auto&& r1, auto&& r2) {
+            ins(m, std::forward<decltype(r1)>(r1), std::forward<decltype(r2)>(r2));
+        }, p1, p2);
         return s.return_success(std::move(m));
     });
 }
@@ -379,9 +393,9 @@ inline constexpr auto many_f(Parser p,
                              Fun f,
                              ParserSep sep = {}) {
     return parser([=](auto& s) {
-        return internal::many(s, p, sep, [f](auto&& r) {
+        return internal::many(s, sep, [f](auto&& r) {
             f(std::forward<decltype(r)>(r));
-        });
+        }, p);
     });
 }
 
@@ -394,7 +408,7 @@ template <typename Parser,
 inline constexpr auto many(Parser p,
                            ParserSep sep = {}) {
     return parser([=](auto& s) {
-        return internal::many(s, p, sep);
+        return internal::many(s, sep, {}, p);
     });
 }
 
@@ -411,9 +425,9 @@ inline constexpr auto many_state(Parser p,
                                  Fun f,
                                  ParserSep sep = {}) {
     return parser([=](auto& s) {
-        return internal::many(s, p, sep, [f, &s](auto&& res) {
+        return internal::many(s, sep, [f, &s](auto&& res) {
             f(s.user_state, std::forward<decltype(res)>(res));
-        });
+        }, p);
     });
 }
 
@@ -434,10 +448,10 @@ inline constexpr auto fold(Parser p,
                            Fun f,
                            ParserSep sep = {}) {
     return parser([p, i = std::forward<Init>(i), f, sep](auto& s) mutable {
-        [[maybe_unused]] auto result = internal::many<FailOnNoSuccess>(s, p, sep, [f, &i](auto&& a) {
+        [[maybe_unused]] auto result = internal::many<FailOnNoSuccess>(s, sep, [f, &i](auto&& a) {
             if constexpr (Mutate)  f(i, std::forward<decltype(a)>(a));
             else i = f(std::move(i), std::forward<decltype(a)>(a));
-        });
+        }, p);
         if constexpr (FailOnNoSuccess) {
             if (!result) {
                 return s.template return_fail_change_result<Init>(result);
