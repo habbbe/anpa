@@ -2,17 +2,18 @@
 #define PARSIMON_INTERNAL_POW10_H
 
 #include <limits>
+#include <array>
 
 namespace parsimon::internal {
 
 template <typename Floating>
-struct pow_table_instance {
-    static constexpr int max = std::numeric_limits<Floating>::max_exponent10;
+struct pow_table {
     static constexpr int min = std::numeric_limits<Floating>::min_exponent10;
-    static constexpr int maxt = std::numeric_limits<Floating>::max_exponent;
-    static constexpr int size = max - min + 1;
-    Floating table[size] = {};
-    constexpr auto fill() {
+
+    static constexpr auto table = []() {
+        constexpr int max = std::numeric_limits<Floating>::max_exponent10;
+        constexpr int size = max - min + 1;
+        std::array<Floating, size> table{};
         for (int i = 0; i <= max; ++i) {
             if (i == 0) {
                 table[-min + i] = 1;
@@ -23,19 +24,11 @@ struct pow_table_instance {
         for (int i = -1; i >= min; --i) {
             table[-min + i] = table[-min + i + 1] / 10;
         }
-    }
-    constexpr pow_table_instance() : table() {fill();}
+        return table;
+    }();
 
-    constexpr auto pow(std::size_t n) const {
-        return table[-min + n];
-    }
-};
-
-template <typename Floating>
-struct pow_table {
-    static constexpr pow_table_instance<Floating> table{};
     static constexpr auto pow(std::size_t n) {
-        return table.pow(n);
+        return table[-min + n];
     }
 };
 }
