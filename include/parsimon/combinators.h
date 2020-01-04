@@ -364,7 +364,7 @@ inline constexpr auto many_to_map(Parser1 p1,
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
         map_type m;
         auto ins = [inserter]() {
-            if constexpr (types::no_arg<Inserter>) {
+            if constexpr (!types::has_arg<Inserter>) {
                 return [](auto& map, auto&& r1, auto&& r2) {
                     map.emplace(std::forward<decltype(r1)>(r1),
                               std::forward<decltype(r2)>(r2));
