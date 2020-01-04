@@ -19,17 +19,19 @@ namespace parsimon {
 template <typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto& s) {
+        using optional_type = std::optional<std::decay_t<decltype(*apply(p, s))>>;
         if (auto&& result = apply(p, s)) {
-            return s.template return_success_emplace
-                    <std::optional<std::decay_t<decltype(*result)>>>(*std::forward<decltype(result)>(result));
+            return s.template return_success_emplace<optional_type>(*std::forward<decltype(result)>(result));
         } else {
-            return s.template return_success_emplace<std::optional<std::decay_t<decltype(*result)>>>();
+            return s.template return_success_emplace<optional_type>();
         }
     });
 }
 
 /**
  * Apply a parser `n` times and return the parsed result.
+ *
+ * @param n the number of times to apply the parser
  */
 template <typename Size, typename Parser>
 inline constexpr auto times(Size&& n, Parser p) {
@@ -41,6 +43,8 @@ inline constexpr auto times(Size&& n, Parser p) {
 /**
  * Apply a parser `n` times and return the parsed result.
  * Templated version.
+ *
+ * @tparam N the number of times to apply the parser
  */
 template <size_t N, typename Parser>
 inline constexpr auto times(Parser p) {
@@ -51,23 +55,26 @@ inline constexpr auto times(Parser p) {
 
 /**
  * Change the error to be returned upon a failed parse with the provided parser
+ *
+ * @param error the new error to return upon failure
  */
-template <typename Parser, typename Error>
-inline constexpr auto change_error(Parser p, Error error) {
-    return parser([=](auto& s) {
+template <typename Error, typename Parser>
+inline constexpr auto change_error(Error&& error, Parser p) {
+    return parser([error = std::forward<Error>(error), p](auto& s) {
         if (auto result = apply(p, s)) {
             return result;
         } else {
-            using return_type = std::decay_t<decltype(*result)>;
-            return s.template return_fail_error<return_type>(error);
+            return s.template return_fail_error<decltype(*result)>(error);
         }
     });
 }
 
 /**
  * Make a parser non-consuming.
- * Set `FailureOnly` if you want the resulting parser to be non-consuming
- * on failure only (this is the same as `try_parser`).
+ *
+ * @tparam FailureOnly set to `true` if the parser only should be non-consuming
+ *         on failure (this is the same as `try_parser`)
+ *
  */
 template <bool FailureOnly = false, typename Parser>
 inline constexpr auto no_consume(Parser p) {
@@ -83,6 +90,8 @@ inline constexpr auto no_consume(Parser p) {
 
 /**
  * Make a parser that doesn't consume its input on failure
+ *
+ * This is the same as `no_consume<true>`
  */
 template <typename Parser>
 inline constexpr auto try_parser(Parser p) {
@@ -91,10 +100,13 @@ inline constexpr auto try_parser(Parser p) {
 
 /**
  * Constrain a parser.
- * Takes in addition to a parser a predicate that takes the result type of the parser as argument.
+ *
+ * @param pred a predicate with the signature:
+ *               `BOOL_CONVERTIBLE(const auto& parse_result)`
+ *
  */
-template <typename Parser, typename Predicate>
-inline constexpr auto constrain(Parser p, Predicate pred) {
+template <typename Predicate, typename Parser>
+inline constexpr auto constrain(Predicate pred, Parser p) {
     return parser([=](auto& s) {
         if (auto result = apply(p, s); !result || pred(*result)) {
             return result;
@@ -105,28 +117,29 @@ inline constexpr auto constrain(Parser p, Predicate pred) {
 }
 
 /**
- * Transform a parser to a parser that fails on a successful, but empty result (as decided by std::empty
- * or == 0 if integral (as decided by `std::is_integral`)
+ * Transform a parser to a parser that fails on a successful, but empty result
+ * (as decided by `std::empty`) or `== 0` if integral (as decided by `std::is_integral`).
  */
 template <typename Parser>
 inline constexpr auto not_empty(Parser p) {
-    return constrain(p, [](auto&& res) {
+    return constrain([](auto&& res) {
         if constexpr (std::is_integral_v<std::decay_t<decltype(res)>>) {
             return res != 0;
         } else {
             return !std::empty(res);
         }
-    });
+    }, p);
 }
 
 /**
  * Make a parser that evaluates an arbitrary number of parsers, and returns the successfully parsed text upon
  * success.
  */
-template <typename Parser, typename... Parsers>
-inline constexpr auto get_parsed(Parser p, Parsers... ps) {
+template <typename... Parsers>
+inline constexpr auto get_parsed(Parsers... ps) {
+    types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
-        return internal::get_parsed_recursive(s, s.position, p, ps...);
+        return internal::get_parsed_recursive(s, s.position, ps...);
     });
 }
 
@@ -173,29 +186,39 @@ inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
  */
 template <typename... Parsers>
 inline constexpr auto first(Parsers... ps) {
+    types::assert_parsers_not_empty<Parsers...>();
     return (ps || ...);
 }
 
 /**
  * Use the user state to construct a new parser.
+ *
+ * This combinator can be used to create dynamic parsers that
+ * depend on some state.
+ *
+ * @param f a functor with the signature:
+ *            `ParserType(auto& user_state)`
  */
-template <typename Fun>
-inline constexpr auto with_state(Fun f) {
+template <typename Fn>
+inline constexpr auto with_state(Fn f) {
     return parser([=](auto& s) {
         return apply(f(s.user_state), s);
     });
 }
 
 /**
- * Modify the supplied user state.
+ * Modify the user state.
  * Will use the returned value from the user supplied function as result,
  * or `none` if return type is `void`.
+ *
+ * @param f a functor with the signature:
+ *            `ResultType(auto& user_state)`
  */
-template <typename Fun>
-inline constexpr auto modify_state(Fun f) {
+template <typename Fn>
+inline constexpr auto modify_state(Fn f) {
     return parser([=](auto& s) {
-        using result_type = std::decay_t<decltype(f(s.user_state))>;
-        if constexpr (std::is_void<result_type>::value) {
+        using result_type = decltype(f(s.user_state));
+        if constexpr (std::is_void_v<result_type>) {
             f(s.user_state);
             return s.template return_success_emplace<none>();
         } else {
@@ -205,106 +228,93 @@ inline constexpr auto modify_state(Fun f) {
 }
 
 /**
- * Set a value in the state accessed by `Accessor` from the result of the parser.
- * Note: Make sure that a reference is returned by `acc`.
+ * Apply a functor to the state after evaluating a number of parsers in sequence.
+ *
+ * The result of the parse is the return value of `f`, or `none` if `f` returns `void`.
+ *
+ * @param f a functor with the signature:
+ *            `ResultTypeOrVoid(auto& state, auto&&... results)`
+ *
  */
-template <typename Parser, typename Accessor>
-inline constexpr auto set_in_state(Parser p, Accessor acc) {
+template <typename Fn, typename... Parsers>
+inline constexpr auto apply_to_state(Fn f, Parsers...ps) {
+    types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
-        auto result = apply(p, s);
-        if (result) {
-            acc(s.user_state) = *result;
-        }
-        return result;
-    });
-}
+        types::assert_functor_application_modify<decltype(s), Fn, decltype((s.user_state)), Parsers...>();
 
-/**
- * Apply a provided function to the state after evaluating a number of parsers in sequence.
- * The function provided shall have the state as its first argument (by reference) and
- * then a number of arguments that matches the number of parsers (or variadic arguments).
- */
-template <typename Fun, typename... Parsers>
-inline constexpr auto apply_to_state(Fun f, Parsers...ps) {
-    return parser([=](auto& s) {
-        auto& state = s.user_state;
-        auto to_apply = [f, &state] (auto&&... vals) {
-            return f(state, std::forward<decltype(vals)>(vals)...);
+        auto to_apply = [f, &state = s.user_state] (auto&&... vals) {
+            if constexpr (std::is_void_v<decltype(f(state, std::forward<decltype(vals)>(vals)...))>) {
+                f(state, std::forward<decltype(vals)>(vals)...);
+            } else {
+                return f(state, std::forward<decltype(vals)>(vals)...);
+            }
         };
         return apply(lift(to_apply, ps...), s);
     });
 }
 
 /**
- * Emplace a value in the state with `emplace` with the results of a number
- * of parsers evaluated in sequence to the user supplied state accessed by `acc`.
- */
-template <bool Back = false, typename Accessor, typename... Parsers>
-inline constexpr auto emplace_to_state(Accessor acc, Parsers... ps) {
-    return apply_to_state([acc](auto& s, auto&&...args) {
-        if constexpr (Back) {
-            return acc(s).emplace_back(std::forward<decltype(args)>(args)...);
-        } else {
-            return acc(s).emplace(std::forward<decltype(args)>(args)...);
-        }
-    }, ps...);
-}
-
-/**
- * Emplace a value in the state with `emplace` with the results of a number
- * of parsers evaluated in sequence to the user supplied state.
- * Set template argument `Back` to `true` to use `emplace_back` instead.
- */
-template <bool Back = false, typename... Parsers>
-inline constexpr auto emplace_to_state_direct(Parsers... ps) {
-    return emplace_to_state<Back>([](auto& s) -> auto& {return s;}, ps...);
-}
-
-/**
- * General parser that saves results to collections.
- * The template argument `Container` should be default constructible, and ´inserter´
- * is a callable taking a `Container` as a reference as the first argument, and the
- * result of the parse as the second.
+ * Create a parser that saves results to containers.
+ *
+ * The template argument `Container` should be default constructible
+ *
+ * @param inserter a functor that should have the signature:
+ *                   `void(auto& container, auto&&... results)`
+ *
+ * @param separator an optional separator. Use `{}` to ignore it.
  */
 template <typename Container,
-          typename Parser,
           typename Inserter,
           typename ParserSep = none,
-          typename Break = none>
-inline constexpr auto many_general(Parser p,
-                                   Inserter inserter,
-                                   ParserSep sep = {}) {
+          typename... Parsers>
+inline constexpr auto many_general(Inserter inserter,
+                                   ParserSep separator,
+                                   Parsers... ps) {
+
+    types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
-        Container c;
-        internal::many(s, sep, [&c, inserter](auto&& res) {
-            inserter(c, std::forward<decltype(res)>(res));
-        }, p);
-        return s.return_success(std::move(c));
+        types::assert_functor_application_modify<decltype(s), Inserter, Container, Parsers...>();
+        return internal::many_general_internal<Container>(s, {}, inserter, separator, ps...);
     });
 }
 
 /**
- * Create a parser that applies a parser until it fails and returns the result in an `std::vector`.
+ * Create a parser that applies a parser until it fails and adds the results to a `std::vector`.
  * Use template argument `reserve` to reserve storage before parsing.
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
+ *
+ * @param inserter an optional functor that should have the signature:
+ *                   `void(auto& vec, auto&& result)`.
+ *                 Use to change how/if results are inserted. Use `{}` to use default
+ *                 insertion (`push_back`).
  */
 template <size_t reserve = 0,
           typename Parser,
-          typename ParserSep = none>
+          typename ParserSep = none,
+          typename Inserter = none
+          >
 inline constexpr auto many_to_vector(Parser p,
-                                     ParserSep sep = {}) {
+                                     ParserSep separator = {},
+                                     Inserter inserter = {}) {
     return parser([=](auto& s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
-        std::vector<result_type> r;
-        r.reserve(reserve);
-        internal::many(s, sep, [&r](auto&& res) {
-            r.emplace_back(std::forward<decltype(res)>(res));
-        }, p);
-        return s.return_success(std::move(r));
+        auto ins = internal::default_arg(inserter, [](auto& v, auto&& rs) {
+            v.push_back(std::forward<decltype(rs)>(rs));
+        });
+
+        using vector_type = std::vector<result_type>;
+
+        types::assert_functor_application_modify<decltype(s), decltype(ins), vector_type, Parser>();
+
+        auto init = [](auto& v) {v.reserve(reserve);};
+        return internal::many_general_internal<vector_type>(s, init, ins, separator, p);
     });
 }
 
 /**
- * Shorthand for `many_to_vector`
+ * Shorthand for ::many_to_vector
+ * @sa ::many_to_vector
  */
 template <typename P>
 inline constexpr auto operator*(parser<P> p) {
@@ -320,21 +330,25 @@ inline constexpr auto operator+(parser<P> p) {
 }
 
 /**
- * Create a parser that applies a parser until it fails and returns the result in an `std::array`.
- * The result is an `std::pair` where the first element is the resulting array, and the second
+ * Create a parser that applies a parser until it fails and adds the results to an `std::array`.
+ *
+ * The parse result is an `std::pair` where the first element is the resulting array, and the second
  * the first index after the last inserted result.
+ *
+ * @tparam size the size of the array
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
  */
 template <size_t size,
           typename Parser,
-          typename ParserSep = none,
-          typename Break = none>
+          typename ParserSep = none>
 inline constexpr auto many_to_array(Parser p,
-                                    ParserSep sep = {}) {
+                                    ParserSep separator = {}) {
     return parser([=](auto& s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::array<result_type, size> arr{};
         size_t i = 0;
-        internal::many(s, sep, [&arr, &i](auto&& res) {
+        internal::many(s, separator, [&arr, &i](auto&& res) {
             arr[i++] = std::forward<decltype(res)>(res);
         }, p);
         return s.template return_success_emplace<std::pair<std::array<result_type, size>, size_t>>(std::move(arr), i);
@@ -342,116 +356,147 @@ inline constexpr auto many_to_array(Parser p,
 }
 
 /**
- * Create a parser that applies a parser until it fails and returns the result in an
- * `std::unordered_map` (or `std::map` if first template argument is `false`).
+ * Create a parser that applies two parsers until failure and returns the results in an
+ * `std::unordered_map` (or `std::map` if template argument `Unordered` is `false`).
  * By default uses the result of the first parser as key and the result of the
- * second parser as value.
- * To customize how an object is inserted, provide parameter `inserter`. This should
- * be a functor with the following signature `void (auto& map, auto&& result1, auto&& result2)`
+ * second parser as value. Use template arguments `Key` and `Value` to override.
+ *
+ * @tparam Unordered set to `false` to use `std::map` instead
+ *
+ * @param key_parser parser for key
+ * @param value_parser parser for value
+ * @param separator an optional separator. Use `{}` to ignore.
+ * @param inserter an optional functor that should have the signature:
+ *                   `void(auto& map, auto&& key, auto&& value)`.
+ *                 Use to change how/if results are inserted. Use `{}` to use default
+ *                 insertion (`emplace`).
  */
 template <bool Unordered = true,
-          typename Parser1,
-          typename Parser2,
+          typename Key = none,
+          typename Value = none,
+          typename KeyParser,
+          typename ValueParser,
           typename ParserSep = none,
           typename Inserter = none>
-inline constexpr auto many_to_map(Parser1 p1,
-                                  Parser2 p2,
-                                  ParserSep sep = {},
+inline constexpr auto many_to_map(KeyParser key_parser,
+                                  ValueParser value_parser,
+                                  ParserSep separator = {},
                                   Inserter inserter = {}) {
     return parser([=](auto& s) {
-        using key = std::decay_t<decltype(*apply(p1, s))>;
-        using value = std::decay_t<decltype(*apply(p2, s))>;
+        using key = std::conditional_t<types::has_arg<Key>, Key, std::decay_t<decltype(*apply(key_parser, s))>>;
+        using value = std::conditional_t<types::has_arg<Value>, Value, std::decay_t<decltype(*apply(value_parser, s))>>;
         using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
         map_type m;
-        auto ins = [inserter]() {
-            if constexpr (!types::has_arg<Inserter>) {
-                return [](auto& map, auto&& r1, auto&& r2) {
-                    map.emplace(std::forward<decltype(r1)>(r1),
-                              std::forward<decltype(r2)>(r2));
-                };
-            } else {
-                return inserter;
-            }
-        }();
-        internal::many(s, sep, [&m, ins](auto&& r1, auto&& r2) {
-            ins(m, std::forward<decltype(r1)>(r1), std::forward<decltype(r2)>(r2));
-        }, p1, p2);
-        return s.return_success(std::move(m));
+        auto ins = internal::default_arg(inserter, [](auto& map, auto&&... rs) {
+            map.emplace(std::forward<decltype(rs)>(rs)...);
+        });
+
+        types::assert_functor_application_modify<decltype(s), decltype(ins), map_type, KeyParser, ValueParser>();
+
+        return internal::many_general_internal<map_type>(s, {}, ins, separator, key_parser, value_parser);
     });
 }
 
 /**
- * Create a parser that applies a parser until it fails, and for each successful parse
- * calls the provided functor `f` which should take the result of a successful parse with ´p´ as its
- * argument.
+ * Create a parser that applies a number of parsers until it fails, and for each successful parse
+ * calls the provided functor `f` with the results.
+ *
  * The parse result is the parsed range as returned by the provided conversion function.
+ *
+ * @param f a functor to be called for all successful parses. It should have the signature:
+ *            `void(auto&&... results)`
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
+ *
  */
-template <typename Parser,
-          typename Fun,
-          typename ParserSep = none>
-inline constexpr auto many_f(Parser p,
-                             Fun f,
-                             ParserSep sep = {}) {
+template <typename Fn = none,
+          typename ParserSep = none,
+          typename... Parsers>
+inline constexpr auto many_f(Fn f,
+                             ParserSep sep,
+                             Parsers... ps) {
+    types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
-        return internal::many(s, sep, [f](auto&& r) {
-            f(std::forward<decltype(r)>(r));
-        }, p);
+        types::assert_functor_application<decltype(s), Fn, Parsers...>();
+        return internal::many(s, sep, f, ps...);
     });
 }
 
 /**
  * Create a parser that applies a parser until it fails, and returns the parsed range as
  * returned by the provided conversion function.
+ *
+ * Note that this function isn't variadic like `many_f`. This is due to the parse results
+ * being ignored. To evaluate multiple parsers, just combine them with `>>`.
  */
 template <typename Parser,
           typename ParserSep = none>
 inline constexpr auto many(Parser p,
                            ParserSep sep = {}) {
-    return parser([=](auto& s) {
-        return internal::many(s, sep, {}, p);
-    });
+    return many_f({}, sep, p);
 }
 
 /**
- * Create a parser that applies a parser until it fails, and for each successful parse
- * calls the provided functor `f` which should take the user state by reference as its
- * first parameter, and the result of a successful parse as its second.
+ * Create a parser that applies a number of parsers until it fails, and for each successful parse
+ * calls the provided functor `f` with the user state and the results.
+ *
  * The parse result is the parsed range as returned by the provided conversion function.
+ *
+ * @param f a functor to be called for all successful parses. It should have the signature:
+ *            `void(auto& state, auto&&... results)`
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
+ *
+ *
  */
-template <typename Parser,
-          typename Fun,
-          typename ParserSep = none>
-inline constexpr auto many_state(Parser p,
-                                 Fun f,
-                                 ParserSep sep = {}) {
+template <typename Fn,
+          typename ParserSep = none,
+          typename... Parsers>
+inline constexpr auto many_state(Fn f,
+                                 ParserSep sep,
+                                 Parsers... ps) {
+    types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
+        types::assert_functor_application_modify<decltype(s), Fn, decltype((s.user_state)), Parsers...>();
         return internal::many(s, sep, [f, &s](auto&& res) {
             f(s.user_state, std::forward<decltype(res)>(res));
-        }, p);
+        }, ps...);
     });
 }
 
 /**
  * Fold a series of successful parser results with binary functor `f` and initial value `i`.
- * Use template parameter `FailOnNoSuccess` to decide if to fail when the parser succeeds 0 times.
- * Use template parameter `Mutate` to mutate your accumulator value rather than returning a new one.
- * If not using `Mutate` the functor cannot take its accumulator parameter by l-value reference.
+ *
+ * @tparam FailOnNoSuccess if set, fail if the parser succeeds 0 times.
+ * @tparam Mutate if set, mutate the accumulator rather that replacing it.
+ *
+ * @param i the initial accumulator value
+ *
+ * @param f a functor to be called for all successful parses. It should have the signature:
+ *            `(auto&& accumulator, auto&& result) -> decltype(accumulator)`
+ *          or if mutating:
+ *            `void(auto& accumulator, auto&& result)`
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
+ *
  */
 template <bool FailOnNoSuccess = false,
           bool Mutate = false,
           typename Parser,
           typename Init,
-          typename Fun,
+          typename Fn,
           typename ParserSep = none>
 inline constexpr auto fold(Parser p,
                            Init&& i,
-                           Fun f,
+                           Fn f,
                            ParserSep sep = {}) {
     return parser([p, i = std::forward<Init>(i), f, sep](auto& s) mutable {
+
         [[maybe_unused]] auto result = internal::many<FailOnNoSuccess>(s, sep, [f, &i](auto&& a) {
             if constexpr (Mutate)  f(i, std::forward<decltype(a)>(a));
             else i = f(std::move(i), std::forward<decltype(a)>(a));
         }, p);
+
         if constexpr (FailOnNoSuccess) {
             if (!result) {
                 return s.template return_fail_change_result<Init>(result);
@@ -462,41 +507,59 @@ inline constexpr auto fold(Parser p,
 }
 
 /**
- * Lift the result of a unary functor to the parser monad after applying it to the first successful
- * parser's result.
+ * Lift the result of a unary functor to the parser monad after applying it
+ * to the first successful parser's result.
  * The lifted functor must provide an overload for every parser result type.
+ *
+ * @param f a functor with the signature:
+ *            `ResultType(auto&& result)`
+ *          it must be overloaded for every possible parser result type.
  */
-template <typename F, typename Parser, typename... Parsers>
-inline constexpr auto lift_or(F f, Parser p, Parsers... ps) {
+template <typename Fn, typename... Parsers>
+inline constexpr auto lift_or(Fn f, Parsers... ps) {
+    types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
-        return internal::lift_or_rec(s, f, p, ps...);
+        (types::assert_functor_application<decltype(s), Fn, Parsers>(), ...);
+        return internal::lift_or_rec(s, s.position, f, ps...);
     });
 }
 
 /**
- * Lift the result of a unary functor to the parser monad after applying it to the first successful
- * parser's result.
+ * Lift the result of a unary functor to the parser monad after applying it
+ * to the first successful parser's result.
  * The lifted functor must provide an overload for every parser result type.
- * This is similar to `lift_or` but also passes along the user state to the provided ´Fun` as
- * its first argument. In addition, all `()` overloads in the functor must be marked `const`
+ *
+ * This is similar to `lift_or` but also passes along the user state to `f` as
+ * its first argument.`
+ *
+ * @param f a functor with the signature:
+ *            `ResultType(auto& state, auto&& result)`
+ *          it must be overloaded for every possible parser result type.
  */
-template <typename Fun, typename Parser, typename... Parsers>
-inline constexpr auto lift_or_state(Fun f, Parser p, Parsers... ps) {
+template <typename Fn, typename... Parsers>
+inline constexpr auto lift_or_state(Fn f, Parsers... ps) {
+    types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
+        (types::assert_functor_application_modify<decltype(s), Fn, decltype((s.user_state)), Parsers>(), ...);
         auto to_apply = [f, &s] (auto&& val) {
             return f(s.user_state, std::forward<decltype(val)>(val));
         };
-        return internal::lift_or_rec(s, to_apply, p, ps...);
+        return internal::lift_or_rec(s, s.position, to_apply, ps...);
     });
 }
 
 /**
- * Lift a type to the parser monad after applying the first successful parser's result to its constructor.
- * The constructor must provide an overload for every parser result type.
+ * Lift a type to the parser monad after applying the first successful parser's
+ * result to its constructor. The constructor must provide an overload for every
+ * parser result type.
+ *
+ * @tparam T the type to be constructed from the parse result. The constructor
+ *           for `T` must be overloaded for all possible parse results.
  */
-template <typename T, typename Parser, typename... Parsers>
-inline constexpr auto lift_or_value(Parser p, Parsers... ps) {
-    return lift_or([](auto&& arg) {return T(std::forward<decltype(arg)>(arg));}, p, ps...);
+template <typename T, typename... Parsers>
+inline constexpr auto lift_or_value(Parsers... ps) {
+    types::assert_parsers_not_empty<Parsers...>();
+    return lift_or([](auto&& arg) {return T(std::forward<decltype(arg)>(arg));}, ps...);
 }
 
 /**
@@ -504,6 +567,9 @@ inline constexpr auto lift_or_value(Parser p, Parsers... ps) {
  * Useful for parsing the content between brackets.
  * Currently only working if the return type from the provided conversion function
  * has the same iterator type as what is provided when starting a parse.
+ *
+ * @param p1 the parser to apply first
+ * @param p2 the parser to apply to the result of `p1`
  */
 template <typename Parser1, typename Parser2>
 inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
@@ -515,17 +581,22 @@ inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
             auto new_result = apply(p2, new_state);
             return new_result;
         } else {
-            return s.template return_fail_change_result<std::decay_t<decltype(*apply(p2, s))>>(result);
+            return s.template return_fail_change_result<decltype(*apply(p2, s))>(result);
         }
     });
 }
 
 /**
  * Parse all items until the supplied parser succeeds.
- * Use template parameter `Eat` to specify whether or not to consume the successful parse,
- * and `Include` to control whether to or not to include the successful parse in the result.
+ *
+ * This parser does not consume anything if the parser never succeeds.
+ *
  * Note: For parsing until a certain sequence or item, use functions
- * `until_item` and `until_sequence` instead, as they are more efficient.
+ * `until_item` and `until_seq` instead, as they are more efficient.
+ *
+ * @tparam Eat decides whether or not to consume the successful parse
+ * @tparam Include decides whether or not to include the succesful parse in
+ *                 the result.
  */
 template <bool Eat = true, bool Include = false, typename Parser>
 inline constexpr auto until(Parser p) {
@@ -550,8 +621,6 @@ inline constexpr auto until(Parser p) {
     });
 }
 
-
-
 /**
  * (Description inspired by Parsec's `chainl1`)
  * Chain one or more `p` separated by `op`.
@@ -562,7 +631,11 @@ inline constexpr auto until(Parser p) {
  * the functor returned by `op` applied to the results of `p`.
  *
  * This parser can be used to eliminate left recursion, for example in expression
- * grammars.
+ * grammars. See `test/tests_calc.cpp` for an example on how to use it.
+ *
+ * @param p a parser that returns some value `V`
+ * @param op a parser that returns a binary functor with signatre:
+ *             `V(V, V)`
  */
 template <typename Parser, typename OpParser>
 constexpr auto chain(Parser p, OpParser op) {
@@ -570,7 +643,7 @@ constexpr auto chain(Parser p, OpParser op) {
         auto result1 = apply(p, s);
         if (!result1) return result1;
 
-        auto r = *result1;
+        auto r = *std::move(result1);
         for (;;) {
             auto opRes = apply(op, s);
             if (!opRes) return s.return_success(r);
@@ -585,14 +658,32 @@ constexpr auto chain(Parser p, OpParser op) {
 
 /**
  * Create a recursive parser.
- * Provide a callable taking an `auto` as its parameter, and returning
+ * Provide a lambda taking an `auto` as its parameter, and returning
  * a parser. The passed parser is functionally identical to the returned parser,
  * and can be used recursively within that.
  * You must provide the `ReturnType` of the parsers as the first template argument
  * (to make the compiler happy).
+ *
+ * Beware of left recursion, or you will segfault.
+ *
+ * Example of a parser that parses an integer arbitrarily nested in braces:
+ * @code
+ * constexpr auto rec_parser = recursive<int>([](auto p) {
+ *      return integer() || (item<'{'>() >> p << item<'}'>());
+ * });
+ * @endcode
+ *
+ * this will parse a string on the format "{{{{{{{{123}}}}}}}}"
+ *
+ * @tparam ReturnType the result type for the parser.
+ *
+ * @param f a lambda with the format:
+ *            `[](auto p) {...}`
+ *
+ *
  */
-template <typename ReturnType, typename F>
-constexpr auto recursive(F f) {
+template <typename ReturnType, typename Fn>
+constexpr auto recursive(Fn f) {
     return parser([f](auto& s) {
         auto rec = [f, &s](auto self)
                 -> result<ReturnType, typename std::decay_t<decltype(s)>::error_type> {

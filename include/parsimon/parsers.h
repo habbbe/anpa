@@ -22,6 +22,8 @@ inline constexpr auto success() {
 
 /**
  * Parser with result type `T` that always fails.
+ *
+ * @tparam T the result type of the parse. Default is `none`.
  */
 template <typename T = none>
 inline constexpr auto fail() {
@@ -50,7 +52,9 @@ inline constexpr auto any_item() {
 }
 
 /**
- * Parser for a single item equal to `i`
+ * Parser for a single specific item.
+ *
+ * @param i the item to parse.
  */
 template <typename ItemType>
 inline constexpr auto item(ItemType&& i) {
@@ -60,8 +64,10 @@ inline constexpr auto item(ItemType&& i) {
 }
 
 /**
- * Parser for a single item. Templated version.
+ * Parser for a single specific item. Templated version.
  * This might be faster than the non-templated version due to less copying.
+ *
+ * @tparam i the item to parse.
  */
 template <auto i>
 inline constexpr auto item() {
@@ -72,6 +78,8 @@ inline constexpr auto item() {
 
 /**
  * Parser for a single item not equal to `i`
+
+ * @param i the item to parse.
  */
 template <typename ItemType>
 inline constexpr auto not_item(ItemType&& i) {
@@ -81,8 +89,9 @@ inline constexpr auto not_item(ItemType&& i) {
 }
 
 /**
- * Parser for a single item. Templated version.
+ * Parser for a single item not equal to `i`. Templated version.
  * This might be faster than the non-templated version due to less copying.
+ *
  */
 template <auto i>
 inline constexpr auto not_item() {
@@ -93,6 +102,9 @@ inline constexpr auto not_item() {
 
 /**
  * Parser for a single item matching the provided predicate
+ *
+ * @param pred a predicate with the signature:
+ *               `bool(const auto& item)`
  */
 template <typename Pred>
 inline constexpr auto item_if(Pred pred) {
@@ -102,13 +114,13 @@ inline constexpr auto item_if(Pred pred) {
 }
 
 /**
- * Parser for the sequence described by [begin, end)
+ * Parser for the sequence described by `[begin, end)`
  */
-template <typename Iterator>
-inline constexpr auto seq(Iterator begin, Iterator end) {
-    return parser([=](auto& s) {
-        return internal::seq(s, std::distance(begin, end),
-                             [=](auto i) {return algorithm::equal(begin, end, i);});
+template <typename BeginIt, typename EndIt>
+inline constexpr auto seq(BeginIt&& begin, EndIt&& end) {
+    return parser([b = std::forward<BeginIt>(begin), e = std::forward<EndIt>(end)](auto& s) {
+        return internal::seq(s, std::distance(b, e),
+                             [=](auto i) {return algorithm::equal(b, e, i);});
     });
 }
 
@@ -125,23 +137,29 @@ inline constexpr auto seq() {
 }
 
 /**
- * Parser for a sequence described by a string literal
+ * Parser for a sequence described by a null-terminated string literal
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto seq(const ItemType (&items)[N]) {
     return seq(std::begin(items), std::end(items) - 1);
 }
 
-
-
 /**
- * Parser for any item contained in the set described by the provided string literal
+ * Parser for any item contained in the set described by `[begin, end)`
  */
-template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
-inline constexpr auto any_of(const ItemType (&seq)[N]) {
-    return item_if([b = std::begin(seq), e = std::end(seq) - 1](const auto& c) {
+template <typename BeginIt, typename EndIt>
+inline constexpr auto any_of(BeginIt&& begin, EndIt&& end) {
+    return item_if([b = std::forward<BeginIt>(begin), e = std::forward<EndIt>(end)](const auto& c) {
         return algorithm::contains(b, e, c);
     });
+}
+
+/**
+ * Parser for any item contained in the set described by the provided null-terminated string literal
+ */
+template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
+inline constexpr auto any_of(const ItemType (&set)[N]) {
+    return any_of(std::begin(set), std::end(set) - 1);
 }
 
 /**
@@ -164,20 +182,23 @@ inline constexpr auto consume(size_t n) {
 }
 
 /**
- * Templated version of `consume`.
+ * Parser for consuming `n` items. Templated version
+ * This might give better performance than the non-templated version due to less copying.
  */
-template <size_t N>
+template <size_t n>
 inline constexpr auto consume() {
     return parser([](auto& s) {
-        return internal::consume(s, N);
+        return internal::consume(s, n);
     });
 }
 
 /**
- * Parser for consuming all items up until a certain item
- * Use boolean template parameter `Eat` to control whether or not to
- * consume the matched item, and `Include` to control whether to or not
- * to include the matched item in the result.
+ * Parser for consuming all items up until a certain item `c`.
+ *
+ * @tparam Eat decides whether or not to consume the successful parse
+ * @tparam Include decides whether or not to include the succesful parse in
+ *                 the result.
+ *
  */
 template <bool Eat = true, bool Include = false, typename ItemType>
 inline constexpr auto until_item(ItemType&& c) {
@@ -188,6 +209,11 @@ inline constexpr auto until_item(ItemType&& c) {
 
 /**
  * Templated version of `until_item`.
+ * This might give better performance than the non-templated version due to less copying.
+ *
+ * @tparam Eat decides whether or not to consume the successful parse
+ * @tparam Include decides whether or not to include the succesful parse in
+ *                 the result.
  */
 template <auto item, bool Eat = true, bool Include = false>
 inline constexpr auto until_item() {
@@ -197,11 +223,13 @@ inline constexpr auto until_item() {
 }
 
 /**
- * Parser for consuming all items up until a certain sequence described by [begin, end).
- * Use boolean template parameter `Eat` to control whether or not to
- * consume the matched sequence, and `Include` to controler whether or not to include
- * the matched sequence in the result.
- * This may be faster than using until(sequence()).
+ * Parser for consuming all items up until a certain sequence described by `[begin, end)`.
+ *
+ * This may be faster than using `until(sequence())`.
+ *
+ * @tparam Eat decides whether or not to consume the successful parse
+ * @tparam Include decides whether or not to include the succesful parse in
+ *                 the result.
  */
 template <bool Eat = true, bool Include = false, typename Iterator>
 inline constexpr auto until_seq(Iterator begin, Iterator end) {
@@ -212,11 +240,13 @@ inline constexpr auto until_seq(Iterator begin, Iterator end) {
 }
 
 /**
- * Parser for consuming all items up until the given string literal.
- * Use boolean template parameter `Eat` to control whether or not to
- * consume the matched sequence, and `Include` to controler whether or not to include
- * the matched sequence in the result.
- * This is much faster than using `until(sequence())`.
+ * Parser for consuming all items up until the given null-terminated string literal `seq`.
+ *
+ * This may be faster than using `until(sequence())`.
+ *
+ * @tparam Eat decides whether or not to consume the successful parse
+ * @tparam Include decides whether or not to include the succesful parse in
+ *                 the result.
  */
 template <bool Eat = true,
           bool Include = false,
@@ -228,6 +258,8 @@ inline constexpr auto until_seq(const ItemType (&seq)[N]) {
 
 /**
  * Parser for the rest of the sequence
+ *
+ * The parse result is the parsed range as returned by the provided conversion function.
  */
 inline constexpr auto rest() {
     return parser([](auto& s) {
@@ -238,8 +270,10 @@ inline constexpr auto rest() {
 }
 
 /**
- * Parser that consumes all items that matches the provided predicate.
+ * Parser that consumes all items that matches the provided `predicate`.
  * This parser will never fail.
+ *
+ * The parse result is the parsed range as returned by the provided conversion function.
  */
 template <typename Predicate>
 inline constexpr auto while_predicate(Predicate predicate) {
@@ -252,7 +286,9 @@ inline constexpr auto while_predicate(Predicate predicate) {
 }
 
 /**
- * Parser that consumes all items in the set described by [start, end)
+ * Parser that consumes all items in the set described by `[start, end)`
+ *
+ * The parse result is the parsed range as returned by the provided conversion function.
  */
 template <typename Iterator>
 inline constexpr auto while_in(Iterator start, Iterator end) {
@@ -260,7 +296,9 @@ inline constexpr auto while_in(Iterator start, Iterator end) {
 }
 
 /**
- * Parser that consumes all items contained in the given string literal
+ * Parser that consumes all items contained in the given null-terminated string literal.
+ *
+ * The parse result is the parsed range as returned by the provided conversion function.
  */
 template <typename ItemType, size_t N, typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto while_in(const ItemType (&items)[N]) {
@@ -270,6 +308,8 @@ inline constexpr auto while_in(const ItemType (&items)[N]) {
 /**
  * Parser that consumes all items contained in set described by the template parameters.
  * This might be faster than the non-templated version due to less copying.
+ *
+ * The parse result is the parsed range as returned by the provided conversion function.
  */
 template <auto v, auto... vs>
 inline constexpr auto while_in() {
@@ -279,12 +319,14 @@ inline constexpr auto while_in() {
 }
 
 /**
- * Parser that consumes all items between the two supplied sequences.
- * Use template parameter `Nested` to decide whether to support nested matchings or not,
- * and template parameter `Eat` to decide whether to include the matching sequence in the
- * result or not.
+ * Parser that consumes all items between the two provided null-terminated sequences.
+ *
+ * @tparam Nested decides wheter or not to support nested matchings.
+ * @tparam Include decides whether or not to include the succesful parse in
+ *                 the result.
+ *
  */
-template <bool Nested = false, bool Eat = true, typename ItemType, size_t NStart, size_t NEnd>
+template <bool Nested = false, bool Include = false, typename ItemType, size_t NStart, size_t NEnd>
 inline constexpr auto between_sequences(const ItemType (&start)[NStart], const ItemType (&end)[NEnd]) {
 
     // Use faster comparison when the sequence is only one item long
@@ -302,26 +344,31 @@ inline constexpr auto between_sequences(const ItemType (&start)[NStart], const I
         if constexpr (NEnd - 1 == 1) return compare_single; else return compare_seq;
     }();
 
-    return internal::between_general<NStart-1, NEnd-1, Nested, Eat>(start, end, compar_start, compare_end);
+    return internal::between_general<NStart-1, NEnd-1, Nested, Include>(start, end, compar_start, compare_end);
 }
 
 /**
- * Parser that consumes all items between the two supplied items.
+ * Parser that consumes all items between the provided items `start` and `end`.
+ *
+ * @tparam Nested decides wheter or not to support nested matchings.
+ * @tparam Include decides whether or not to include the succesful parse in
+ *                 the result.
  */
-template <bool Nested = false, bool Eat = true, typename ItemType>
+template <bool Nested = false, bool Include = false, typename ItemType>
 inline constexpr auto between_items(const ItemType start, const ItemType end) {
     constexpr auto compare_single = [](const auto iterator, auto, const auto& toCompare) {
         return *iterator == toCompare;
     };
-    return internal::between_general<1, 1, Nested, Eat>(start, end, compare_single, compare_single);
+    return internal::between_general<1, 1, Nested, Include>(start, end, compare_single, compare_single);
 }
 
 /**
  * Create a custom parser.
- * custom_parser should be a functor with the following signature
- * std::pair<Iterator, std::optional<Result>>(Iterator position, Iterator End)
- * where the first element is the new iterator position, and the second the result, where
- * and empty optional signals a failed parse.
+ *
+ * @param custom_parser a functor with the following signature:
+ *                        (Iterator position, Iterator End) -> std::pair<Iterator, std::optional<Result>>
+ *                      where the first element in the pair is the new iterator position, and the second
+ *                      the result, where and empty optional signals a failed parse.
  */
 template <typename Parser>
 inline constexpr auto custom(Parser custom_parser) {
@@ -331,11 +378,13 @@ inline constexpr auto custom(Parser custom_parser) {
 }
 
 /**
- * Create a custom parser.
- * custom_parser should be a functor with the following signature
- * std::pair<Iterator, std::optional<Result>>(Iterator position, Iterator End, State& state)
- * where the first element is the new iterator position, and the second the result, where
- * and empty optional signals a failed parse.
+ * Create a custom parser with user state.
+ *
+ * @param custom_parser a functor with the following signature:
+ *                        (Iterator position, Iterator End, State& s) -> std::pair<Iterator, std::optional<Result>>
+ *                      where the first element in the pair is the new iterator position, and the second
+ *                      the result, where and empty optional signals a failed parse.
+ *
  */
 template <typename Parser>
 inline constexpr auto custom_with_state(Parser custom_parser) {
@@ -349,7 +398,7 @@ inline constexpr auto custom_with_state(Parser custom_parser) {
 /**
  * Parse a number. Template parameter indicates the type to be parsed. Uses std::from_chars.
  * This parser only works when using `const *char` as iterator.
- * Consider using `integer` or `floating` instead, as it they are constexpr, and performance
+ * Consider using `integer` or `floating` instead, as they are constexpr, and performance
  * should be comparable.
  */
 template <typename Number>
@@ -376,14 +425,15 @@ inline constexpr auto number() {
 
 /**
  * Parser for an integer.
- * Use template parameter `Integral` to specify which type of integer to parse.
+ *
+ * @tparam Integral specifies which type of integer to parse.
  */
 template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
 
     auto res_parser = [](bool neg) {
         auto p = fold<true, true>(item_if([](const auto& c) {return c >= '0' && c <= '9';}),
-                                  std::pair<Integral, unsigned>(0, 1), [](auto& r, auto&& c) {
+                                  std::pair<Integral, unsigned>(0, 1), [](auto& r, const auto& c) {
             if constexpr (IncludeDoubleDivisor) {
                 r.second *= 10;
             }
@@ -394,7 +444,7 @@ inline constexpr auto integer() {
             if constexpr (IncludeDoubleDivisor) {
                 return std::forward<decltype(res)>(res);
             } else {
-                return res.first;
+                return std::forward<decltype(res)>(res).first;
             }
         }, p);
     };
@@ -409,12 +459,12 @@ inline constexpr auto integer() {
 
 /**
  * Parser for a floating number.
- * Use template parameter `FloatType` to specify which type of floating number to parse.
- * Use template parameter `AllowScientific` to enable/disable support for scientific notation.
+ * @tparam FloatType specifies which type of floating number to parse.
+ * @tparam AllowScientific enable/disable support for scientific notation.
  */
 template <typename FloatType = double, bool AllowScientific = true>
 inline constexpr auto floating() {
-    constexpr auto floating_part = integer() >>= [](auto&& n) {
+    auto floating_part = integer() >>= [](auto&& n) {
         auto dec = item<'.'>() >> integer<unsigned int, true>();
         return lift([=](auto&& p) {
             // ((0 <= n) - (n < 0)) returns -1 for n < 0 otherwise 1

@@ -240,10 +240,10 @@ TEST_CASE("between_sequences") {
     static_assert(*res.second == "abcde");
     static_assert(res.first.position == str.end());
 
-    constexpr auto resNoEat = between_sequences<false, false>("begin", "end").parse(str);
-    static_assert(resNoEat.second);
-    static_assert(*resNoEat.second == "beginabcdeend");
-    static_assert(resNoEat.first.position == str.end());
+    constexpr auto resInclude = between_sequences<false, true>("begin", "end").parse(str);
+    static_assert(resInclude.second);
+    static_assert(*resInclude.second == "beginabcdeend");
+    static_assert(resInclude.first.position == str.end());
 }
 
 TEST_CASE("between_sequences nested") {
@@ -253,10 +253,10 @@ TEST_CASE("between_sequences nested") {
     static_assert(*res.second == "beginabcdeend");
     static_assert(res.first.position == str.end());
 
-    constexpr auto resNoEat = between_sequences<true, false>("begin", "end").parse(str);
-    static_assert(resNoEat.second);
-    static_assert(*resNoEat.second == "beginbeginabcdeendend");
-    static_assert(resNoEat.first.position == str.end());
+    constexpr auto resInclude = between_sequences<true, true>("begin", "end").parse(str);
+    static_assert(resInclude.second);
+    static_assert(*resInclude.second == "beginbeginabcdeendend");
+    static_assert(resInclude.first.position == str.end());
 
     constexpr std::string_view strNonClosing("beginbeginabcdeend");
     constexpr auto resNonClosing = between_sequences<true>("begin", "end").parse(strNonClosing);

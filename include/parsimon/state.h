@@ -12,12 +12,16 @@ namespace parsimon {
  */
 template <typename Iterator, typename Settings>
 struct parser_state_simple {
+
+    /// The current position of the parser
     Iterator position;
+
+    /// The end of the range to be parsed
     const Iterator end;
 
     using settings = Settings;
-    constexpr static bool error_handling = Settings::error_handling;
-    using error_type = std::conditional_t<error_handling, const char*, void>;
+    constexpr static bool error_messages = Settings::error_messages;
+    using error_type = std::conditional_t<error_messages, const char*, void>;
 
     using default_result_type = decltype(settings::conversion_function(std::declval<Iterator>(), std::declval<Iterator>()));
 
@@ -49,7 +53,7 @@ struct parser_state_simple {
     template <typename Res, typename... Args>
     constexpr static auto return_success_emplace(Args&&... args) {
         using T = std::decay_t<Res>;
-        if constexpr (error_handling) {
+        if constexpr (error_messages) {
             return result<T, default_error_type>(std::in_place_index<1>, std::forward<Args>(args)...);
         } else {
             return result<T, void>(std::in_place, std::forward<Args>(args)...);
@@ -59,15 +63,15 @@ struct parser_state_simple {
     // Convenience function for returning a succesful parse.
     template <typename Res>
     constexpr static auto return_success(Res&& res) {
-        return return_success_emplace<std::decay_t<Res>>(std::forward<Res>(res));
+        return return_success_emplace<Res>(std::forward<Res>(res));
     }
 
     // Convenience function for returning a failed parse with state and type of result.
     template <typename Res, typename Error>
     constexpr static auto return_fail_error(Error&& error) {
         using T = std::decay_t<Res>;
-        if constexpr (error_handling) {
-            return result<T, std::decay_t<decltype(error)>>(std::in_place_index<0>, std::forward<Error>(error));
+        if constexpr (error_messages) {
+            return result<T, std::decay_t<Error>>(std::in_place_index<0>, std::forward<Error>(error));
         } else {
             return result<T, void>();
         }
@@ -79,7 +83,7 @@ struct parser_state_simple {
     template <typename Res, typename Res2, typename Error>
     constexpr static auto return_fail_change_result(const result<Res2, Error>& res) {
         using T = std::decay_t<Res>;
-        if constexpr (error_handling) {
+        if constexpr (error_messages) {
             return result<T, Error>(std::in_place_index<0>, res.error());
         } else {
             return result<T, void>();
@@ -109,6 +113,8 @@ struct parser_state_simple {
  */
 template <typename Iterator, typename Settings, typename UserState>
 struct parser_state: public parser_state_simple<Iterator, Settings> {
+
+    /// The user provided state
     UserState user_state;
 
     constexpr parser_state(Iterator begin, Iterator end, UserState&& state, Settings settings)

@@ -9,8 +9,8 @@ namespace parsimon::internal {
 /**
  * Currying of an arbitrary function
  */
-template <std::size_t num_args, typename F>
-inline constexpr auto curry_n(F f) {
+template <std::size_t num_args, typename Fn>
+inline constexpr auto curry_n(Fn f) {
     if constexpr (num_args > 1) {
         return [f](auto&& v) {
             using v_type = decltype(v);
@@ -23,8 +23,8 @@ inline constexpr auto curry_n(F f) {
     }
 }
 
-template <typename ResultType, typename State, typename F, typename Parser, typename... Ps>
-inline constexpr auto lift_internal(State& s, F f, Parser p, Ps... ps) {
+template <typename ResultType, typename State, typename Fn, typename Parser, typename... Ps>
+inline constexpr auto lift_internal(State& s, Fn f, Parser p, Ps... ps) {
     if (auto&& res = apply(p, s)) {
         if constexpr (sizeof...(ps) == 0) {
             return f(*std::forward<decltype(res)>(res));
@@ -39,9 +39,10 @@ inline constexpr auto lift_internal(State& s, F f, Parser p, Ps... ps) {
 /**
  * Intermediate step for lifting
  */
-template <typename F, typename... Parsers>
-inline constexpr auto lift_prepare(F f, Parsers... ps) {
+template <typename Fn, typename... Parsers>
+inline constexpr auto lift_prepare(Fn f, Parsers... ps) {
     return parser([=](auto& s) {
+        types::assert_functor_application_modify<decltype(s), Fn, decltype(s), Parsers...>();
         using result_type = std::decay_t<decltype(*f(s, *apply(ps, s)...))>;
         if constexpr (sizeof...(Parsers) == 0) {
             return f(s);
@@ -54,8 +55,8 @@ inline constexpr auto lift_prepare(F f, Parsers... ps) {
 /**
  * Recursive bind
  */
-template <typename F, typename Parser, typename... Parsers>
-inline constexpr auto bind_internal(F f, Parser p, Parsers... ps) {
+template <typename Fn, typename Parser, typename... Parsers>
+inline constexpr auto bind_internal(Fn f, Parser p, Parsers... ps) {
     return p >>= [=](auto&& r) {
         if constexpr (sizeof...(Parsers) == 0) {
             return f(std::forward<decltype(r)>(r));

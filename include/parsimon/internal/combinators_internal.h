@@ -16,19 +16,17 @@ namespace parsimon::internal {
 template <bool FailOnNoSuccess = false,
           typename State,
           typename Sep = none,
-          typename Fun = none,
-          typename Parser,
+          typename Fn = none,
           typename... Parsers>
 inline constexpr auto many(State& s,
                             [[maybe_unused]] Sep sep,
-                            Fun f,
-                            Parser p,
+                            Fn f,
                             Parsers... ps ) {
     auto start = s.position;
     bool successes = false;
 
     for (;;) {
-        if (auto&& result = apply(lift(f, p, ps...), s); !result) {
+        if (auto&& result = apply(lift(f, ps...), s); !result) {
             if constexpr (FailOnNoSuccess) {
                 if (!successes) {
                     return s.return_fail_result_default(result);
@@ -39,7 +37,7 @@ inline constexpr auto many(State& s,
 
         if constexpr (FailOnNoSuccess) successes = true;
 
-        if constexpr (!std::is_empty_v<std::decay_t<Sep>>) {
+        if constexpr (!std::is_empty_v<Sep>) {
             if (!apply(sep, s)) break;
         }
     }
@@ -47,6 +45,35 @@ inline constexpr auto many(State& s,
     return s.return_success(s.convert(start, s.position));
 }
 
+template <typename Container,
+          typename State,
+          typename Init = none,
+          typename Inserter,
+          typename ParserSep,
+          typename Parser,
+          typename... Parsers>
+inline constexpr auto many_general_internal(State& s,
+                                            Init init,
+                                            Inserter inserter,
+                                            ParserSep sep,
+                                            Parser p,
+                                            Parsers... ps) {
+    Container c{};
+    if constexpr (types::has_arg<Init>) init(c);
+    many(s, sep, [&c, inserter](auto&&... rs) {
+        inserter(c, std::forward<decltype(rs)>(rs)...);
+    }, p, ps...);
+    return s.return_success(std::move(c));
+}
+
+template <typename ProvidedArg, typename DefaultArg>
+inline constexpr auto default_arg(ProvidedArg provided_arg, DefaultArg default_arg) {
+    if constexpr (!types::has_arg<ProvidedArg>) {
+        return default_arg;
+    } else {
+        return provided_arg;
+    }
+}
 
 template <typename State, typename Size, typename Parser>
 inline constexpr auto times(State& s, Size n, Parser p) {
@@ -69,30 +96,29 @@ inline constexpr auto get_parsed_recursive(State& s, Iterator original_position,
             return get_parsed_recursive(s, original_position, ps...);
         }
     } else {
-        return s.template return_fail_change_result<typename std::decay_t<decltype(s)>::default_result_type>(result);
+        return s.template return_fail_result_default(result);
     }
 }
 
 // Compile time recursive resolver for lifting of arbitrary number of parsers
-template <typename State, typename F, typename Parser, typename... Parsers>
-inline constexpr auto lift_or_rec(State& s, F f, Parser p, Parsers... ps) {
-    auto start_pos = s.position;
-    using result_type = std::decay_t<decltype(f(std::move(*apply(p, s))))>;
-    constexpr auto return_void = std::is_void_v<result_type>;
+template <typename State, typename Iterator, typename Fn, typename Parser, typename... Parsers>
+inline constexpr auto lift_or_rec(State& s, Iterator start_pos, Fn f, Parser p, Parsers... ps) {
+    using result_type = decltype(f(std::move(*apply(p, s))));
+    constexpr auto void_return = std::is_void_v<result_type>;
     if (auto&& result = apply(p, s)) {
-        if constexpr (return_void) {
-            f(std::move(*result));
+        if constexpr (void_return) {
+            f(*std::forward<decltype(result)>(result));
             return s.template return_success_emplace<none>();
         } else {
-            return s.return_success(f(std::move(*result)));
+            return s.return_success(f(*std::forward<decltype(result)>(result)));
         }
     } else {
         s.set_position(start_pos);
         if constexpr (sizeof...(ps) > 0) {
-            return lift_or_rec(s, f, ps...);
+            return lift_or_rec(s, start_pos, f, ps...);
         } else {
             // All parsers failed
-            using actual_result_type = std::conditional_t<std::is_void_v<result_type>, none, result_type>;
+            using actual_result_type = std::conditional_t<void_return, none, result_type>;
             return s.template return_fail_change_result<actual_result_type>(result);
         }
     }

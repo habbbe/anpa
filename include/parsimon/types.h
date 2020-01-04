@@ -37,18 +37,18 @@ inline constexpr auto assert_parsers_not_empty() {
     static_assert(sizeof...(Parsers) > 0, "At least one parser must be provided");
 }
 
-template <typename State, typename F, typename V, typename... Ps>
+template <typename State, typename Fn, typename V, typename... Ps>
 inline constexpr void assert_functor_application_modify() {
-    static_assert(std::is_invocable_v<F, V&, decltype(*apply(std::declval<Ps>(), std::declval<State>()))...>,
+    static_assert(std::is_invocable_v<Fn, V&, decltype(*apply(std::declval<Ps>(), std::declval<State>()))...>,
             "The provided functor is not invocable with expected arguments. Make sure that "
             "the first argument is a reference to the value to be modified, and that the rest "
             "of the arguments correspond to the number of parsers passed to the combinator (or "
             "a variadic parameter pack)");
 }
 
-template <typename State, typename F, typename... Ps>
+template <typename State, typename Fn, typename... Ps>
 inline constexpr void assert_functor_application() {
-    static_assert(std::is_invocable_v<F, decltype(*apply(std::declval<Ps>(), std::declval<State>()))...>,
+    static_assert(std::is_same_v<Fn, none> || std::is_invocable_v<Fn, decltype(*apply(std::declval<Ps>(), std::declval<State>()))...>,
             "The provided functor is not invocable with expected arguments. Make sure that "
             "the number of arguments correspond to the number of parsers passed to the combinator "
             "(or a variadic parameter pack)");

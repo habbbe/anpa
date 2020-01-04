@@ -24,8 +24,8 @@ constexpr auto bool_parser = seq<'t','r','u','e'>() >> mreturn<true>() ||
                                  seq<'f','a','l','s','e'>() >> mreturn<false>();
 constexpr auto null_parser = seq<'n','u','l','l'>() >> mreturn_emplace<json_null>();
 
-template <typename F>
-constexpr auto get_object_parser(F value_parser) {
+template <typename P>
+constexpr auto get_object_parser(P value_parser) {
     auto shared_value_parser = lift([](auto&& r) {
         return std::make_shared<json_value>(std::forward<decltype(r)>(r));
     }, value_parser);
@@ -35,8 +35,8 @@ constexpr auto get_object_parser(F value_parser) {
                                       eat(item<','>())) << eat(item<'}'>());
 }
 
-template <typename F>
-constexpr auto get_array_parser(F value_parser) {
+template <typename P>
+constexpr auto get_array_parser(P value_parser) {
     return item<'['>() >> many_to_vector(value_parser, eat(item<','>())) << eat(item<']'>());
 }
 

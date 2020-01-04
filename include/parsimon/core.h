@@ -10,11 +10,10 @@
 
 namespace parsimon {
 
-/**
- * Apply a parser to a state and return the result.
- * This application unwraps arbitrary layers of callables so that one can
- * wrap the parser to enable recursion.
- */
+
+// Apply a parser to a state and return the result.
+// This application unwraps arbitrary layers of callables so that one can
+// wrap the parser to enable recursion.
 template <typename Parser, typename S>
 constexpr auto apply(Parser p, S& s) {
     if constexpr (std::is_invocable_v<Parser>) {
@@ -29,38 +28,77 @@ struct parser;
 
 /**
  * Monadic bind for the parser
+ *
+ * If the parse succeeds, then `f` will be called with the result of
+ * the parse.
+ *
+ * @param p the parser to bind
+ * @param f a functor with the following signature:
+ *            NewMonad(auto&& parse_result)
  */
-template <typename P, typename F>
-inline constexpr auto operator>>=(parser<P> p, F f) {
+template <typename P, typename Fn>
+inline constexpr auto operator>>=(parser<P> p, Fn f) {
     return parser([=](auto& s) {
         if (auto&& result = apply(p, s)) {
             return apply(f(*std::forward<decltype(result)>(result)), s);
         } else {
-            using new_return_type = std::decay_t<decltype(*apply(f(*std::forward<decltype(result)>(result)), s))>;
+            using new_return_type = decltype(*apply(f(*std::forward<decltype(result)>(result)), s));
             return s.template return_fail_change_result<new_return_type>(result);
         }
     });
 }
 
 /**
- * Lifts a type to the parser monad by forwarding the provided arguments to its constructor.
+ * Lift a value to the parser monad
+ *
+ * Do not use this function to lift non-copyable types, as this will make
+ * the whole parser non-copyable, and things will break.
+ *
+ * If you want to lift a non-copyable value, instead use parsimon::lift
+ * Example:
+ * @code
+ *
+ * auto p1 = mreturn(std::make_unique<int>(4)); // Wrong
+ *
+ * auto p2 = lift([]() {return std::make_unique<int>(i);}); // OK
+ *
+ * auto p3 = integer() >>= [](int i) {
+ *     mreturn(std::make_unique<int>(i));
+ * }; // Wrong
+ *
+ * auto p4 = lift([](int i) {
+ *     return std::make_unique<int>(i);
+ * }, integer()); // OK
+ *
+ * @endcode
  */
-template <typename T, typename... Args>
-constexpr auto mreturn_emplace(Args&&... args) {
-    return parser([args = std::make_tuple(std::forward<Args>(args)...)](auto& s) mutable {
-        return std::apply([&s](auto&&... args){
-            return s.template return_success_emplace<T>(std::forward<decltype(args)>(args)...);
-        }, std::move(args));
+template <typename T>
+constexpr auto mreturn(T&& t) {
+    types::assert_copyable_mreturn<T>();
+    return parser([t = std::forward<T>(t)](auto &s) {
+        return s.return_success(t);
     });
 }
 
 /**
- * Lift a value to the parser monad
+ * Lifts a type to the parser monad by forwarding the provided arguments to its constructor.
+ *
+ * Do not use this function if any of the arguments are non-copyable types, as this will make
+ * the whole parser non-copyable, and things will break.
+ *
+ * If any of the arguments are non-copyable value, instead use parsimon::lift
+ * @see parsimon::mreturn for an example
+ *
+ * Or parsimon::lift_value, if the value should be constructed in-place with the parser
+ * results forwarded to its constructor.
  */
-template <typename T>
-constexpr auto mreturn(T&& t) {
-    return parser([t = std::forward<T>(t)](auto &s) {
-        return s.return_success(t);
+template <typename T, typename... Args>
+constexpr auto mreturn_emplace(Args&&... args) {
+    (types::assert_copyable_mreturn<Args>(), ...);
+    return parser([args = std::make_tuple(std::forward<Args>(args)...)](auto& s) mutable {
+        return std::apply([&s](auto&&... args){
+            return s.template return_success_emplace<T>(std::forward<decltype(args)>(args)...);
+        }, std::move(args));
     });
 }
 
@@ -96,14 +134,16 @@ struct parser {
 
     template <typename InternalState>
     constexpr auto parse_internal(InternalState&& state) const {
-        return std::pair(std::forward<InternalState>(state), apply(p, state));
+        return std::pair(std::forward<InternalState>(state), std::move(apply(p, state)));
     }
 
     /**
-     * Begin parsing a sequence interpreted as [begin, end) with state,
-     * using the supplied conversion function when returning sequence results.
-     * The result is a std::pair with the parser state as the first
+     * Begin parsing a sequence described by `[begin, end)` with state
+     *
+     * The result is a std::pair with the parsimon::parser_state as the first
      * element and the result of the parse as the second.
+     *
+     * @tparam the parser settings to use (default: `default_parser_settings`)
      */
     template <typename Settings = default_parser_settings, typename Iterator, typename State>
     constexpr auto parse_with_state(Iterator begin,
@@ -113,10 +153,12 @@ struct parser {
     }
 
     /**
-     * Begin parsing a sequence interpreted as [std::begin(sequence), std::end(sequence)) with state,
-     * using basic_string_view for sequence results.
-     * The result is a std::pair with the parser state as the first
+     * Begin parsing a sequence described by `[std::begin(sequence), std::end(sequence))` with state
+     *
+     * The result is a std::pair with the parsimon::parser_state as the first
      * element and the result of the parse as the second.
+     *
+     * @tparam the parser settings to use (default: `default_parser_settings`)
      */
     template <typename Settings = default_parser_settings, typename SequenceType, typename State>
     constexpr auto parse_with_state(const SequenceType& sequence,
@@ -127,10 +169,12 @@ struct parser {
     }
 
     /**
-     * Begin parsing a null terminated string literal,
-     * using basic_string_view for sequence results.
-     * The result is a std::pair with the parser state as the first
+     * Begin parsing a null terminated string literal with state
+     *
+     * The result is a std::pair with the parsimon::parser_state as the first
      * element and the result of the parse as the second.
+     *
+     * @tparam the parser settings to use (default: `default_parser_settings`)
      */
     template <typename Settings = default_parser_settings, typename ItemType, size_t N, typename State>
     constexpr auto parse_with_state(const ItemType (&sequence)[N],
@@ -141,10 +185,12 @@ struct parser {
     }
 
     /**
-     * Begin parsing the sequence described by [begin, end),
-     * using the supplied conversion function when returning sequence results.
-     * The result is a std::pair with the parser state as the first
+     * Begin parsing the sequence described by [begin, end)
+     *
+     * The result is a std::pair with parsimon::parser_state_simple as the first
      * element and the result of the parse as the second.
+     *
+     * @tparam the parser settings to use (default: `default_parser_settings`)
      */
     template <typename Settings = default_parser_settings, typename Iterator>
     constexpr auto parse(Iterator begin, Iterator end) const {
@@ -152,10 +198,12 @@ struct parser {
     }
 
     /**
-     * Begin parsing a sequence interpreted as [std::begin(sequence), std::end(sequence))
-     * using basic_string_view for sequence results.
-     * The result is a std::pair with the parser state as the first
+     * Begin parsing a sequence described by `[std::begin(sequence), std::end(sequence))`
+     *
+     * The result is a std::pair with parsimon::parser_state_simple as the first
      * element and the result of the parse as the second.
+     *
+     * @tparam the parser settings to use (default: `default_parser_settings`)
      */
     template <typename Settings = default_parser_settings, typename SequenceType>
     constexpr auto parse(const SequenceType& sequence) const {
@@ -164,9 +212,11 @@ struct parser {
 
     /**
      * Begin parsing a null terminated string literal
-     * using basic_string_view for sequence results.
-     * The result is a std::pair with the parser state as the first
+     *
+     * The result is a std::pair with parsimon::parser_state_simple as the first
      * element and the result of the parse as the second.
+     *
+     * @tparam the parser settings to use (default: `default_parser_settings`)
      */
     template <typename Settings = default_parser_settings, typename ItemType, size_t N>
     constexpr auto parse(const ItemType (&sequence)[N]) const {

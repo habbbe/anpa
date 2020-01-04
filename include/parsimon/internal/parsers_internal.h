@@ -19,7 +19,7 @@ inline constexpr auto item(State& s, Predicate pred) {
             return s.return_success(front);
         }
     }
-    return s.template return_fail<std::decay_t<decltype(s.front())>>();
+    return s.template return_fail<decltype(s.front())>();
 }
 
 template <typename State, typename Length>
@@ -77,7 +77,7 @@ inline constexpr auto until_seq(State& s, Search search) {
 template <size_t StartLength,
           size_t EndLength,
           bool Nested = false,
-          bool Eat = true,
+          bool Include = false,
           typename Start,
           typename End,
           typename EqualStart,
@@ -91,8 +91,8 @@ inline constexpr auto between_general(Start start, End end, EqualStart equal_sta
         for (auto pos = std::next(s.position, StartLength); algorithm::contains_elements(pos, s.end, EndLength);) {
             if (equal_end(pos, std::next(pos, EndLength), end)) {
                 if (to_match == 0) {
-                    auto begin_iterator = std::next(s.position, (Eat ? StartLength : 0));
-                    auto result_end = std::next(pos, (Eat ? 0 : EndLength));
+                    auto begin_iterator = std::next(s.position, (Include ? 0 : StartLength));
+                    auto result_end = std::next(pos, (Include ? EndLength : 0));
                     s.set_position(std::next(pos, EndLength));
                     return s.return_success(s.convert(begin_iterator, result_end));
                 } else if (Nested) {
@@ -112,11 +112,11 @@ inline constexpr auto between_general(Start start, End end, EqualStart equal_sta
 
 template <typename State, typename Result>
 inline constexpr auto custom(State& s, Result&& result) {
-    s.set_position(result.first);
-    if (result.second) {
-        return s.return_success(std::move(*result.second));
+    s.set_position(std::get<0>(std::forward<Result>(result)));
+    if (std::get<1>(result)) {
+        return s.return_success(*std::forward<Result>(result).second);
     } else {
-        return s.template return_fail<std::decay_t<decltype(*result.second)>>();
+        return s.template return_fail<decltype(*result.second)>();
     }
 }
 

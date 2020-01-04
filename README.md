@@ -53,10 +53,8 @@ the [JSON parser](test/json/json_parser.h) on my machine.
 
 ### TODO
 
-- Make it possible to use non-copyable types as parse results
-- Add "Getting started" to README.md
+- Add wiki
 - More extensive test cases
-- Proper documentation
-- Improve compilation errors. The combined parsers are type checked first when a
+- Improve compilation errors (somewhat done). The combined parsers are type checked first when a
 parse is commenced with some input. If a deeply nested parser doesn't type check, a flywheel scroll
 or a very tall display is highly recommended.

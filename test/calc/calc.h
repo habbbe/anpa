@@ -8,11 +8,12 @@
 template <typename T>
 constexpr auto const_pow(T a, T b) {
     T result = 1;
-    for (int i = 0; i<b; ++i) result *= a;
+    for (int i = 0; i < b; ++i) result *= a;
     return result;
 }
 
 constexpr auto expr = parsimon::recursive<int>([](auto p) {
+    using namespace parsimon;
     constexpr auto ops = [](auto c) {
         return [c](auto a, auto b) {
             switch (c) {
@@ -25,7 +26,6 @@ constexpr auto expr = parsimon::recursive<int>([](auto p) {
         };
     };
 
-    using namespace parsimon;
     constexpr auto addOp = lift(ops, item<'+'>() || item<'-'>());
     constexpr auto mulOp = lift(ops, item<'*'>() || item<'/'>());
     constexpr auto expOp = lift(ops, item<'^'>());
