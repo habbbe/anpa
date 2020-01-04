@@ -5,6 +5,9 @@
 #include <catch2/catch.hpp>
 #include "parsimon/parsimon.h"
 
+// Including this verifies the version string format
+#include "parsimon/version.h"
+
 using namespace parsimon;
 
 TEST_CASE("succeed") {

@@ -132,8 +132,8 @@ inline constexpr auto not_empty(Parser p) {
 }
 
 /**
- * Make a parser that evaluates an arbitrary number of parsers, and returns the successfully parsed text upon
- * success.
+ * Make a parser that evaluates an arbitrary number of parsers, and returns the successfully parsed
+ * range as returned by the provided conversion function.
  */
 template <typename... Parsers>
 inline constexpr auto get_parsed(Parsers... ps) {
@@ -144,7 +144,8 @@ inline constexpr auto get_parsed(Parsers... ps) {
 }
 
 /**
- * Make a parser that evaluates two parsers, and returns the successfully parsed text upon success.
+ * Make a parser that evaluates two parsers, and returns the successfully parsed range
+ * as returned by the provided conversion function.
  */
 template <typename P1, typename P2>
 inline constexpr auto operator+(parser<P1> p1, parser<P2> p2) {
