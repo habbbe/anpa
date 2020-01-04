@@ -57,7 +57,7 @@ TEST_CASE("json_general") {
     REQUIRE(element1[1][1].get<json_null>() == json_null());
 
     REQUIRE(element1[2].is_a<json_object>());
-    auto object = element1[2];
+    auto& object = element1[2];
     REQUIRE(object.size() == 1);
     REQUIRE(object.contains("ef"));
     REQUIRE(object.at("ef").is_a<bool>());
@@ -83,4 +83,3 @@ TEST_CASE("performance_json") {
         std::cout << "No parse canada.json" << std::endl;
     }
 }
-

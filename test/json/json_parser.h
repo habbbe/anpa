@@ -6,9 +6,7 @@
 
 using namespace parsimon;
 
-/**
- * Remove whitespace (if any) before evaluating `p`
- */
+//Remove whitespace (if any) before evaluating `p`
 template <typename Parser>
 constexpr auto eat(Parser p) {
     return whitespace() >> p;
@@ -28,8 +26,12 @@ constexpr auto null_parser = seq<'n','u','l','l'>() >> mreturn_emplace<json_null
 
 template <typename F>
 constexpr auto get_object_parser(F value_parser) {
+    auto shared_value_parser = lift([](auto&& r) {
+        return std::make_shared<json_value>(std::forward<decltype(r)>(r));
+    }, value_parser);
+
     return item<'{'>() >> many_to_map(eat(string_parser),
-                                      eat(item<':'>() >> value_parser),
+                                      eat(item<':'>() >> shared_value_parser),
                                       eat(item<','>())) << eat(item<'}'>());
 }
 
