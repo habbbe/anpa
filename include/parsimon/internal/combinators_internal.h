@@ -15,8 +15,8 @@ namespace parsimon::internal {
  */
 template <bool FailOnNoSuccess = false,
           typename State,
-          typename Sep = none,
-          typename Fn = none,
+          typename Sep = no_arg,
+          typename Fn = no_arg,
           typename... Parsers>
 inline constexpr auto many(State& s,
                             [[maybe_unused]] Sep sep,
@@ -47,7 +47,7 @@ inline constexpr auto many(State& s,
 
 template <typename Container,
           typename State,
-          typename Init = none,
+          typename Init = no_arg,
           typename Inserter,
           typename ParserSep,
           typename Parser,
@@ -108,7 +108,7 @@ inline constexpr auto lift_or_rec(State& s, Iterator start_pos, Fn f, Parser p, 
     if (auto&& result = apply(p, s)) {
         if constexpr (void_return) {
             f(*std::forward<decltype(result)>(result));
-            return s.template return_success_emplace<none>();
+            return s.template return_success_emplace<empty_result>();
         } else {
             return s.return_success(f(*std::forward<decltype(result)>(result)));
         }
@@ -118,7 +118,7 @@ inline constexpr auto lift_or_rec(State& s, Iterator start_pos, Fn f, Parser p, 
             return lift_or_rec(s, start_pos, f, ps...);
         } else {
             // All parsers failed
-            using actual_result_type = std::conditional_t<void_return, none, result_type>;
+            using actual_result_type = std::conditional_t<void_return, empty_result, result_type>;
             return s.template return_fail_change_result<actual_result_type>(result);
         }
     }

@@ -26,7 +26,7 @@ constexpr auto version_parser = lift_value<version_components>(
             integer<unsigned int>(),
             item<'.'>() >> integer<unsigned int>(),
             item<'.'>() >> integer<unsigned int>(),
-            item<'-'>() >> not_empty(rest()) || empty() >= std::string_view{});
+            item<'-'>() >> not_empty(rest()) || empty());
 
 namespace components {
 

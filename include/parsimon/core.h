@@ -225,7 +225,7 @@ struct parser {
 
     /**
      * Make this parser a parser that assigns its result to the provided output iterator
-     * upon success, as well as returning `none` as the result of the parse.
+     * upon success, as well as returning `empty_result` as the result of the parse.
      * Note that any pointer type is also an output iterator.
      */
     template <typename It,
@@ -233,7 +233,7 @@ struct parser {
     constexpr auto operator[](It it) const {
         return *this >>= [it](auto&& s) {
             *it = std::forward<decltype(s)>(s);
-            return mreturn_emplace<none>();
+            return mreturn_emplace<empty_result>();
         };
     }
 };

@@ -12,20 +12,20 @@
 namespace parsimon {
 
 /**
- * Parser that always succeeds
+ * Parser that always succeeds.
  */
 inline constexpr auto success() {
     return parser([](auto& s) {
-        return s.template return_success_emplace<none>();
+        return s.template return_success_emplace<empty_result>();
     });
 }
 
 /**
  * Parser with result type `T` that always fails.
  *
- * @tparam T the result type of the parse. Default is `none`.
+ * @tparam T the result type of the parse. Default is `empty_result`.
  */
-template <typename T = none>
+template <typename T = empty_result>
 inline constexpr auto fail() {
     return parser([](auto& s) {
         return s.template return_fail<T>();
@@ -33,12 +33,12 @@ inline constexpr auto fail() {
 }
 
 /**
- * Parser for the empty sequence
+ * Parser for the empty sequence.
  */
 inline constexpr auto empty() {
     return parser([](auto& s) {
-        return s.empty() ? s.template return_success_emplace<none>() :
-                           s.template return_fail<none>();
+        return s.at_end() ? s.return_success(s.convert(s.position)) :
+                            s.return_fail();
     });
 }
 
@@ -52,51 +52,63 @@ inline constexpr auto any_item() {
 }
 
 /**
- * Parser for a single specific item.
+ * Parser for a single item equal to `item`, compared with `==`.
  *
- * @param i the item to parse.
+ * @tparam ReturnArg if set to `true`, return the argument instead of the
+ *                     parsed item upon success
+ *
+ * @param item the item to parse.
  */
-template <typename ItemType>
-inline constexpr auto item(ItemType&& i) {
-    return parser([i = std::forward<ItemType>(i)](auto& s) {
-        return internal::item(s, [&i](const auto &c) {return c == i;});
+template <bool ReturnArg = false, typename ItemType>
+inline constexpr auto item(ItemType&& item) {
+    return parser([i = std::forward<ItemType>(item)](auto& s) {
+        return internal::item<ReturnArg>(s, [](const auto &c, const auto& i) {return c == i;}, i);
     });
 }
 
 /**
- * Parser for a single specific item. Templated version.
+ * Parser for a single item equal to `Item`, compared with `==`.
+ *
+ * Templated version.
  * This might be faster than the non-templated version due to less copying.
  *
- * @tparam i the item to parse.
+ * @tparam Item the item to parse.
+ *
+ * @tparam ReturnArg if set to `true`, return the argument instead of the
+ *                     parsed item upon success
  */
-template <auto i>
+template <auto Item, bool ReturnArg = false>
 inline constexpr auto item() {
     return parser([](auto& s) {
-        return internal::item(s, [](const auto &c) {return c == i;});
+        return internal::item<ReturnArg>(s, [](const auto &c, const auto& i) {return c == i;}, Item);
     });
 }
 
 /**
- * Parser for a single item not equal to `i`
+ * Parser for a single item not equal to `item`, compared with `!=`.
 
- * @param i the item to parse.
+ * @param item the item to parse.
  */
 template <typename ItemType>
-inline constexpr auto not_item(ItemType&& i) {
-    return parser([i = std::forward<ItemType>(i)](auto& s) {
-        return internal::item(s, [&i](const auto &c) {return c != i;});
+inline constexpr auto not_item(ItemType&& item) {
+    return parser([i = std::forward<ItemType>(item)](auto& s) {
+        return internal::item<false>(s, [](const auto &c, const auto& i) {return c != i;}, i);
     });
 }
 
 /**
- * Parser for a single item not equal to `i`. Templated version.
+ * Parser for a single item not equal to `Item`, compared with `!=`.
+ *
+ * Templated version.
  * This might be faster than the non-templated version due to less copying.
  *
+ * @tparam Item the item to parse.
+ *
  */
-template <auto i>
+template <auto Item>
 inline constexpr auto not_item() {
     return parser([](auto& s) {
-        return internal::item(s, [](const auto &c) {return c != i;});
+        return internal::item<false>(s, [](const auto& c, const auto& i) {return c != i;}, Item);
     });
 }
 
@@ -128,11 +140,11 @@ inline constexpr auto seq(BeginIt&& begin, EndIt&& end) {
  * Parser for the sequence described by the template parameters.
  * This might give better performance than the non-templated version due to less copying.
  */
-template <auto v, auto... vs>
+template <auto V, auto... Vs>
 inline constexpr auto seq() {
     return parser([](auto& s) {
-        return internal::seq(s, sizeof...(vs) + 1,
-                             [](auto i){return algorithm::equal<v, vs...>(i);});
+        return internal::seq(s, sizeof...(Vs) + 1,
+                             [](auto i){return algorithm::equal<V, Vs...>(i);});
     });
 }
 
@@ -165,10 +177,10 @@ inline constexpr auto any_of(const ItemType (&set)[N]) {
 /**
  * Parser for any item contained in the set described by the provided template arguments
  */
-template <auto v, auto... vs>
+template <auto V, auto... Vs>
 inline constexpr auto any_of() {
     return item_if([](const auto& c) {
-        return algorithm::contains<v, vs...>(c);
+        return algorithm::contains<V, Vs...>(c);
     });
 }
 
@@ -185,10 +197,10 @@ inline constexpr auto consume(size_t n) {
  * Parser for consuming `n` items. Templated version
  * This might give better performance than the non-templated version due to less copying.
  */
-template <size_t n>
+template <size_t N>
 inline constexpr auto consume() {
     return parser([](auto& s) {
-        return internal::consume(s, n);
+        return internal::consume(s, N);
     });
 }
 
@@ -215,10 +227,10 @@ inline constexpr auto until_item(ItemType&& c) {
  * @tparam Include decides whether or not to include the succesful parse in
  *                 the result.
  */
-template <auto item, bool Eat = true, bool Include = false>
+template <auto Item, bool Eat = true, bool Include = false>
 inline constexpr auto until_item() {
     return parser([](auto& s) {
-        return internal::until_item<Eat, Include>(s, item);
+        return internal::until_item<Eat, Include>(s, Item);
     });
 }
 
@@ -311,10 +323,10 @@ inline constexpr auto while_in(const ItemType (&items)[N]) {
  *
  * The parse result is the parsed range as returned by the provided conversion function.
  */
-template <auto v, auto... vs>
+template <auto V, auto... Vs>
 inline constexpr auto while_in() {
     return while_predicate([](const auto& val){
-        return algorithm::contains<v, vs...>(val);
+        return algorithm::contains<V, Vs...>(val);
     });
 }
 

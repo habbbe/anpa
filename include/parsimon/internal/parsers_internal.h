@@ -10,16 +10,33 @@ namespace parsimon::internal {
 /**
  * Parser for a single item
  */
-template <typename State, typename Predicate>
-inline constexpr auto item(State& s, Predicate pred) {
-    if (!s.empty()) {
+template <bool ReturnArg = false, typename State, typename Predicate, typename Item = no_arg>
+inline constexpr auto item(State& s, Predicate pred, const Item& i = no_arg()) {
+    constexpr bool has_item_arg = types::has_arg<Item>;
+
+    static_assert (has_item_arg || !ReturnArg,
+            "If ReturnArg is `true` then `Item` cannot be `no_arg`");
+
+    using return_type = std::conditional_t<ReturnArg, Item, decltype(s.front())>;
+    if (!s.at_end()) {
         const auto& front = s.front();
-        if (pred(front)) {
+        bool success = [pred, &front, &i]() {
+            if constexpr (has_item_arg) {
+                return pred(front, i);
+            } else {
+                return pred(front);
+            }
+        }();
+        if (success) {
             s.advance(1);
-            return s.return_success(front);
+            if constexpr (ReturnArg) {
+                return s.return_success(i);
+            } else {
+                return s.return_success(front);
+            }
         }
     }
-    return s.template return_fail<decltype(s.front())>();
+    return s.template return_fail<return_type>();
 }
 
 template <typename State, typename Length>
@@ -84,7 +101,7 @@ template <size_t StartLength,
           typename EqualEnd>
 inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto& s) {
-        if (s.empty() || !equal_start(s.position, std::next(s.position, StartLength), start))
+        if (s.at_end() || !equal_start(s.position, std::next(s.position, StartLength), start))
             return s.return_fail();
 
         size_t to_match = 0;

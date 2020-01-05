@@ -73,7 +73,7 @@ inline constexpr auto change_error(Error&& error, Parser p) {
  * Make a parser non-consuming.
  *
  * @tparam FailureOnly set to `true` if the parser only should be non-consuming
- *         on failure (this is the same as `try_parser`)
+ *                     on failure (this is the same as `try_parser`)
  *
  */
 template <bool FailureOnly = false, typename Parser>
@@ -154,7 +154,7 @@ inline constexpr auto operator+(parser<P1> p1, parser<P2> p2) {
 
 /**
  * Combine two parsers so that the second will be tried before failing.
- * If the two parsers return different types the return value will instead be `none`.
+ * If the two parsers return different types the return value will instead be `empty_result`.
  */
 template <typename P1, typename P2>
 inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
@@ -171,12 +171,12 @@ inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
             }
         } else {
             if (apply(p1, s)) {
-                return s.template return_success_emplace<none>();
+                return s.template return_success_emplace<empty_result>();
             } else {
                 s.set_position(original_position);
                 auto result2 = apply(p2, s);
-                return result2 ? s.template return_success_emplace<none>() :
-                                      s.template return_fail_change_result<none>(result2);
+                return result2 ? s.template return_success_emplace<empty_result>() :
+                                 s.template return_fail_change_result<empty_result>(result2);
             }
         }
     });
@@ -210,7 +210,7 @@ inline constexpr auto with_state(Fn f) {
 /**
  * Modify the user state.
  * Will use the returned value from the user supplied function as result,
- * or `none` if return type is `void`.
+ * or `empty_result` if return type is `void`.
  *
  * @param f a functor with the signature:
  *            `ResultType(auto& user_state)`
@@ -221,7 +221,7 @@ inline constexpr auto modify_state(Fn f) {
         using result_type = decltype(f(s.user_state));
         if constexpr (std::is_void_v<result_type>) {
             f(s.user_state);
-            return s.template return_success_emplace<none>();
+            return s.template return_success_emplace<empty_result>();
         } else {
             return s.return_success(f(s.user_state));
         }
@@ -231,7 +231,7 @@ inline constexpr auto modify_state(Fn f) {
 /**
  * Apply a functor to the state after evaluating a number of parsers in sequence.
  *
- * The result of the parse is the return value of `f`, or `none` if `f` returns `void`.
+ * The result of the parse is the return value of `f`, or `empty_result` if `f` returns `void`.
  *
  * @param f a functor with the signature:
  *            `ResultTypeOrVoid(auto& state, auto&&... results)`
@@ -266,7 +266,7 @@ inline constexpr auto apply_to_state(Fn f, Parsers...ps) {
  */
 template <typename Container,
           typename Inserter,
-          typename ParserSep = none,
+          typename ParserSep = no_arg,
           typename... Parsers>
 inline constexpr auto many_general(Inserter inserter,
                                    ParserSep separator,
@@ -292,8 +292,8 @@ inline constexpr auto many_general(Inserter inserter,
  */
 template <size_t reserve = 0,
           typename Parser,
-          typename ParserSep = none,
-          typename Inserter = none
+          typename ParserSep = no_arg,
+          typename Inserter = no_arg
           >
 inline constexpr auto many_to_vector(Parser p,
                                      ParserSep separator = {},
@@ -340,19 +340,19 @@ inline constexpr auto operator+(parser<P> p) {
  *
  * @param separator an optional separator. Use `{}` to ignore.
  */
-template <size_t size,
+template <size_t Size,
           typename Parser,
-          typename ParserSep = none>
+          typename ParserSep = no_arg>
 inline constexpr auto many_to_array(Parser p,
                                     ParserSep separator = {}) {
     return parser([=](auto& s) {
         using result_type = std::decay_t<decltype(*apply(p, s))>;
-        std::array<result_type, size> arr{};
+        std::array<result_type, Size> arr{};
         size_t i = 0;
         internal::many(s, separator, [&arr, &i](auto&& res) {
             arr[i++] = std::forward<decltype(res)>(res);
         }, p);
-        return s.template return_success_emplace<std::pair<std::array<result_type, size>, size_t>>(std::move(arr), i);
+        return s.template return_success_emplace<std::pair<std::array<result_type, Size>, size_t>>(std::move(arr), i);
     });
 }
 
@@ -363,6 +363,8 @@ inline constexpr auto many_to_array(Parser p,
  * second parser as value. Use template arguments `Key` and `Value` to override.
  *
  * @tparam Unordered set to `false` to use `std::map` instead
+ * @tparam Key use to override key type
+ * @tparam Value use to override value type
  *
  * @param key_parser parser for key
  * @param value_parser parser for value
@@ -373,12 +375,12 @@ inline constexpr auto many_to_array(Parser p,
  *                 insertion (`emplace`).
  */
 template <bool Unordered = true,
-          typename Key = none,
-          typename Value = none,
+          typename Key = no_arg,
+          typename Value = no_arg,
           typename KeyParser,
           typename ValueParser,
-          typename ParserSep = none,
-          typename Inserter = none>
+          typename ParserSep = no_arg,
+          typename Inserter = no_arg>
 inline constexpr auto many_to_map(KeyParser key_parser,
                                   ValueParser value_parser,
                                   ParserSep separator = {},
@@ -410,8 +412,8 @@ inline constexpr auto many_to_map(KeyParser key_parser,
  * @param separator an optional separator. Use `{}` to ignore.
  *
  */
-template <typename Fn = none,
-          typename ParserSep = none,
+template <typename Fn = no_arg,
+          typename ParserSep = no_arg,
           typename... Parsers>
 inline constexpr auto many_f(Fn f,
                              ParserSep sep,
@@ -431,7 +433,7 @@ inline constexpr auto many_f(Fn f,
  * being ignored. To evaluate multiple parsers, just combine them with `>>`.
  */
 template <typename Parser,
-          typename ParserSep = none>
+          typename ParserSep = no_arg>
 inline constexpr auto many(Parser p,
                            ParserSep sep = {}) {
     return many_f({}, sep, p);
@@ -451,7 +453,7 @@ inline constexpr auto many(Parser p,
  *
  */
 template <typename Fn,
-          typename ParserSep = none,
+          typename ParserSep = no_arg,
           typename... Parsers>
 inline constexpr auto many_state(Fn f,
                                  ParserSep sep,
@@ -486,7 +488,7 @@ template <bool FailOnNoSuccess = false,
           typename Parser,
           typename Init,
           typename Fn,
-          typename ParserSep = none>
+          typename ParserSep = no_arg>
 inline constexpr auto fold(Parser p,
                            Init&& i,
                            Fn f,
@@ -605,7 +607,7 @@ inline constexpr auto until(Parser p) {
         auto position_start = s.position;
         auto position_end = position_start;
         for (auto result = apply(p, s); !result; result = apply(p, s)) {
-            if (s.empty()) {
+            if (s.at_end()) {
                 s.set_position(position_start);
                 return s.return_fail_result_default(result);
             }
@@ -679,8 +681,7 @@ constexpr auto chain(Parser p, OpParser op) {
  * @tparam ReturnType the result type for the parser.
  *
  * @param f a lambda with the format:
- *            `[](auto p) {...}`
- *
+ *            `[](auto p) {...} -> RecursiveParser`
  *
  */
 template <typename ReturnType, typename Fn>

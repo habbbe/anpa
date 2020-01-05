@@ -8,16 +8,26 @@ namespace parsimon {
 
 /**
  * Empty type used to denote empty-ish results.
- * This type is also used to denote the lack of optional parameters.
  */
-using none = std::tuple<>;
+struct empty_result {
+    bool operator==(const empty_result&) const {return true;}
+    bool operator!=(const empty_result&) const {return false;}
+};
+
+/**
+ * Empty type used to denote the lack of optional parameters.
+ */
+struct no_arg {};
 
 }
 
 namespace parsimon::types {
 
 template <typename T>
-constexpr bool has_arg = !std::is_same_v<std::decay_t<T>, none>;
+constexpr bool has_arg = !std::is_same_v<std::decay_t<T>, no_arg>;
+
+template <typename T, typename... Ts>
+using first_template_arg = T;
 
 template <typename T, typename... Ts>
 constexpr bool is_one_of = (std::is_same_v<T, Ts> || ...);
@@ -48,7 +58,7 @@ inline constexpr void assert_functor_application_modify() {
 
 template <typename State, typename Fn, typename... Ps>
 inline constexpr void assert_functor_application() {
-    static_assert(std::is_same_v<Fn, none> || std::is_invocable_v<Fn, decltype(*apply(std::declval<Ps>(), std::declval<State>()))...>,
+    static_assert(std::is_same_v<Fn, no_arg> || std::is_invocable_v<Fn, decltype(*apply(std::declval<Ps>(), std::declval<State>()))...>,
             "The provided functor is not invocable with expected arguments. Make sure that "
             "the number of arguments correspond to the number of parsers passed to the combinator "
             "(or a variadic parameter pack)");

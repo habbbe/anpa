@@ -73,7 +73,7 @@ inline constexpr auto bind(Fn f, Parsers... ps) {
  * Apply a function `f` to the results of the parsers (evaluated left to right) and
  * put the result in the monad.
  *
- * If the return value of `f` is `void`, then `none` will be used as the result.
+ * If the return value of `f` is `void`, then `empty_result` will be used as the result.
  *
  * It's also possible to pass zero parsers to lift an object (even non-copyable)
  * to the parser monad by having `f` returning it.
@@ -85,10 +85,10 @@ template <typename Fn, typename... Parsers>
 inline constexpr auto lift(Fn f, Parsers... ps) {
     auto fun = [f](auto& s, auto&&... rs) {
         if constexpr (!types::has_arg<Fn>) {
-            return s.template return_success_emplace<none>();
+            return s.template return_success_emplace<empty_result>();
         } else if constexpr (std::is_void_v<decltype(f(std::forward<decltype(rs)>(rs)...))>) {
             f(std::forward<decltype(rs)>(rs)...);
-            return s.template return_success_emplace<none>();
+            return s.template return_success_emplace<empty_result>();
         } else {
             return s.template return_success(f(std::forward<decltype(rs)>(rs)...));
         }

@@ -37,7 +37,7 @@ struct parser_state_simple {
         return algorithm::contains_elements(position, end, n);
     }
 
-    constexpr bool empty() const {return position == end;}
+    constexpr bool at_end() const {return position == end;}
     constexpr const auto& get_at(const Iterator& it) const {return *it;}
     constexpr const auto& front() const {return get_at(position);}
 
@@ -45,7 +45,6 @@ struct parser_state_simple {
     constexpr static auto convert(Iterator begin, size_t size) {return convert(begin, std::next(begin, size));}
 
     constexpr auto convert(Iterator end) const {return convert(position, end);}
-    constexpr auto convert(size_t size) const {return convert(std::next(position, size));}
     constexpr void set_position(Iterator p) {position = p;}
     constexpr void advance(size_t n) {std::advance(position, n);}
 

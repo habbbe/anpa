@@ -13,7 +13,7 @@ using json_string = std::string;
 using json_object = std::unordered_map<json_string, std::shared_ptr<json_value>>;
 using json_array = std::vector<json_value>;
 using json_number = double;
-using json_null = parsimon::none;
+using json_null = parsimon::empty_result;
 
 using json_value_variant = std::variant<
 json_null,
