@@ -362,7 +362,7 @@ inline constexpr auto many_to_array(Parser p,
  * By default uses the result of the first parser as key and the result of the
  * second parser as value. Use template arguments `Key` and `Value` to override.
  *
- * @tparam Unordered set to `false` to use `std::map` instead
+ * @tparam Ordered set to `true` to use `std::map` instead
  * @tparam Key use to override key type
  * @tparam Value use to override value type
  *
@@ -374,7 +374,7 @@ inline constexpr auto many_to_array(Parser p,
  *                 Use to change how/if results are inserted. Use `{}` to use default
  *                 insertion (`emplace`).
  */
-template <bool Unordered = true,
+template <bool Ordered = false,
           typename Key = no_arg,
           typename Value = no_arg,
           typename KeyParser,
@@ -388,7 +388,7 @@ inline constexpr auto many_to_map(KeyParser key_parser,
     return parser([=](auto& s) {
         using key = std::conditional_t<types::has_arg<Key>, Key, std::decay_t<decltype(*apply(key_parser, s))>>;
         using value = std::conditional_t<types::has_arg<Value>, Value, std::decay_t<decltype(*apply(value_parser, s))>>;
-        using map_type = std::conditional_t<Unordered, std::unordered_map<key, value>, std::map<key, value>>;
+        using map_type = std::conditional_t<Ordered, std::map<key, value>, std::unordered_map<key, value>>;
         map_type m;
         auto ins = internal::default_arg(inserter, [](auto& map, auto&&... rs) {
             map.emplace(std::forward<decltype(rs)>(rs)...);
@@ -606,6 +606,7 @@ inline constexpr auto until(Parser p) {
     return parser([=](auto& s) {
         auto position_start = s.position;
         auto position_end = position_start;
+
         for (auto result = apply(p, s); !result; result = apply(p, s)) {
             if (s.at_end()) {
                 s.set_position(position_start);

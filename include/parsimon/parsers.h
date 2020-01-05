@@ -283,15 +283,20 @@ inline constexpr auto rest() {
 
 /**
  * Parser that consumes all items that matches the provided `predicate`.
- * This parser will never fail.
  *
  * The parse result is the parsed range as returned by the provided conversion function.
+ *
+ * @tparam FailOnNoSuccess set to `true` if you want this parser to fail if the predicate
+ * doesn't match any items.
  */
-template <typename Predicate>
+template <bool FailOnNoSuccess = false, typename Predicate>
 inline constexpr auto while_predicate(Predicate predicate) {
     return parser([=](auto& s) {
         auto start_pos = s.position;
         auto result = algorithm::find_if_not(start_pos, s.end, predicate);
+        if constexpr (FailOnNoSuccess) {
+            if (result == start_pos) return s.return_fail();
+        }
         s.set_position(result);
         return s.return_success(s.convert(start_pos, result));
     });
@@ -498,8 +503,9 @@ inline constexpr auto floating() {
 /**
  * Parser for whitespace
  */
+template <bool FailOnNoSuccess = false>
 inline constexpr auto whitespace() {
-    return while_predicate([](const auto& c) {
+    return while_predicate<FailOnNoSuccess>([](const auto& c) {
         return c == ' ' || (c >= '\t' && c <= '\r');
     });
 }
