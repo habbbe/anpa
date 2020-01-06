@@ -50,19 +50,17 @@ template <typename Container,
           typename Init = no_arg,
           typename Inserter,
           typename ParserSep,
-          typename Parser,
           typename... Parsers>
-inline constexpr auto many_general_internal(State& s,
-                                            Init init,
-                                            Inserter inserter,
-                                            ParserSep sep,
-                                            Parser p,
-                                            Parsers... ps) {
+inline constexpr auto many_mutate_internal(State& s,
+                                           Init init,
+                                           Inserter inserter,
+                                           ParserSep sep,
+                                           Parsers... ps) {
     Container c{};
     if constexpr (types::has_arg<Init>) init(c);
     many(s, sep, [&c, inserter](auto&&... rs) {
         inserter(c, std::forward<decltype(rs)>(rs)...);
-    }, p, ps...);
+    }, ps...);
     return s.return_success(std::move(c));
 }
 

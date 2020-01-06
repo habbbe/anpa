@@ -257,14 +257,14 @@ TEST_CASE("many_to_map") {
     REQUIRE(res.first.position == str.begin() + 12);
 }
 
-TEST_CASE("many_general") {
+TEST_CASE("many_mutate") {
     struct val {
         char is[100] = {};
     };
     constexpr std::string_view str("#1=a#4=b#7=c");
     constexpr auto pairParser = lift_value<std::pair<int, char>>(item('#') >> integer(),
                                                               item('=') >> any_item());
-    constexpr auto p = many_general<val>([](auto& s, auto&& r) {
+    constexpr auto p = many_mutate_direct<val>({}, [](auto& s, auto&& r) {
         s.is[r.first] = r.second;
     }, {}, pairParser);
 

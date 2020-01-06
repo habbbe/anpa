@@ -255,27 +255,69 @@ inline constexpr auto apply_to_state(Fn f, Parsers...ps) {
 }
 
 /**
- * Create a parser that saves results to containers.
+ * Create a parser that applies a number of parsers until it fails, and for each successful parse
+ * calls the provided functor `mutator` with the result of `init()` and the parse results.
  *
- * The template argument `Container` should be default constructible
+ * For default constructible types, consider using `many_mutate_direct` instead, as it might
+ * give slightly better performance.
  *
- * @param inserter a functor that should have the signature:
- *                   `void(auto& container, auto&&... results)`
+ * @param init a nullary functor returning the value to mutate in `mutator`.
  *
- * @param separator an optional separator. Use `{}` to ignore it.
+ * @param mutator a functor to be called for all successful parses. It should have the signature:
+ *                  `void(auto& mutating, auto&&... results)`
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
+ *
  */
-template <typename Container,
-          typename Inserter,
+template <typename Init,
+          typename Fn,
           typename ParserSep = no_arg,
           typename... Parsers>
-inline constexpr auto many_general(Inserter inserter,
-                                   ParserSep separator,
-                                   Parsers... ps) {
+inline constexpr auto many_mutate(Init init,
+                                  Fn mutator,
+                                  ParserSep separator,
+                                  Parsers... ps) {
+    types::assert_parsers_not_empty<Parsers...>();
+    return parser([=](auto& s) {
+        auto r = init();
+        internal::many(s, separator, [&r, mutator](auto&&... rs) {
+            mutator(r, std::forward<decltype(rs)>(rs)...);
+        }, ps...);
+        return s.return_success(std::move(r));
+    });
+}
+
+/**
+ * Create a parser that applies a number of parsers until it fails, and for each successful parse
+ * calls the provided functor `mutator` with `T&` and the parse results.
+ *
+ * @tparam T the type to mutate. Should be default constructible.
+ *           For non-default constructible types, use `many_mutate` instead.
+ *
+ * @param init an optional functor used for modifying `T` before parsing starts.
+ *             It should have the signature:
+ *               `void(auto& t)`
+ *             Use `{}` to ignore.
+ *
+ * @param mutator a functor that should have the signature:
+ *                   `void(auto& T, auto&&... results)`
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
+ */
+template <typename T,
+          typename Init = no_arg,
+          typename Fn,
+          typename ParserSep = no_arg,
+          typename... Parsers>
+inline constexpr auto many_mutate_direct(Init init,
+                                         Fn mutator,
+                                         ParserSep separator,
+                                         Parsers... ps) {
 
     types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
-        types::assert_functor_application_modify<decltype(s), Inserter, Container, Parsers...>();
-        return internal::many_general_internal<Container>(s, {}, inserter, separator, ps...);
+        types::assert_functor_application_modify<decltype(s), Fn, T, Parsers...>();
+        return internal::many_mutate_internal<T>(s, init, mutator, separator, ps...);
     });
 }
 
@@ -309,7 +351,7 @@ inline constexpr auto many_to_vector(Parser p,
         types::assert_functor_application_modify<decltype(s), decltype(ins), vector_type, Parser>();
 
         auto init = [](auto& v) {v.reserve(reserve);};
-        return internal::many_general_internal<vector_type>(s, init, ins, separator, p);
+        return internal::many_mutate_internal<vector_type>(s, init, ins, separator, p);
     });
 }
 
@@ -362,6 +404,9 @@ inline constexpr auto many_to_array(Parser p,
  * By default uses the result of the first parser as key and the result of the
  * second parser as value. Use template arguments `Key` and `Value` to override.
  *
+ * Note: If `Key` or `Value` is overridden, and the parse results are not convertible
+ * to those types, `inserter` will need to be specified.
+ *
  * @tparam Ordered set to `true` to use `std::map` instead
  * @tparam Key use to override key type
  * @tparam Value use to override value type
@@ -396,7 +441,7 @@ inline constexpr auto many_to_map(KeyParser key_parser,
 
         types::assert_functor_application_modify<decltype(s), decltype(ins), map_type, KeyParser, ValueParser>();
 
-        return internal::many_general_internal<map_type>(s, {}, ins, separator, key_parser, value_parser);
+        return internal::many_mutate_internal<map_type>(s, {}, ins, separator, key_parser, value_parser);
     });
 }
 
