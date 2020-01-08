@@ -286,20 +286,25 @@ inline constexpr auto rest() {
  *
  * The parse result is the parsed range as returned by the provided conversion function.
  *
- * @tparam FailOnNoSuccess set to `true` if you want this parser to fail if the predicate
- * doesn't match any items.
+ * @tparam FailOnNoSuccess set to `true` if you want this parser to fail if nothing is
+ * parsed.
+ */
+template <bool FailOnNoSuccess = false, bool Negate = false, typename Predicate>
+inline constexpr auto while_if(Predicate predicate) {
+    return internal::while_if<FailOnNoSuccess, Negate>(predicate);
+}
+
+/**
+ * Parser that consumes all items that does not match the provided `predicate`.
+ *
+ * The parse result is the parsed range as returned by the provided conversion function.
+ *
+ * @tparam FailOnNoSuccess set to `true` if you want this parser to fail if nothing is
+ * parsed.
  */
 template <bool FailOnNoSuccess = false, typename Predicate>
-inline constexpr auto while_predicate(Predicate predicate) {
-    return parser([=](auto& s) {
-        auto start_pos = s.position;
-        auto result = algorithm::find_if_not(start_pos, s.end, predicate);
-        if constexpr (FailOnNoSuccess) {
-            if (result == start_pos) return s.return_fail();
-        }
-        s.set_position(result);
-        return s.return_success(s.convert(start_pos, result));
-    });
+inline constexpr auto while_if_not(Predicate predicate) {
+    return while_if_not<FailOnNoSuccess, true>(predicate);
 }
 
 /**
@@ -309,7 +314,7 @@ inline constexpr auto while_predicate(Predicate predicate) {
  */
 template <typename Iterator>
 inline constexpr auto while_in(Iterator start, Iterator end) {
-    return while_predicate([=](const auto& val){return algorithm::contains(start, end, val);});
+    return while_if([=](const auto& val){return algorithm::contains(start, end, val);});
 }
 
 /**
@@ -330,9 +335,7 @@ inline constexpr auto while_in(const ItemType (&items)[N]) {
  */
 template <auto V, auto... Vs>
 inline constexpr auto while_in() {
-    return while_predicate([](const auto& val){
-        return algorithm::contains<V, Vs...>(val);
-    });
+    return while_if([](const auto& val){return algorithm::contains<V, Vs...>(val);});
 }
 
 /**
@@ -501,13 +504,33 @@ inline constexpr auto floating() {
 }
 
 /**
- * Parser for whitespace
+ * Parser for a sequence of whitespaces
+ *
+ * @tparam FailOnNoSuccess set to `false` if you want this parser to succeed even if
+ * nothing is parsed. Consider using `trim` for readability.
+ *
+ * @tparam Negate set to `true` to parse non-whitespace items. Consider
+ * using `not_whitespace` for readability.
  */
-template <bool FailOnNoSuccess = false>
-inline constexpr auto whitespace() {
-    return while_predicate<FailOnNoSuccess>([](const auto& c) {
+template <bool FailOnNoSuccess = true, bool Negate = false>
+inline constexpr auto whitespaces() {
+    return while_if<FailOnNoSuccess, Negate>([](const auto& c) {
         return c == ' ' || (c >= '\t' && c <= '\r');
     });
+}
+
+/**
+ * Parser that trims whitespace (if any)
+ */
+inline constexpr auto trim() {
+    return whitespaces<false, false>();
+}
+
+/**
+ * Parser for a sequence of non-whitespace items
+ */
+inline constexpr auto not_whitespaces() {
+    return whitespaces<true, true>();
 }
 
 }

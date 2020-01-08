@@ -61,6 +61,25 @@ inline constexpr auto until_item(State& s, const ItemType& c) {
     }
 }
 
+template <bool FailOnNoSuccess = false, bool Negate, typename Predicate>
+inline constexpr auto while_if(Predicate predicate) {
+    return parser([=](auto& s) {
+        auto start_pos = s.position;
+        auto result = [&]() {
+            if constexpr (Negate) {
+                return algorithm::find_if(start_pos, s.end, predicate);
+            } else {
+                return algorithm::find_if_not(start_pos, s.end, predicate);
+            }
+        }();
+        if constexpr (FailOnNoSuccess) {
+            if (result == start_pos) return s.return_fail();
+        }
+        s.set_position(result);
+        return s.return_success(s.convert(start_pos, result));
+    });
+}
+
 /**
  * Helper for parsing of sequences
  */

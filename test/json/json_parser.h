@@ -9,7 +9,7 @@ using namespace parsimon;
 //Remove whitespace (if any) before evaluating `p`
 template <typename Parser>
 constexpr auto eat(Parser p) {
-    return whitespace() >> p;
+    return trim() >> p;
 }
 
 constexpr auto string_parser = []() {

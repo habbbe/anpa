@@ -202,19 +202,19 @@ TEST_CASE("rest") {
     static_assert(resEmpty.first.position == strEmpty.end());
 }
 
-TEST_CASE("while_predicate") {
+TEST_CASE("while_if") {
     auto pred = [](auto& x) {
         return x == 'a' || x == 'b';
     };
 
     constexpr std::string_view str("aabbcc");
-    constexpr auto res = while_predicate(pred).parse(str);
+    constexpr auto res = while_if(pred).parse(str);
     static_assert(res.second);
     static_assert(*res.second == "aabb");
     static_assert(res.first.position == str.begin() + 4);
 
     constexpr std::string_view strNoMatch("cbbaa");
-    constexpr auto resNoMatch = while_predicate(pred).parse(strNoMatch);
+    constexpr auto resNoMatch = while_if(pred).parse(strNoMatch);
     static_assert(resNoMatch.second);
     static_assert(*resNoMatch.second == "");
     static_assert(resNoMatch.first.position == strNoMatch.begin());
