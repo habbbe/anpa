@@ -128,9 +128,9 @@ inline constexpr auto item_if(Pred pred) {
 /**
  * Parser for the sequence described by `[begin, end)`
  */
-template <typename BeginIt, typename EndIt>
-inline constexpr auto seq(BeginIt&& begin, EndIt&& end) {
-    return parser([b = std::forward<BeginIt>(begin), e = std::forward<EndIt>(end)](auto& s) {
+template <typename InputIt>
+inline constexpr auto seq(InputIt begin, InputIt end) {
+    return parser([b = std::move(begin), e = std::move(end)](auto& s) {
         return internal::seq(s, std::distance(b, e),
                              [=](auto i) {return algorithm::equal(b, e, i);});
     });
@@ -159,9 +159,9 @@ inline constexpr auto seq(const ItemType (&items)[N]) {
 /**
  * Parser for any item contained in the set described by `[begin, end)`
  */
-template <typename BeginIt, typename EndIt>
-inline constexpr auto any_of(BeginIt&& begin, EndIt&& end) {
-    return item_if([b = std::forward<BeginIt>(begin), e = std::forward<EndIt>(end)](const auto& c) {
+template <typename InputIt>
+inline constexpr auto any_of(InputIt begin, InputIt end) {
+    return item_if([b = std::move(begin), e = std::move(end)](const auto& c) {
         return algorithm::contains(b, e, c);
     });
 }
@@ -243,8 +243,8 @@ inline constexpr auto until_item() {
  * @tparam Include decides whether or not to include the succesful parse in
  *                 the result.
  */
-template <bool Eat = true, bool Include = false, typename Iterator>
-inline constexpr auto until_seq(Iterator begin, Iterator end) {
+template <bool Eat = true, bool Include = false, typename InputIt>
+inline constexpr auto until_seq(InputIt begin, InputIt end) {
     return parser([=](auto& s) {
         return internal::until_seq<Eat, Include>(s,
                     [=](auto b, auto e) {return algorithm::search(b, e, begin, end);});
@@ -312,8 +312,8 @@ inline constexpr auto while_if_not(Predicate predicate) {
  *
  * The parse result is the parsed range as returned by the provided conversion function.
  */
-template <typename Iterator>
-inline constexpr auto while_in(Iterator start, Iterator end) {
+template <typename InputIt>
+inline constexpr auto while_in(InputIt start, InputIt end) {
     return while_if([=](const auto& val){return algorithm::contains(start, end, val);});
 }
 
@@ -386,7 +386,7 @@ inline constexpr auto between_items(const ItemType start, const ItemType end) {
  * Create a custom parser.
  *
  * @param custom_parser a functor with the following signature:
- *                        (Iterator position, Iterator End) -> std::pair<Iterator, std::optional<Result>>
+ *                        (InputIt position, InputIt End) -> std::pair<InputIt, std::optional<Result>>
  *                      where the first element in the pair is the new iterator position, and the second
  *                      the result, where and empty optional signals a failed parse.
  */
@@ -401,7 +401,7 @@ inline constexpr auto custom(Parser custom_parser) {
  * Create a custom parser with user state.
  *
  * @param custom_parser a functor with the following signature:
- *                        (Iterator position, Iterator End, State& s) -> std::pair<Iterator, std::optional<Result>>
+ *                        (InputIt position, InputIt End, State& s) -> std::pair<InputIt, std::optional<Result>>
  *                      where the first element in the pair is the new iterator position, and the second
  *                      the result, where and empty optional signals a failed parse.
  *

@@ -145,9 +145,9 @@ struct parser {
      *
      * @tparam the parser settings to use (default: `default_parser_settings`)
      */
-    template <typename Settings = default_parser_settings, typename Iterator, typename State>
-    constexpr auto parse_with_state(Iterator begin,
-                                    Iterator end,
+    template <typename Settings = default_parser_settings, typename InputIt, typename State>
+    constexpr auto parse_with_state(InputIt begin,
+                                    InputIt end,
                                     State&& user_state) const {
         return parse_internal(parser_state(begin, end, std::forward<State>(user_state), Settings()));
     }
@@ -192,8 +192,8 @@ struct parser {
      *
      * @tparam the parser settings to use (default: `default_parser_settings`)
      */
-    template <typename Settings = default_parser_settings, typename Iterator>
-    constexpr auto parse(Iterator begin, Iterator end) const {
+    template <typename Settings = default_parser_settings, typename InputIt>
+    constexpr auto parse(InputIt begin, InputIt end) const {
         return parse_internal(parser_state_simple(begin, end, Settings()));
     }
 
@@ -228,9 +228,9 @@ struct parser {
      * upon success, as well as returning `empty_result` as the result of the parse.
      * Note that any pointer type is also an output iterator.
      */
-    template <typename It,
-              typename = std::enable_if_t<types::iterator_is_category_v<It, std::output_iterator_tag>>>
-    constexpr auto operator[](It it) const {
+    template <typename OutputIt,
+              typename = std::enable_if_t<types::iterator_is_category_v<OutputIt, std::output_iterator_tag>>>
+    constexpr auto operator[](OutputIt it) const {
         return *this >>= [it](auto&& s) {
             *it = std::forward<decltype(s)>(s);
             return mreturn_emplace<empty_result>();

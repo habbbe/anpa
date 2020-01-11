@@ -10,26 +10,26 @@ namespace parsimon {
 /**
  * Class for the parser state.
  */
-template <typename Iterator, typename Settings>
+template <typename InputIt, typename Settings>
 struct parser_state_simple {
 
     /// The current position of the parser
-    Iterator position;
+    InputIt position;
 
     /// The end of the range to be parsed
-    const Iterator end;
+    const InputIt end;
 
     using settings = Settings;
     constexpr static bool error_messages = Settings::error_messages;
     using error_type = std::conditional_t<error_messages, const char*, void>;
 
-    using default_result_type = decltype(settings::conversion_function(std::declval<Iterator>(), std::declval<Iterator>()));
+    using default_result_type = decltype(settings::conversion_function(std::declval<InputIt>(), std::declval<InputIt>()));
 
-    constexpr parser_state_simple(Iterator begin, Iterator end, Settings) :
+    constexpr parser_state_simple(InputIt begin, InputIt end, Settings) :
         position{begin}, end{end} {}
 
     template<typename State>
-    constexpr parser_state_simple(Iterator begin, Iterator end, const State&) :
+    constexpr parser_state_simple(InputIt begin, InputIt end, const State&) :
         parser_state_simple(begin, end, typename State::settings()){}
 
 
@@ -38,14 +38,14 @@ struct parser_state_simple {
     }
 
     constexpr bool at_end() const {return position == end;}
-    constexpr const auto& get_at(const Iterator& it) const {return *it;}
+    constexpr const auto& get_at(const InputIt& it) const {return *it;}
     constexpr const auto& front() const {return get_at(position);}
 
-    constexpr static auto convert(Iterator begin, Iterator end) {return settings::conversion_function(begin, end);}
-    constexpr static auto convert(Iterator begin, size_t size) {return convert(begin, std::next(begin, size));}
+    constexpr static auto convert(InputIt begin, InputIt end) {return settings::conversion_function(begin, end);}
+    constexpr static auto convert(InputIt begin, size_t size) {return convert(begin, std::next(begin, size));}
 
-    constexpr auto convert(Iterator end) const {return convert(position, end);}
-    constexpr void set_position(Iterator p) {position = p;}
+    constexpr auto convert(InputIt end) const {return convert(position, end);}
+    constexpr void set_position(InputIt p) {position = p;}
     constexpr void advance(size_t n) {std::advance(position, n);}
 
     // Convenience function for returning a succesful parse.
@@ -110,23 +110,23 @@ struct parser_state_simple {
 /**
  * Class for the parser state. Contains the user provided state
  */
-template <typename Iterator, typename Settings, typename UserState>
-struct parser_state: public parser_state_simple<Iterator, Settings> {
+template <typename InputIt, typename Settings, typename UserState>
+struct parser_state: public parser_state_simple<InputIt, Settings> {
 
     /// The user provided state
     UserState user_state;
 
-    constexpr parser_state(Iterator begin, Iterator end, UserState&& state, Settings settings)
-        : parser_state_simple<Iterator, Settings>{begin, end, settings},
+    constexpr parser_state(InputIt begin, InputIt end, UserState&& state, Settings settings)
+        : parser_state_simple<InputIt, Settings>{begin, end, settings},
           user_state{std::forward<UserState>(state)} {}
 
-    constexpr parser_state(Iterator begin, Iterator end, parser_state& other)
-        : parser_state_simple<Iterator, Settings>{begin, end, typename parser_state::settings()},
+    constexpr parser_state(InputIt begin, InputIt end, parser_state& other)
+        : parser_state_simple<InputIt, Settings>{begin, end, typename parser_state::settings()},
           user_state{other.user_state} {}
 };
-template <typename Iterator, typename Settings, typename UserState>
-parser_state(Iterator, Iterator, UserState&&, Settings) ->
-parser_state<Iterator, Settings, UserState>;
+template <typename InputIt, typename Settings, typename UserState>
+parser_state(InputIt, InputIt, UserState&&, Settings) ->
+parser_state<InputIt, Settings, UserState>;
 
 }
 

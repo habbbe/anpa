@@ -85,8 +85,8 @@ inline constexpr auto times(State& s, Size n, Parser p) {
 /**
  * Recursive helper for `get_parsed`
  */
-template <typename State, typename Iterator, typename Parser, typename... Parsers>
-inline constexpr auto get_parsed_recursive(State& s, Iterator original_position, Parser p, Parsers... ps) {
+template <typename State, typename InputIt, typename Parser, typename... Parsers>
+inline constexpr auto get_parsed_recursive(State& s, InputIt original_position, Parser p, Parsers... ps) {
     if (auto&& result = apply(p, s)) {
         if constexpr (sizeof...(Parsers) == 0) {
             return s.return_success(s.convert(original_position, s.position));
@@ -99,8 +99,8 @@ inline constexpr auto get_parsed_recursive(State& s, Iterator original_position,
 }
 
 // Compile time recursive resolver for lifting of arbitrary number of parsers
-template <typename State, typename Iterator, typename Fn, typename Parser, typename... Parsers>
-inline constexpr auto lift_or_rec(State& s, Iterator start_pos, Fn f, Parser p, Parsers... ps) {
+template <typename State, typename InputIt, typename Fn, typename Parser, typename... Parsers>
+inline constexpr auto lift_or_rec(State& s, InputIt start_pos, Fn f, Parser p, Parsers... ps) {
     using result_type = decltype(f(std::move(*apply(p, s))));
     constexpr auto void_return = std::is_void_v<result_type>;
     if (auto&& result = apply(p, s)) {
