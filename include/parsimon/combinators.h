@@ -14,17 +14,32 @@ namespace parsimon {
 
 /**
  * Transform a parser to a parser that always succeeds.
- * Will return an `std::optional` with the result.
+ * Will return `true` if the parse was successful, else 'false`.
+ *
+ * If template parameter `Optional` is `true`, the result will instead be
+ * an `std::optional` with the (optional) result of the parse.
+ *
+ * @tparam Optional set to `true` if you want the parse result returned as
+ *                  an optional
  */
-template <typename Parser>
+template <bool Optional = false, typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto& s) {
-        using optional_type = std::optional<std::decay_t<decltype(*apply(p, s))>>;
-        if (auto&& result = apply(p, s)) {
-            return s.template return_success_emplace<optional_type>(*std::forward<decltype(result)>(result));
+        if constexpr (Optional) {
+            using optional_type = std::optional<std::decay_t<decltype(*apply(p, s))>>;
+            if (auto&& result = apply(p, s)) {
+                return s.template return_success_emplace<optional_type>(*std::forward<decltype(result)>(result));
+            } else {
+                return s.template return_success_emplace<optional_type>();
+            }
         } else {
-            return s.template return_success_emplace<optional_type>();
+            if (apply(p, s)) {
+                return s.return_success(true);
+            } else {
+                return s.return_success(false);
+            }
         }
+
     });
 }
 

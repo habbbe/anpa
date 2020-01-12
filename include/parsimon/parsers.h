@@ -459,7 +459,7 @@ inline constexpr auto integer() {
             r.first = r.first * 10 + c - '0';
         }, std::pair<Integral, unsigned>(0, 1), {}, item_if([](const auto& c) {return c >= '0' && c <= '9';}));
         return lift([=](auto&& res) {
-            if (neg) res.first = -res.first;
+            if (neg) res.first *= -1;
             if constexpr (IncludeDoubleDivisor) {
                 return std::forward<decltype(res)>(res);
             } else {
@@ -468,9 +468,7 @@ inline constexpr auto integer() {
         }, p);
     };
     if constexpr (std::is_signed_v<Integral>) {
-        return succeed(item<'-'>()) >>= [=](auto&& neg) {
-            return res_parser(neg.has_value());
-        };
+        return succeed(item<'-'>()) >>= res_parser;
     } else {
         return res_parser(false);
     }
