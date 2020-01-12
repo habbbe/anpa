@@ -255,73 +255,6 @@ inline constexpr auto apply_to_state(Fn f, Parsers...ps) {
 }
 
 /**
- * Create a parser that applies a number of parsers until it fails, and for each successful parse
- * calls the provided functor `mutator` with the result of `init()` and the parse results.
- *
- * For default constructible types, consider using `many_mutate_direct` instead, as it might
- * give slightly better performance.
- *
- * @param init a nullary functor returning the value to mutate in `mutator`.
- *
- * @param mutator a functor to be called for all successful parses. It should have the signature:
- *                  `void(auto& mutating, auto&&... results)`
- *
- * @param separator an optional separator. Use `{}` to ignore.
- *
- */
-template <typename Init,
-          typename Fn,
-          typename ParserSep = no_arg,
-          typename... Parsers>
-inline constexpr auto many_mutate(Init init,
-                                  Fn mutator,
-                                  ParserSep separator,
-                                  Parsers... ps) {
-    types::assert_parsers_not_empty<Parsers...>();
-    return parser([=](auto& s) {
-        auto r = init();
-        internal::many(s, separator, [&r, mutator](auto&&... rs) {
-            mutator(r, std::forward<decltype(rs)>(rs)...);
-        }, ps...);
-        return s.return_success(std::move(r));
-    });
-}
-
-/**
- * Create a parser that applies a number of parsers until it fails, and for each successful parse
- * calls the provided functor `mutator` with `T&` and the parse results.
- *
- * @tparam T the type to mutate. Should be default constructible.
- *           For non-default constructible types, use `many_mutate` instead.
- *
- * @param init an optional functor used for modifying `T` before parsing starts.
- *             It should have the signature:
- *               `void(auto& t)`
- *             Use `{}` to ignore.
- *
- * @param mutator a functor that should have the signature:
- *                   `void(auto& T, auto&&... results)`
- *
- * @param separator an optional separator. Use `{}` to ignore.
- */
-template <typename T,
-          typename Init = no_arg,
-          typename Fn,
-          typename ParserSep = no_arg,
-          typename... Parsers>
-inline constexpr auto many_mutate_direct(Init init,
-                                         Fn mutator,
-                                         ParserSep separator,
-                                         Parsers... ps) {
-
-    types::assert_parsers_not_empty<Parsers...>();
-    return parser([=](auto& s) {
-        types::assert_functor_application_modify<decltype(s), Fn, T, Parsers...>();
-        return internal::many_mutate_internal<T>(s, init, mutator, separator, ps...);
-    });
-}
-
-/**
  * Create a parser that applies a parser until it fails and adds the results to a `std::vector`.
  * Use template argument `reserve` to reserve storage before parsing.
  *
@@ -391,9 +324,9 @@ inline constexpr auto many_to_array(Parser p,
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::array<result_type, Size> arr{};
         size_t i = 0;
-        internal::many(s, separator, [&arr, &i](auto&& res) {
+        internal::many(s, [&arr, &i](auto&& res) {
             arr[i++] = std::forward<decltype(res)>(res);
-        }, p);
+        }, separator, p);
         return s.template return_success_emplace<std::pair<std::array<result_type, Size>, size_t>>(std::move(arr), i);
     });
 }
@@ -455,18 +388,17 @@ inline constexpr auto many_to_map(KeyParser key_parser,
  *            `void(auto&&... results)`
  *
  * @param separator an optional separator. Use `{}` to ignore.
- *
  */
 template <typename Fn = no_arg,
           typename ParserSep = no_arg,
           typename... Parsers>
 inline constexpr auto many_f(Fn f,
-                             ParserSep sep,
+                             ParserSep separator,
                              Parsers... ps) {
     types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
         types::assert_functor_application<decltype(s), Fn, Parsers...>();
-        return internal::many(s, sep, f, ps...);
+        return internal::many(s, f, separator, ps...);
     });
 }
 
@@ -476,12 +408,13 @@ inline constexpr auto many_f(Fn f,
  *
  * Note that this function isn't variadic like `many_f`. This is due to the parse results
  * being ignored. To evaluate multiple parsers, just combine them with `>>`.
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
  */
 template <typename Parser,
           typename ParserSep = no_arg>
-inline constexpr auto many(Parser p,
-                           ParserSep sep = {}) {
-    return many_f({}, sep, p);
+inline constexpr auto many(Parser p, ParserSep separator = {}) {
+    return many_f({}, separator, p);
 }
 
 /**
@@ -494,63 +427,85 @@ inline constexpr auto many(Parser p,
  *            `void(auto& state, auto&&... results)`
  *
  * @param separator an optional separator. Use `{}` to ignore.
- *
- *
  */
 template <typename Fn,
           typename ParserSep = no_arg,
           typename... Parsers>
 inline constexpr auto many_state(Fn f,
-                                 ParserSep sep,
+                                 ParserSep separator,
                                  Parsers... ps) {
     types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
         types::assert_functor_application_modify<decltype(s), Fn, decltype((s.user_state)), Parsers...>();
-        return internal::many(s, sep, [f, &s](auto&& res) {
+        return internal::many(s, [f, &s](auto&& res) {
             f(s.user_state, std::forward<decltype(res)>(res));
-        }, ps...);
+        }, separator, ps...);
     });
 }
 
 /**
- * Fold a series of successful parser results with binary functor `f` and initial value `i`.
+ * Fold a series of successful parser results with binary functor `f` and initial
+ * accumulator value `acc`.
  *
  * @tparam FailOnNoSuccess if set, fail if the parser succeeds 0 times.
- * @tparam Mutate if set, mutate the accumulator rather that replacing it.
+ * @tparam Mutate if `false`, replace the accumulator rather than mutating it.
  *
- * @param i the initial accumulator value
+ * @param acc the initial accumulator value
  *
  * @param f a functor to be called for all successful parses. It should have the signature:
- *            `(auto&& accumulator, auto&& result) -> decltype(accumulator)`
- *          or if mutating:
  *            `void(auto& accumulator, auto&& result)`
+ *          or if non-mutating:
+ *            `(auto&& accumulator, auto&& result) -> decltype(accumulator)`
  *
  * @param separator an optional separator. Use `{}` to ignore.
- *
  */
 template <bool FailOnNoSuccess = false,
-          bool Mutate = false,
-          typename Parser,
-          typename Init,
+          bool Mutate = true,
           typename Fn,
-          typename ParserSep = no_arg>
-inline constexpr auto fold(Parser p,
-                           Init&& i,
+          typename Acc,
+          typename ParserSep = no_arg,
+          typename... Parsers
+          >
+inline constexpr auto fold(Fn f,
+                           Acc&& acc,
+                           ParserSep separator,
+                           Parsers... ps) {
+    return parser([f, acc = std::forward<Acc>(acc), separator, ps...](auto& s) {
+        return internal::fold_internal<FailOnNoSuccess, Mutate>(s, {}, f, acc, separator, ps...);
+    });
+}
+
+/**
+ * Fold a series of successful parser results with binary functor `f` and initial
+ * accumulator value as `InitType{}`.
+ *
+ * This might be faster than `fold` for default-constructible types due to less copying.
+ *
+ * @tparam InitType the accumulator type. Must be default constructible.
+ * @tparam FailOnNoSuccess if set, fail if the parser succeeds 0 times.
+ * @tparam Mutate if `false`, replace the accumulator rather than mutating it.
+ *
+ * @param f a functor to be called for all successful parses. It should have the signature:
+ *            `void(auto& accumulator, auto&& result)`
+ *          or if non-mutating:
+ *            `(auto&& accumulator, auto&& result) -> decltype(accumulator)`
+ *
+ * @param separator an optional separator. Use `{}` to ignore.
+ */
+template <typename InitType,
+          bool FailOnNoSuccess = false,
+          bool Mutate = true,
+          typename Init = no_arg,
+          typename Fn,
+          typename ParserSep = no_arg,
+          typename... Parsers>
+inline constexpr auto fold_direct(
+                           Init init,
                            Fn f,
-                           ParserSep sep = {}) {
-    return parser([p, i = std::forward<Init>(i), f, sep](auto& s) mutable {
-
-        [[maybe_unused]] auto result = internal::many<FailOnNoSuccess>(s, sep, [f, &i](auto&& a) {
-            if constexpr (Mutate)  f(i, std::forward<decltype(a)>(a));
-            else i = f(std::move(i), std::forward<decltype(a)>(a));
-        }, p);
-
-        if constexpr (FailOnNoSuccess) {
-            if (!result) {
-                return s.template return_fail_change_result<Init>(result);
-            }
-        }
-        return s.return_success(std::move(i));
+                           ParserSep separator,
+                           Parsers... ps) {
+    return parser([init, f, separator, ps...](auto& s) {
+        return internal::fold_internal<FailOnNoSuccess, Mutate>(s, init, f, InitType{}, separator, ps...);
     });
 }
 

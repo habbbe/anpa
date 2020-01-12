@@ -45,11 +45,10 @@ public:
     constexpr InputIt end() const { return end_it;}
 
     constexpr operator std::basic_string_view<item_type>() const {
-        if (begin_it == end_it) {
+        if (empty())
             return {};
-        } else {
-            return {&*begin_it, length()};
-        }
+
+        return {&*begin_it, length()};
     }
 };
 

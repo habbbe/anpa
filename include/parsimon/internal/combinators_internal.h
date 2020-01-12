@@ -15,12 +15,12 @@ namespace parsimon::internal {
  */
 template <bool FailOnNoSuccess = false,
           typename State,
-          typename Sep = no_arg,
           typename Fn = no_arg,
+          typename Sep = no_arg,
           typename... Parsers>
 inline constexpr auto many(State& s,
-                            [[maybe_unused]] Sep sep,
                             Fn f,
+                            [[maybe_unused]] Sep sep,
                             Parsers... ps ) {
     auto start = s.position;
     bool successes = false;
@@ -58,10 +58,41 @@ inline constexpr auto many_mutate_internal(State& s,
                                            Parsers... ps) {
     Container c{};
     if constexpr (types::has_arg<Init>) init(c);
-    many(s, sep, [&c, inserter](auto&&... rs) {
+    many(s, [&c, inserter](auto&&... rs) {
         inserter(c, std::forward<decltype(rs)>(rs)...);
-    }, ps...);
+    }, sep, ps...);
     return s.return_success(std::move(c));
+}
+
+template <bool FailOnNoSuccess,
+          bool Mutate,
+          typename State,
+          typename Init = no_arg,
+          typename Fn,
+          typename Acc,
+          typename ParserSep,
+          typename... Parsers>
+inline constexpr auto fold_internal(State& s,
+                                    Init init,
+                                    Fn f,
+                                    Acc acc,
+                                    ParserSep sep,
+                                    Parsers... ps) {
+    if constexpr (types::has_arg<Init>) init(acc);
+    auto result = many<FailOnNoSuccess>(s, [&acc, f](auto&&... rs) {
+        if constexpr (Mutate) {
+            f(acc, std::forward<decltype(rs)>(rs)...);
+        } else {
+            acc = std::move(f(std::move(acc), std::forward<decltype(rs)>(rs)...));
+        }
+    }, sep, ps...);
+
+    if constexpr (FailOnNoSuccess) {
+        if (!result) {
+            return s.template return_fail_change_result<Acc>(result);
+        }
+    }
+    return s.return_success(std::move(acc));
 }
 
 template <typename ProvidedArg, typename DefaultArg>

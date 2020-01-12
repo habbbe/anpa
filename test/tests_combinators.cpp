@@ -264,7 +264,7 @@ TEST_CASE("many_mutate") {
     constexpr std::string_view str("#1=a#4=b#7=c");
     constexpr auto pairParser = lift_value<std::pair<int, char>>(item('#') >> integer(),
                                                               item('=') >> any_item());
-    constexpr auto p = many_mutate_direct<val>({}, [](auto& s, auto&& r) {
+    constexpr auto p = fold_direct<val>({}, [](auto& s, auto&& r) {
         s.is[r.first] = r.second;
     }, {}, pairParser);
 
@@ -299,7 +299,7 @@ TEST_CASE("many_state") {
 TEST_CASE("fold") {
     constexpr std::string_view str("#100#20#3");
     constexpr auto intParser = item<'#'>() >> integer();
-    constexpr auto p = fold(intParser, 0, [](auto a, auto b) {return a + b;});
+    constexpr auto p = fold<true, false>([](auto a, auto b) {return a + b;}, 0, {}, intParser);
     constexpr auto res = p.parse(str);
     static_assert(res.second);
     static_assert(*res.second == 123);
