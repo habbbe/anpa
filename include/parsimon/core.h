@@ -2,7 +2,6 @@
 #define PARSIMON_CORE_H
 
 #include <functional>
-#include <string_view>
 #include "parsimon/result.h"
 #include "parsimon/state.h"
 #include "parsimon/settings.h"

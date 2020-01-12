@@ -23,6 +23,26 @@ inline constexpr auto equal(InputIt1 begin1, InputIt1 end1, InputIt2 begin2) {
 }
 
 /**
+ * constexpr version of `std::equal` (5)
+ */
+template <typename InputIt1, typename InputIt2>
+inline constexpr auto equal(InputIt1 begin1, InputIt1 end1, InputIt2 begin2, InputIt2 end2) {
+
+    constexpr bool It1RAI = types::iterator_is_category_v<InputIt1, std::random_access_iterator_tag>;
+    constexpr bool It2RAI = types::iterator_is_category_v<InputIt2, std::random_access_iterator_tag>;
+
+    if constexpr (It1RAI && It2RAI) {
+        return std::distance(begin1, end1) == std::distance(begin2, end2) && equal(begin1, end1, begin2);
+    } else {
+        for (; begin1 != end1 && begin2 != end2; ++begin1, ++begin2) {
+            if (!(*begin1 == *begin2))
+                return false;
+        }
+        return begin1 == end1 && begin2 == end2;
+    }
+}
+
+/**
  * Like the other `equal` (1) but the first range is given by the template parameters.
  */
 template <auto... vs, typename InputIt>

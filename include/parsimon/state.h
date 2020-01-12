@@ -111,7 +111,7 @@ struct parser_state_simple {
  * Class for the parser state. Contains the user provided state
  */
 template <typename InputIt, typename Settings, typename UserState>
-struct parser_state: public parser_state_simple<InputIt, Settings> {
+struct parser_state: parser_state_simple<InputIt, Settings> {
 
     /// The user provided state
     UserState user_state;
