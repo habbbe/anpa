@@ -284,7 +284,7 @@ inline constexpr auto many_to_vector(Parser p,
         types::assert_functor_application_modify<decltype(s), decltype(ins), vector_type, Parser>();
 
         auto init = [](auto& v) {v.reserve(reserve);};
-        return internal::many_mutate_internal<vector_type>(s, init, ins, separator, p);
+        return internal::fold_internal(s, init, ins, vector_type{}, separator, p);
     });
 }
 
@@ -324,7 +324,7 @@ inline constexpr auto many_to_array(Parser p,
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::array<result_type, Size> arr{};
         size_t i = 0;
-        internal::many(s, [&arr, &i](auto&& res) {
+        internal::many_internal(s, [&arr, &i](auto&& res) {
             arr[i++] = std::forward<decltype(res)>(res);
         }, separator, p);
         return s.template return_success_emplace<std::pair<std::array<result_type, Size>, size_t>>(std::move(arr), i);
@@ -367,14 +367,13 @@ inline constexpr auto many_to_map(KeyParser key_parser,
         using key = std::conditional_t<types::has_arg<Key>, Key, std::decay_t<decltype(*apply(key_parser, s))>>;
         using value = std::conditional_t<types::has_arg<Value>, Value, std::decay_t<decltype(*apply(value_parser, s))>>;
         using map_type = std::conditional_t<Ordered, std::map<key, value>, std::unordered_map<key, value>>;
-        map_type m;
         auto ins = internal::default_arg(inserter, [](auto& map, auto&&... rs) {
             map.emplace(std::forward<decltype(rs)>(rs)...);
         });
 
         types::assert_functor_application_modify<decltype(s), decltype(ins), map_type, KeyParser, ValueParser>();
 
-        return internal::many_mutate_internal<map_type>(s, {}, ins, separator, key_parser, value_parser);
+        return internal::fold_internal(s, {}, ins, map_type{}, separator, key_parser, value_parser);
     });
 }
 
@@ -398,7 +397,7 @@ inline constexpr auto many_f(Fn f,
     types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
         types::assert_functor_application<decltype(s), Fn, Parsers...>();
-        return internal::many(s, f, separator, ps...);
+        return internal::many_internal(s, f, separator, ps...);
     });
 }
 
@@ -437,7 +436,7 @@ inline constexpr auto many_state(Fn f,
     types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
         types::assert_functor_application_modify<decltype(s), Fn, decltype((s.user_state)), Parsers...>();
-        return internal::many(s, [f, &s](auto&& res) {
+        return internal::many_internal(s, [f, &s](auto&& res) {
             f(s.user_state, std::forward<decltype(res)>(res));
         }, separator, ps...);
     });

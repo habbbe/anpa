@@ -18,7 +18,7 @@ template <bool FailOnNoSuccess = false,
           typename Fn = no_arg,
           typename Sep = no_arg,
           typename... Parsers>
-inline constexpr auto many(State& s,
+inline constexpr auto many_internal(State& s,
                             Fn f,
                             [[maybe_unused]] Sep sep,
                             Parsers... ps ) {
@@ -45,27 +45,8 @@ inline constexpr auto many(State& s,
     return s.return_success(s.convert(start, s.position));
 }
 
-template <typename Container,
-          typename State,
-          typename Init = no_arg,
-          typename Inserter,
-          typename ParserSep,
-          typename... Parsers>
-inline constexpr auto many_mutate_internal(State& s,
-                                           Init init,
-                                           Inserter inserter,
-                                           ParserSep sep,
-                                           Parsers... ps) {
-    Container c{};
-    if constexpr (types::has_arg<Init>) init(c);
-    many(s, [&c, inserter](auto&&... rs) {
-        inserter(c, std::forward<decltype(rs)>(rs)...);
-    }, sep, ps...);
-    return s.return_success(std::move(c));
-}
-
-template <bool FailOnNoSuccess,
-          bool Mutate,
+template <bool FailOnNoSuccess = false,
+          bool Mutate = true,
           typename State,
           typename Init = no_arg,
           typename Fn,
@@ -79,7 +60,7 @@ inline constexpr auto fold_internal(State& s,
                                     ParserSep sep,
                                     Parsers... ps) {
     if constexpr (types::has_arg<Init>) init(acc);
-    auto result = many<FailOnNoSuccess>(s, [&acc, f](auto&&... rs) {
+    auto result = many_internal<FailOnNoSuccess>(s, [&acc, f](auto&&... rs) {
         if constexpr (Mutate) {
             f(acc, std::forward<decltype(rs)>(rs)...);
         } else {
