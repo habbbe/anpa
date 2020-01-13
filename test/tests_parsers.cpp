@@ -129,7 +129,7 @@ TEST_CASE("until_item eat no include") {
 
 TEST_CASE("until_item no eat no include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_item<false, false>('c').parse(str);
+    constexpr auto res = until_item<options::dont_eat>('c').parse(str);
     static_assert(res.second);
     static_assert(*res.second == "ab");
     static_assert(res.first.position == str.begin() + 2);
@@ -137,7 +137,7 @@ TEST_CASE("until_item no eat no include") {
 
 TEST_CASE("until_item eat include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_item<true, true>('c').parse(str);
+    constexpr auto res = until_item<options::include>('c').parse(str);
     static_assert(res.second);
     static_assert(*res.second == "abc");
     static_assert(res.first.position == str.begin() + 3);
@@ -145,7 +145,7 @@ TEST_CASE("until_item eat include") {
 
 TEST_CASE("until_item no eat include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_item<false, true>('c').parse(str);
+    constexpr auto res = until_item<options::include | options::dont_eat>('c').parse(str);
     static_assert(res.second);
     static_assert(*res.second == "abc");
     static_assert(res.first.position == str.begin() + 2);
@@ -165,7 +165,7 @@ TEST_CASE("until_sequence eat no include") {
 
 TEST_CASE("until_sequence no eat no include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_seq<false, false>("cd").parse(str);
+    constexpr auto res = until_seq<options::dont_eat>("cd").parse(str);
     static_assert(res.second);
     static_assert(*res.second == "ab");
     static_assert(res.first.position == str.begin() + 2);
@@ -173,7 +173,7 @@ TEST_CASE("until_sequence no eat no include") {
 
 TEST_CASE("until_sequence eat include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_seq<true, true>("cd").parse(str);
+    constexpr auto res = until_seq<options::include>("cd").parse(str);
     static_assert(res.second);
     static_assert(*res.second == "abcd");
     static_assert(res.first.position == str.begin() + 4);
@@ -181,7 +181,7 @@ TEST_CASE("until_sequence eat include") {
 
 TEST_CASE("until_sequence no eat include") {
     constexpr std::string_view str("abcde");
-    constexpr auto res = until_seq<false, true>("cd").parse(str);
+    constexpr auto res = until_seq<options::include | options::dont_eat>("cd").parse(str);
     static_assert(res.second);
     static_assert(*res.second == "abcd");
     static_assert(res.first.position == str.begin() + 2);
@@ -240,7 +240,7 @@ TEST_CASE("between_sequences") {
     static_assert(*res.second == "abcde");
     static_assert(res.first.position == str.end());
 
-    constexpr auto resInclude = between_sequences<false, true>("begin", "end").parse(str);
+    constexpr auto resInclude = between_sequences<options::include>("begin", "end").parse(str);
     static_assert(resInclude.second);
     static_assert(*resInclude.second == "beginabcdeend");
     static_assert(resInclude.first.position == str.end());
@@ -248,18 +248,18 @@ TEST_CASE("between_sequences") {
 
 TEST_CASE("between_sequences nested") {
     constexpr std::string_view str("beginbeginabcdeendend");
-    constexpr auto res = between_sequences<true>("begin", "end").parse(str);
+    constexpr auto res = between_sequences<options::nested>("begin", "end").parse(str);
     static_assert(res.second);
     static_assert(*res.second == "beginabcdeend");
     static_assert(res.first.position == str.end());
 
-    constexpr auto resInclude = between_sequences<true, true>("begin", "end").parse(str);
+    constexpr auto resInclude = between_sequences<options::nested | options::include>("begin", "end").parse(str);
     static_assert(resInclude.second);
     static_assert(*resInclude.second == "beginbeginabcdeendend");
     static_assert(resInclude.first.position == str.end());
 
     constexpr std::string_view strNonClosing("beginbeginabcdeend");
-    constexpr auto resNonClosing = between_sequences<true>("begin", "end").parse(strNonClosing);
+    constexpr auto resNonClosing = between_sequences<options::nested>("begin", "end").parse(strNonClosing);
     static_assert(!resNonClosing.second);
     static_assert(resNonClosing.first.position == strNonClosing.begin());
 }
@@ -310,6 +310,7 @@ TEST_CASE("floating") {
     floating_test_("-123.321", -123.321);
     floating_test_("123.0", 123.0);
     floating_test_("-123.0", -123.0);
+    floating_test_("123e0", 123);
     floating_test_("123e1", 1230);
     floating_test_("123e3", 123e3);
     floating_test_("-123e3", -123e3);
@@ -319,19 +320,4 @@ TEST_CASE("floating") {
     floating_test_("-123.321e3", -123.321e3);
     floating_test_("123.321e-3", 123.321e-3);
     floating_test_("-123.321e-3", -123.321e-3);
-}
-
-TEST_CASE("number") {
-    auto& str = "42abcde";
-    auto res = number<int>().parse(str);
-    REQUIRE(res.second);
-    REQUIRE(*res.second == 42);
-    REQUIRE(res.first.position == str + 2);
-
-    // No support for floats yet.
-//    auto& str2 = "42.3abcde";
-//    constexpr auto res2 = number<float>().parse(str2);
-//    static_assert(res2.second);
-//    static_assert(*res2.second == 42.3);
-//    static_assert(res2.first.position == str2 + 4);
 }

@@ -230,6 +230,14 @@ TEST_CASE("many_to_array") {
     static_assert(res.first.position == str.begin() + 9);
 }
 
+TEST_CASE("many_to_array no trailing separator") {
+    constexpr std::string_view str("1,2,");
+    constexpr auto intParser = integer();
+    constexpr auto p = many_to_array<100, options::no_trailing_separator>(intParser, item<','>());
+    constexpr auto res = p.parse(str);
+    static_assert(!res.second);
+}
+
 TEST_CASE("many_to_array with separator") {
     constexpr auto intParser = integer();
 
@@ -299,7 +307,7 @@ TEST_CASE("many_state") {
 TEST_CASE("fold") {
     constexpr std::string_view str("#100#20#3");
     constexpr auto intParser = item<'#'>() >> integer();
-    constexpr auto p = fold<true, false>([](auto a, auto b) {return a + b;}, 0, {}, intParser);
+    constexpr auto p = fold<options::replace>([](auto a, auto b) {return a + b;}, 0, {}, intParser);
     constexpr auto res = p.parse(str);
     static_assert(res.second);
     static_assert(*res.second == 123);
@@ -430,6 +438,7 @@ TEST_CASE("parse_result") {
     static_assert(res.second->first[1] == 20);
     static_assert(res.second->first[2] == 3);
     static_assert(res.first.position == str.end());
+    static_assert(!std::decay_t<decltype(res.first)>::has_user_state);
 }
 
 TEST_CASE("parse_result state") {
@@ -447,6 +456,7 @@ TEST_CASE("parse_result state") {
     static_assert(res.second->first[1] == 20);
     static_assert(res.second->first[2] == 3);
     static_assert(res.first.position == str.end());
+    static_assert(std::decay_t<decltype(res.first)>::has_user_state);
 }
 
 TEST_CASE("until eat no include") {
@@ -470,7 +480,7 @@ TEST_CASE("until eat no include") {
 
 TEST_CASE("until no eat no include") {
     constexpr auto parseNumber = parse_result(between_items('{', '}'), integer());
-    constexpr auto p = until<false, false>(parseNumber);
+    constexpr auto p = until<options::dont_eat>(parseNumber);
     constexpr std::string_view str("abc{123}");
 
     constexpr auto res = p.parse(str);
@@ -482,7 +492,7 @@ TEST_CASE("until no eat no include") {
 
 TEST_CASE("until eat include") {
     constexpr auto parseNumber = parse_result(between_items('{', '}'), integer());
-    constexpr auto p = until<true, true>(parseNumber);
+    constexpr auto p = until<options::include>(parseNumber);
     constexpr std::string_view str("abc{123}");
     constexpr auto res = p.parse(str);
 
@@ -493,7 +503,7 @@ TEST_CASE("until eat include") {
 
 TEST_CASE("until no eat include") {
     constexpr auto parseNumber = parse_result(between_items('{', '}'), integer());
-    constexpr auto p = until<false, true>(parseNumber);
+    constexpr auto p = until<options::dont_eat | options::include>(parseNumber);
     constexpr std::string_view str("abc{123}");
 
     constexpr auto res = p.parse(str);

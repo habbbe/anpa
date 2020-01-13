@@ -3,21 +3,22 @@
 
 #include <tuple>
 #include <limits>
-#include "algorithm.h"
+#include "parsimon/internal/algorithm.h"
+#include "parsimon/options.h"
 
 namespace parsimon::internal {
 
 /**
  * Parser for a single item
  */
-template <bool ReturnArg = false, typename State, typename Predicate, typename Item = no_arg>
+template <options Options = options::none, typename State, typename Predicate, typename Item = no_arg>
 inline constexpr auto item(State& s, Predicate pred, const Item& i = no_arg()) {
     constexpr bool has_item_arg = types::has_arg<Item>;
+    constexpr bool return_arg = has_options(Options, options::return_arg);
+    static_assert (has_item_arg || !return_arg,
+            "If return_arg is `true` then `Item` cannot be `no_arg`");
 
-    static_assert (has_item_arg || !ReturnArg,
-            "If ReturnArg is `true` then `Item` cannot be `no_arg`");
-
-    using return_type = std::conditional_t<ReturnArg, Item, decltype(s.front())>;
+    using return_type = std::conditional_t<return_arg, Item, decltype(s.front())>;
     if (!s.at_end()) {
         const auto& front = s.front();
         bool success = [pred, &front, &i]() {
@@ -29,7 +30,7 @@ inline constexpr auto item(State& s, Predicate pred, const Item& i = no_arg()) {
         }();
         if (success) {
             s.advance(1);
-            if constexpr (ReturnArg) {
+            if constexpr (return_arg) {
                 return s.return_success(i);
             } else {
                 return s.return_success(front);
@@ -49,30 +50,32 @@ inline constexpr auto consume(State& s, const Length& l) {
     return s.return_fail();
 }
 
-template <bool Eat = true, bool Include = false, typename State, typename ItemType>
+template <options Options, typename State, typename ItemType>
 inline constexpr auto until_item(State& s, const ItemType& c) {
+    constexpr bool include = has_options(Options, options::include);
+    constexpr bool dont_eat = has_options(Options, options::dont_eat);
     if (auto pos = algorithm::find(s.position, s.end, c); pos != s.end) {
         auto res_start = s.position;
-        auto res_end = std::next(pos, Include);
-        s.set_position(std::next(pos, Eat));
+        auto res_end = std::next(pos, include);
+        s.set_position(std::next(pos, !dont_eat));
         return s.return_success(s.convert(res_start, res_end));
     } else {
         return s.return_fail();
     }
 }
 
-template <bool FailOnNoSuccess = false, bool Negate, typename Predicate>
+template <options Options, typename Predicate>
 inline constexpr auto while_if(Predicate predicate) {
     return parser([=](auto& s) {
         auto start_pos = s.position;
         auto result = [&]() {
-            if constexpr (Negate) {
+            if constexpr (has_options(Options, options::negate)) {
                 return algorithm::find_if(start_pos, s.end, predicate);
             } else {
                 return algorithm::find_if_not(start_pos, s.end, predicate);
             }
         }();
-        if constexpr (FailOnNoSuccess) {
+        if constexpr (has_options(Options, options::fail_on_no_parse)) {
             if (result == start_pos) return s.return_fail();
         }
         s.set_position(result);
@@ -97,12 +100,12 @@ inline constexpr auto seq(State& s, size_t size, Eq equal) {
 /**
  * Helper for parsing until a sequence
  */
-template <bool Eat = true, bool Include = false, typename State, typename Search>
+template <options Options, typename State, typename Search>
 inline constexpr auto until_seq(State& s, Search search) {
     if (auto [pos, new_end] = search(s.position, s.end); pos != s.end) {
         auto res_start = s.position;
-        auto res_end = Include ? new_end : pos;
-        s.set_position(Eat ? new_end : pos);
+        auto res_end = has_options(Options, options::include) ? new_end : pos;
+        s.set_position(has_options(Options, options::dont_eat) ? pos : new_end);
         return s.return_success(s.convert(res_start, res_end));
     } else {
         return s.return_fail();
@@ -112,14 +115,15 @@ inline constexpr auto until_seq(State& s, Search search) {
 // General matching algorithm with supplied equality functions.
 template <size_t StartLength,
           size_t EndLength,
-          bool Nested = false,
-          bool Include = false,
+          options Options,
           typename Start,
           typename End,
           typename EqualStart,
           typename EqualEnd>
 inline constexpr auto between_general(Start start, End end, EqualStart equal_start, EqualEnd equal_end) {
     return parser([=](auto& s) {
+        constexpr bool include = has_options(Options, options::include);
+        constexpr bool nested = has_options(Options, options::nested);
         if (s.at_end() || !equal_start(s.position, std::next(s.position, StartLength), start))
             return s.return_fail();
 
@@ -127,15 +131,15 @@ inline constexpr auto between_general(Start start, End end, EqualStart equal_sta
         for (auto pos = std::next(s.position, StartLength); algorithm::contains_elements(pos, s.end, EndLength);) {
             if (equal_end(pos, std::next(pos, EndLength), end)) {
                 if (to_match == 0) {
-                    auto begin_iterator = std::next(s.position, (Include ? 0 : StartLength));
-                    auto result_end = std::next(pos, (Include ? EndLength : 0));
+                    auto begin_iterator = std::next(s.position, (include ? 0 : StartLength));
+                    auto result_end = std::next(pos, (include ? EndLength : 0));
                     s.set_position(std::next(pos, EndLength));
                     return s.return_success(s.convert(begin_iterator, result_end));
-                } else if (Nested) {
+                } else if (nested) {
                     --to_match;
                     std::advance(pos, EndLength);
                 }
-            } else if (Nested && equal_start(pos, std::next(pos, StartLength), start)) {
+            } else if (nested && equal_start(pos, std::next(pos, StartLength), start)) {
                 ++to_match;
                 std::advance(pos, StartLength);
             } else {

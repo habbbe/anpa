@@ -19,7 +19,7 @@ constexpr auto string_parser = []() {
     return lift_value<json_string>(item<'"'>() >> many(notEnd) << item<'"'>());
 }();
 
-constexpr auto number_parser = floating<json_number, true>();
+constexpr auto number_parser = floating<json_number>();
 constexpr auto bool_parser = seq<'t','r','u','e'>() >> mreturn<true>() ||
                                  seq<'f','a','l','s','e'>() >> mreturn<false>();
 constexpr auto null_parser = seq<'n','u','l','l'>() >> mreturn_emplace<json_null>();
@@ -30,14 +30,14 @@ constexpr auto get_object_parser(P value_parser) {
         return std::make_shared<json_value>(std::forward<decltype(r)>(r));
     }, value_parser);
 
-    return item<'{'>() >> many_to_map(eat(string_parser),
+    return item<'{'>() >> many_to_map<options::no_trailing_separator>(eat(string_parser),
                                       eat(item<':'>() >> shared_value_parser),
                                       eat(item<','>())) << eat(item<'}'>());
 }
 
 template <typename P>
 constexpr auto get_array_parser(P value_parser) {
-    return item<'['>() >> many_to_vector(value_parser, eat(item<','>())) << eat(item<']'>());
+    return item<'['>() >> many_to_vector<options::no_trailing_separator>(value_parser, eat(item<','>())) << eat(item<']'>());
 }
 
 constexpr auto json_parser = recursive<json_value>([](auto val_parser) {

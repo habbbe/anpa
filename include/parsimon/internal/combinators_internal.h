@@ -6,6 +6,7 @@
 #include <valgrind/callgrind.h>
 #include "parsimon/types.h"
 #include "parsimon/monad.h"
+#include "parsimon/options.h"
 
 
 namespace parsimon::internal {
@@ -13,7 +14,7 @@ namespace parsimon::internal {
 /**
  * General helper for evaluating a parser multiple times with an optional separator.
  */
-template <bool FailOnNoSuccess = false,
+template <options Options,
           typename State,
           typename Fn = no_arg,
           typename Sep = no_arg,
@@ -24,18 +25,24 @@ inline constexpr auto many_internal(State& s,
                             Parsers... ps ) {
     auto start = s.position;
     bool successes = false;
+    constexpr bool no_trailing_sep = types::has_arg<Sep> && has_options(Options, options::no_trailing_separator);
 
     for (;;) {
         if (auto&& result = apply(lift(f, ps...), s); !result) {
-            if constexpr (FailOnNoSuccess) {
+            if constexpr (has_options(Options, options::fail_on_no_parse)) {
                 if (!successes) {
+                    return s.return_fail_result_default(result);
+                }
+            }
+            if constexpr (no_trailing_sep) {
+                if (successes) {
                     return s.return_fail_result_default(result);
                 }
             }
             break;
         }
 
-        if constexpr (FailOnNoSuccess) successes = true;
+        if constexpr (has_options(Options, options::fail_on_no_parse) || no_trailing_sep) successes = true;
 
         if constexpr (!std::is_empty_v<Sep>) {
             if (!apply(sep, s)) break;
@@ -45,8 +52,7 @@ inline constexpr auto many_internal(State& s,
     return s.return_success(s.convert(start, s.position));
 }
 
-template <bool FailOnNoSuccess = false,
-          bool Mutate = true,
+template <options Options,
           typename State,
           typename Init = no_arg,
           typename Fn,
@@ -60,15 +66,16 @@ inline constexpr auto fold_internal(State& s,
                                     ParserSep sep,
                                     Parsers... ps) {
     if constexpr (types::has_arg<Init>) init(acc);
-    auto result = many_internal<FailOnNoSuccess>(s, [&acc, f](auto&&... rs) {
-        if constexpr (Mutate) {
-            f(acc, std::forward<decltype(rs)>(rs)...);
-        } else {
+    auto result = many_internal<Options>(s, [&acc, f](auto&&... rs) {
+        if constexpr (has_options(Options, options::replace)) {
             acc = std::move(f(std::move(acc), std::forward<decltype(rs)>(rs)...));
+        } else {
+            f(acc, std::forward<decltype(rs)>(rs)...);
         }
     }, sep, ps...);
 
-    if constexpr (FailOnNoSuccess) {
+    if constexpr (has_options(Options, options::fail_on_no_parse)
+            || (has_options(Options, options::no_trailing_separator) && types::has_arg<ParserSep>)) {
         if (!result) {
             return s.template return_fail_change_result<Acc>(result);
         }

@@ -21,6 +21,8 @@ struct parser_state_simple {
 
     using settings = Settings;
     constexpr static bool error_messages = Settings::error_messages;
+    constexpr static bool has_user_state = false;
+
     using error_type = std::conditional_t<error_messages, const char*, void>;
 
     using default_result_type = decltype(settings::conversion_function(std::declval<InputIt>(), std::declval<InputIt>()));
@@ -115,6 +117,8 @@ struct parser_state: parser_state_simple<InputIt, Settings> {
 
     /// The user provided state
     UserState user_state;
+
+    constexpr static bool has_user_state = true;
 
     constexpr parser_state(InputIt begin, InputIt end, UserState&& state, Settings settings)
         : parser_state_simple<InputIt, Settings>{begin, end, settings},

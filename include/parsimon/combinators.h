@@ -9,6 +9,7 @@
 #include "parsimon/core.h"
 #include "parsimon/monad.h"
 #include "parsimon/internal/combinators_internal.h"
+#include "parsimon/options.h"
 
 namespace parsimon {
 
@@ -16,16 +17,13 @@ namespace parsimon {
  * Transform a parser to a parser that always succeeds.
  * Will return `true` if the parse was successful, else 'false`.
  *
- * If template parameter `Optional` is `true`, the result will instead be
- * an `std::optional` with the (optional) result of the parse.
- *
- * @tparam Optional set to `true` if you want the parse result returned as
- *                  an optional
+ * @tparam Options available options:
+ * 				     `options::optional`: return the parse result as an optional instead of `true`/`false`.
  */
-template <bool Optional = false, typename Parser>
+template <options Options = options::none, typename Parser>
 inline constexpr auto succeed(Parser p) {
     return parser([=](auto& s) {
-        if constexpr (Optional) {
+        if constexpr (has_options(Options, options::optional)) {
             using optional_type = std::optional<std::decay_t<decltype(*apply(p, s))>>;
             if (auto&& result = apply(p, s)) {
                 return s.template return_success_emplace<optional_type>(*std::forward<decltype(result)>(result));
@@ -87,16 +85,17 @@ inline constexpr auto change_error(Error&& error, Parser p) {
 /**
  * Make a parser non-consuming.
  *
- * @tparam FailureOnly set to `true` if the parser only should be non-consuming
- *                     on failure (this is the same as `try_parser`)
+ * @tparam Options available options:
+ * 				     `options::failure_only`: make the parser non-consuming on failure only
+ *                                            (this is the same as `try_parser`)
  *
  */
-template <bool FailureOnly = false, typename Parser>
+template <options Options = options::none, typename Parser>
 inline constexpr auto no_consume(Parser p) {
     return parser([=](auto& s) {
         auto old_position = s.position;
         auto result = apply(p, s);
-        if (!FailureOnly || !result) {
+        if (!has_options(Options, options::failure_only) || !result) {
             s.set_position(old_position);
         }
         return result;
@@ -106,11 +105,11 @@ inline constexpr auto no_consume(Parser p) {
 /**
  * Make a parser that doesn't consume its input on failure
  *
- * This is the same as `no_consume<true>`
+ * This is the same as `no_consume<options::failure_only>`
  */
 template <typename Parser>
 inline constexpr auto try_parser(Parser p) {
-    return no_consume<true>(p);
+    return no_consume<options::failure_only>(p);
 }
 
 /**
@@ -250,7 +249,6 @@ inline constexpr auto modify_state(Fn f) {
  *
  * @param f a functor with the signature:
  *            `ResultTypeOrVoid(auto& state, auto&&... results)`
- *
  */
 template <typename Fn, typename... Parsers>
 inline constexpr auto apply_to_state(Fn f, Parsers...ps) {
@@ -273,6 +271,11 @@ inline constexpr auto apply_to_state(Fn f, Parsers...ps) {
  * Create a parser that applies a parser until it fails and adds the results to a `std::vector`.
  * Use template argument `reserve` to reserve storage before parsing.
  *
+ * @tparam Options available options:
+ * 				     `options::no_trailing_separator`: disallow a trailing separator
+ *
+ * @tparam Reserve use to reserve space before commencing parsing
+ *
  * @param separator an optional separator. Use `{}` to ignore.
  *
  * @param inserter an optional functor that should have the signature:
@@ -280,7 +283,8 @@ inline constexpr auto apply_to_state(Fn f, Parsers...ps) {
  *                 Use to change how/if results are inserted. Use `{}` to use default
  *                 insertion (`push_back`).
  */
-template <size_t reserve = 0,
+template <options Options = options::none,
+          size_t Reserve = 0,
           typename Parser,
           typename ParserSep = no_arg,
           typename Inserter = no_arg
@@ -298,8 +302,15 @@ inline constexpr auto many_to_vector(Parser p,
 
         types::assert_functor_application_modify<decltype(s), decltype(ins), vector_type, Parser>();
 
-        auto init = [](auto& v) {v.reserve(reserve);};
-        return internal::fold_internal(s, init, ins, vector_type{}, separator, p);
+        auto init = []() {
+            if constexpr (Reserve > 0) {
+                return [](auto& v) {v.reserve(Reserve);};
+            } else {
+                return no_arg();
+            }
+        }();
+
+        return internal::fold_internal<Options>(s, init, ins, vector_type{}, separator, p);
     });
 }
 
@@ -328,9 +339,13 @@ inline constexpr auto operator+(parser<P> p) {
  *
  * @tparam size the size of the array
  *
+ * @tparam Options available options:
+ * 				     `options::no_trailing_separator`: disallow a trailing separator
+ *
  * @param separator an optional separator. Use `{}` to ignore.
  */
 template <size_t Size,
+          options Options = options::none,
           typename Parser,
           typename ParserSep = no_arg>
 inline constexpr auto many_to_array(Parser p,
@@ -339,23 +354,34 @@ inline constexpr auto many_to_array(Parser p,
         using result_type = std::decay_t<decltype(*apply(p, s))>;
         std::array<result_type, Size> arr{};
         size_t i = 0;
-        internal::many_internal(s, [&arr, &i](auto&& res) {
+        auto result = internal::many_internal<Options>(s, [&arr, &i](auto&& res) {
             arr[i++] = std::forward<decltype(res)>(res);
         }, separator, p);
-        return s.template return_success_emplace<std::pair<std::array<result_type, Size>, size_t>>(std::move(arr), i);
+
+        using parse_result = std::pair<std::array<result_type, Size>, size_t>;
+
+        if constexpr (types::has_arg<ParserSep> && has_options(Options, options::no_trailing_separator)) {
+            if (!result) {
+                return s.template return_fail_change_result<parse_result>(result);
+            }
+        }
+        return s.template return_success_emplace<parse_result>(std::move(arr), i);
     });
 }
 
 /**
  * Create a parser that applies two parsers until failure and returns the results in an
- * `std::unordered_map` (or `std::map` if template argument `Unordered` is `false`).
+ * `std::unordered_map` (or `std::map` if `options::ordered` is used as an option).
  * By default uses the result of the first parser as key and the result of the
  * second parser as value. Use template arguments `Key` and `Value` to override.
  *
  * Note: If `Key` or `Value` is overridden, and the parse results are not convertible
  * to those types, `inserter` will need to be specified.
  *
- * @tparam Ordered set to `true` to use `std::map` instead
+ * @tparam Options available options:
+ * 				     `options::ordered`: use `std::map` instead of `std::unordered_map`
+ * 				     `options::no_trailing_separator`: disallow a trailing separator
+ *
  * @tparam Key use to override key type
  * @tparam Value use to override value type
  *
@@ -367,7 +393,7 @@ inline constexpr auto many_to_array(Parser p,
  *                 Use to change how/if results are inserted. Use `{}` to use default
  *                 insertion (`emplace`).
  */
-template <bool Ordered = false,
+template <options Options = options::none,
           typename Key = no_arg,
           typename Value = no_arg,
           typename KeyParser,
@@ -381,14 +407,14 @@ inline constexpr auto many_to_map(KeyParser key_parser,
     return parser([=](auto& s) {
         using key = std::conditional_t<types::has_arg<Key>, Key, std::decay_t<decltype(*apply(key_parser, s))>>;
         using value = std::conditional_t<types::has_arg<Value>, Value, std::decay_t<decltype(*apply(value_parser, s))>>;
-        using map_type = std::conditional_t<Ordered, std::map<key, value>, std::unordered_map<key, value>>;
+        using map_type = std::conditional_t<has_options(Options, options::ordered), std::map<key, value>, std::unordered_map<key, value>>;
         auto ins = internal::default_arg(inserter, [](auto& map, auto&&... rs) {
             map.emplace(std::forward<decltype(rs)>(rs)...);
         });
 
         types::assert_functor_application_modify<decltype(s), decltype(ins), map_type, KeyParser, ValueParser>();
 
-        return internal::fold_internal(s, {}, ins, map_type{}, separator, key_parser, value_parser);
+        return internal::fold_internal<Options>(s, {}, ins, map_type{}, separator, key_parser, value_parser);
     });
 }
 
@@ -398,12 +424,16 @@ inline constexpr auto many_to_map(KeyParser key_parser,
  *
  * The parse result is the parsed range as returned by the provided conversion function.
  *
+ * @tparam Options available options:
+ * 				     `options::no_trailing_separator`: disallow a trailing separator
+ *
  * @param f a functor to be called for all successful parses. It should have the signature:
  *            `void(auto&&... results)`
  *
  * @param separator an optional separator. Use `{}` to ignore.
  */
-template <typename Fn = no_arg,
+template <options Options = options::none,
+          typename Fn = no_arg,
           typename ParserSep = no_arg,
           typename... Parsers>
 inline constexpr auto many_f(Fn f,
@@ -412,7 +442,7 @@ inline constexpr auto many_f(Fn f,
     types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
         types::assert_functor_application<decltype(s), Fn, Parsers...>();
-        return internal::many_internal(s, f, separator, ps...);
+        return internal::many_internal<Options>(s, f, separator, ps...);
     });
 }
 
@@ -423,12 +453,16 @@ inline constexpr auto many_f(Fn f,
  * Note that this function isn't variadic like `many_f`. This is due to the parse results
  * being ignored. To evaluate multiple parsers, just combine them with `>>`.
  *
+ * @tparam Options available options:
+ * 				     `options::no_trailing_separator`: disallow a trailing separator
+ *
  * @param separator an optional separator. Use `{}` to ignore.
  */
-template <typename Parser,
+template <options Options = options::none,
+          typename Parser,
           typename ParserSep = no_arg>
 inline constexpr auto many(Parser p, ParserSep separator = {}) {
-    return many_f({}, separator, p);
+    return many_f<Options>({}, separator, p);
 }
 
 /**
@@ -437,12 +471,16 @@ inline constexpr auto many(Parser p, ParserSep separator = {}) {
  *
  * The parse result is the parsed range as returned by the provided conversion function.
  *
+ * @tparam Options available options:
+ * 				     `options::no_trailing_separator`: disallow a trailing separator
+ *
  * @param f a functor to be called for all successful parses. It should have the signature:
  *            `void(auto& state, auto&&... results)`
  *
  * @param separator an optional separator. Use `{}` to ignore.
  */
-template <typename Fn,
+template <options Options = options::none,
+          typename Fn,
           typename ParserSep = no_arg,
           typename... Parsers>
 inline constexpr auto many_state(Fn f,
@@ -451,7 +489,7 @@ inline constexpr auto many_state(Fn f,
     types::assert_parsers_not_empty<Parsers...>();
     return parser([=](auto& s) {
         types::assert_functor_application_modify<decltype(s), Fn, decltype((s.user_state)), Parsers...>();
-        return internal::many_internal(s, [f, &s](auto&& res) {
+        return internal::many_internal<Options>(s, [f, &s](auto&& res) {
             f(s.user_state, std::forward<decltype(res)>(res));
         }, separator, ps...);
     });
@@ -461,8 +499,10 @@ inline constexpr auto many_state(Fn f,
  * Fold a series of successful parser results with binary functor `f` and initial
  * accumulator value `acc`.
  *
- * @tparam FailOnNoSuccess if set, fail if the parser succeeds 0 times.
- * @tparam Mutate if `false`, replace the accumulator rather than mutating it.
+ * @tparam Options available options:
+ * 				     `options::no_trailing_separator`: disallow a trailing separator
+ * 				     `options::fail_on_no_parse`: fail if the parser succeeds 0 times
+ * 				     `options::replace`: replace the accumulator instead of mutating it
  *
  * @param acc the initial accumulator value
  *
@@ -473,8 +513,7 @@ inline constexpr auto many_state(Fn f,
  *
  * @param separator an optional separator. Use `{}` to ignore.
  */
-template <bool FailOnNoSuccess = false,
-          bool Mutate = true,
+template <options Options = options::none,
           typename Fn,
           typename Acc,
           typename ParserSep = no_arg,
@@ -485,7 +524,7 @@ inline constexpr auto fold(Fn f,
                            ParserSep separator,
                            Parsers... ps) {
     return parser([f, acc = std::forward<Acc>(acc), separator, ps...](auto& s) {
-        return internal::fold_internal<FailOnNoSuccess, Mutate>(s, {}, f, acc, separator, ps...);
+        return internal::fold_internal<Options>(s, {}, f, acc, separator, ps...);
     });
 }
 
@@ -496,8 +535,11 @@ inline constexpr auto fold(Fn f,
  * This might be faster than `fold` for default-constructible types due to less copying.
  *
  * @tparam InitType the accumulator type. Must be default constructible.
- * @tparam FailOnNoSuccess if set, fail if the parser succeeds 0 times.
- * @tparam Mutate if `false`, replace the accumulator rather than mutating it.
+ *
+ * @tparam Options available options:
+ * 				     `options::no_trailing_separator`: disallow trailing separator
+ * 				     `options::fail_on_no_parse`: fail if the parser succeeds 0 times
+ * 				     `options::replace`: replace the accumulator instead of mutating it
  *
  * @param f a functor to be called for all successful parses. It should have the signature:
  *            `void(auto& accumulator, auto&& result)`
@@ -507,8 +549,7 @@ inline constexpr auto fold(Fn f,
  * @param separator an optional separator. Use `{}` to ignore.
  */
 template <typename InitType,
-          bool FailOnNoSuccess = false,
-          bool Mutate = true,
+          options Options = options::none,
           typename Init = no_arg,
           typename Fn,
           typename ParserSep = no_arg,
@@ -519,7 +560,7 @@ inline constexpr auto fold_direct(
                            ParserSep separator,
                            Parsers... ps) {
     return parser([init, f, separator, ps...](auto& s) {
-        return internal::fold_internal<FailOnNoSuccess, Mutate>(s, init, f, InitType{}, separator, ps...);
+        return internal::fold_internal<Options>(s, init, f, InitType{}, separator, ps...);
     });
 }
 
@@ -581,22 +622,41 @@ inline constexpr auto lift_or_value(Parsers... ps) {
 
 /**
  * Create a parser that parses the result of `p1` with `p2`.
- * Useful for parsing the content between brackets.
- * Currently only working if the return type from the provided conversion function
- * has the same iterator type as what is provided when starting a parse.
+ * `std::begin` and `std::end` will be used with the result of `p1` for the
+ * parse with `p2`, that is, the iterator type can be changed for the second parse.
+ *
+ * The default conversion function will return a `range` result which can be used with
+ * this combinator.
+ *
+ * @tparam NewSettings use this template parameter if you want to change the parse settings
+ *                     for the parse with `p2`.
  *
  * @param p1 the parser to apply first
  * @param p2 the parser to apply to the result of `p1`
  */
-template <typename Parser1, typename Parser2>
+template <typename NewSettings = no_arg, typename Parser1, typename Parser2>
 inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
     return parser([=](auto& s) {
         if (auto&& result = apply(p1, s)) {
             auto result_text = std::move(*result);
             using state_type = std::decay_t<decltype(s)>;
-            state_type new_state(std::begin(result_text), std::end(result_text), s);
-            auto new_result = apply(p2, new_state);
-            return new_result;
+
+            auto new_state = [&](){
+                constexpr auto new_settings = []() {
+                    if constexpr (types::has_arg<NewSettings>)
+                        return NewSettings();
+                    else
+                        return typename state_type::settings();
+                }();
+                if constexpr (state_type::has_user_state) {
+                return parser_state(std::begin(result_text), std::end(result_text), s.user_state, new_settings);
+            } else {
+                return parser_state_simple(std::begin(result_text), std::end(result_text), new_settings);
+            }
+
+            }();
+
+            return apply(p2, new_state);
         } else {
             return s.template return_fail_change_result<decltype(*apply(p2, s))>(result);
         }
@@ -611,11 +671,11 @@ inline constexpr auto parse_result(Parser1 p1, Parser2 p2) {
  * Note: For parsing until a certain sequence or item, use functions
  * `until_item` and `until_seq` instead, as they are more efficient.
  *
- * @tparam Eat decides whether or not to consume the successful parse
- * @tparam Include decides whether or not to include the succesful parse in
- *                 the result.
+ * @tparam Options available options:
+ * 				     `options::dont_eat`: do not consume the successful parse
+ * 				     `options::include`: include the parsed item in the result
  */
-template <bool Eat = true, bool Include = false, typename Parser>
+template <options Options = options::none, typename Parser>
 inline constexpr auto until(Parser p) {
     return parser([=](auto& s) {
         auto position_start = s.position;
@@ -630,8 +690,8 @@ inline constexpr auto until(Parser p) {
             position_end = s.position;
         }
 
-        auto end_pos = Include ? s.position : position_end;
-        if constexpr (!Eat) {
+        auto end_pos = has_options(Options, options::include) ? s.position : position_end;
+        if constexpr (has_options(Options, options::dont_eat)) {
             s.set_position(position_end);
         }
 

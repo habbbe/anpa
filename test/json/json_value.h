@@ -13,6 +13,7 @@ using json_string = std::string;
 using json_object = std::unordered_map<json_string, std::shared_ptr<json_value>>;
 using json_array = std::vector<json_value>;
 using json_number = double;
+using json_bool = bool;
 using json_null = parsimon::empty_result;
 
 using json_value_variant = std::variant<
@@ -37,13 +38,13 @@ struct json_value {
 
     decltype(auto) operator[](size_t i) {return std::get<json_array>(val)[i];}
 
-    template <typename Key>
-    decltype(auto) at(Key&& key) {return *std::get<json_object>(val).at(key);}
+    template <typename Key, typename = std::enable_if_t<std::is_convertible_v<Key, json_string>>>
+    decltype(auto) operator[](const Key& key) {return *std::get<json_object>(val).at(key);}
 
     size_t size() const {
         return std::visit([](const auto& v) {
             using type = std::decay_t<decltype(v)>;
-            if constexpr (parsimon::types::is_one_of<type, json_array, json_object, json_string>) return v.size();
+            if constexpr (parsimon::types::is_one_of<type, json_array, json_object>) return std::size(v);
             else return size_t(0);
         }, val);
     }

@@ -1,9 +1,9 @@
 #ifndef PARSIMON_PARSERS_H
 #define PARSIMON_PARSERS_H
 
-#include <charconv>
 #include "parsimon/internal/algorithm.h"
 #include "parsimon/core.h"
+#include "parsimon/options.h"
 #include "parsimon/types.h"
 #include "parsimon/combinators.h"
 #include "parsimon/internal/parsers_internal.h"
@@ -54,15 +54,16 @@ inline constexpr auto any_item() {
 /**
  * Parser for a single item equal to `item`, compared with `==`.
  *
- * @tparam ReturnArg if set to `true`, return the argument instead of the
- *                     parsed item upon success
+ * @tparam Options available options:
+ * 				     `options::return_arg`: return the argument instead of the
+ *                                          parsed item upon success
  *
  * @param item the item to parse.
  */
-template <bool ReturnArg = false, typename ItemType>
+template <options Options = options::none, typename ItemType>
 inline constexpr auto item(ItemType&& item) {
     return parser([i = std::forward<ItemType>(item)](auto& s) {
-        return internal::item<ReturnArg>(s, [](const auto &c, const auto& i) {return c == i;}, i);
+        return internal::item<Options>(s, [](const auto &c, const auto& i) {return c == i;}, i);
     });
 }
 
@@ -74,13 +75,14 @@ inline constexpr auto item(ItemType&& item) {
  *
  * @tparam Item the item to parse.
  *
- * @tparam ReturnArg if set to `true`, return the argument instead of the
- *                     parsed item upon success
+ * @tparam Options available options:
+ * 				     `options::return_arg`: return the argument instead of the
+ *                                 parsed item upon success
  */
-template <auto Item, bool ReturnArg = false>
+template <auto Item, options Options = options::none>
 inline constexpr auto item() {
     return parser([](auto& s) {
-        return internal::item<ReturnArg>(s, [](const auto &c, const auto& i) {return c == i;}, Item);
+        return internal::item<Options>(s, [](const auto &c, const auto& i) {return c == i;}, Item);
     });
 }
 
@@ -92,7 +94,7 @@ inline constexpr auto item() {
 template <typename ItemType>
 inline constexpr auto not_item(ItemType&& item) {
     return parser([i = std::forward<ItemType>(item)](auto& s) {
-        return internal::item<false>(s, [](const auto &c, const auto& i) {return c != i;}, i);
+        return internal::item(s, [](const auto &c, const auto& i) {return c != i;}, i);
     });
 }
 
@@ -103,12 +105,11 @@ inline constexpr auto not_item(ItemType&& item) {
  * This might be faster than the non-templated version due to less copying.
  *
  * @tparam Item the item to parse.
- *
  */
 template <auto Item>
 inline constexpr auto not_item() {
     return parser([](auto& s) {
-        return internal::item<false>(s, [](const auto& c, const auto& i) {return c != i;}, Item);
+        return internal::item(s, [](const auto& c, const auto& i) {return c != i;}, Item);
     });
 }
 
@@ -207,15 +208,15 @@ inline constexpr auto consume() {
 /**
  * Parser for consuming all items up until a certain item `c`.
  *
- * @tparam Eat decides whether or not to consume the successful parse
- * @tparam Include decides whether or not to include the succesful parse in
- *                 the result.
  *
+ * @tparam Options available options:
+ * 				     `options::dont_eat`: do not consume the successful parse
+ * 				     `options::include`: include the parsed sequence in the result
  */
-template <bool Eat = true, bool Include = false, typename ItemType>
+template <options Options = options::none, typename ItemType>
 inline constexpr auto until_item(ItemType&& c) {
     return parser([c = std::forward<ItemType>(c)](auto& s) {
-        return internal::until_item<Eat, Include>(s, c);
+        return internal::until_item<Options>(s, c);
     });
 }
 
@@ -223,14 +224,14 @@ inline constexpr auto until_item(ItemType&& c) {
  * Templated version of `until_item`.
  * This might give better performance than the non-templated version due to less copying.
  *
- * @tparam Eat decides whether or not to consume the successful parse
- * @tparam Include decides whether or not to include the succesful parse in
- *                 the result.
+ * @tparam Options available options:
+ * 				     `options::dont_eat`: do not consume the successful parse
+ * 				     `options::include`: include the parsed sequence in the result
  */
-template <auto Item, bool Eat = true, bool Include = false>
+template <auto Item, options Options = options::none>
 inline constexpr auto until_item() {
     return parser([](auto& s) {
-        return internal::until_item<Eat, Include>(s, Item);
+        return internal::until_item<Options>(s, Item);
     });
 }
 
@@ -239,14 +240,14 @@ inline constexpr auto until_item() {
  *
  * This may be faster than using `until(sequence())`.
  *
- * @tparam Eat decides whether or not to consume the successful parse
- * @tparam Include decides whether or not to include the succesful parse in
- *                 the result.
+ * @tparam Options available options:
+ * 				     `options::dont_eat`: do not consume the successful parse
+ * 				     `options::include`: include the parsed sequence in the result
  */
-template <bool Eat = true, bool Include = false, typename InputIt>
+template <options Options = options::none, typename InputIt>
 inline constexpr auto until_seq(InputIt begin, InputIt end) {
     return parser([=](auto& s) {
-        return internal::until_seq<Eat, Include>(s,
+        return internal::until_seq<Options>(s,
                     [=](auto b, auto e) {return algorithm::search(b, e, begin, end);});
     });
 }
@@ -256,16 +257,15 @@ inline constexpr auto until_seq(InputIt begin, InputIt end) {
  *
  * This may be faster than using `until(sequence())`.
  *
- * @tparam Eat decides whether or not to consume the successful parse
- * @tparam Include decides whether or not to include the succesful parse in
- *                 the result.
+ * @tparam Options available options:
+ * 				     `options::dont_eat`: do not consume the successful parse
+ * 				     `options::include`: include the parsed sequence in the result
  */
-template <bool Eat = true,
-          bool Include = false,
+template <options Options = options::none,
           typename ItemType, size_t N,
           typename = types::enable_if_string_literal_type<ItemType>>
 inline constexpr auto until_seq(const ItemType (&seq)[N]) {
-    return until_seq<Eat, Include>(std::begin(seq), std::end(seq) - 1);
+    return until_seq<Options>(std::begin(seq), std::end(seq) - 1);
 }
 
 /**
@@ -286,12 +286,13 @@ inline constexpr auto rest() {
  *
  * The parse result is the parsed range as returned by the provided conversion function.
  *
- * @tparam FailOnNoSuccess set to `true` if you want this parser to fail if nothing is
- * parsed.
+ * @tparam Options available options:
+ * 				     `options::fail_on_no_parse`: fail if nothing is parsed
+ * 				     `options::negate`: negate the predicate
  */
-template <bool FailOnNoSuccess = false, bool Negate = false, typename Predicate>
+template <options Options = options::none, typename Predicate>
 inline constexpr auto while_if(Predicate predicate) {
-    return internal::while_if<FailOnNoSuccess, Negate>(predicate);
+    return internal::while_if<Options>(predicate);
 }
 
 /**
@@ -299,12 +300,13 @@ inline constexpr auto while_if(Predicate predicate) {
  *
  * The parse result is the parsed range as returned by the provided conversion function.
  *
- * @tparam FailOnNoSuccess set to `true` if you want this parser to fail if nothing is
- * parsed.
+ *
+ * @tparam Options available options:
+ * 				     `options::fail_on_no_parse`: fail if nothing is parsed
  */
-template <bool FailOnNoSuccess = false, typename Predicate>
+template <options Options = options::none, typename Predicate>
 inline constexpr auto while_if_not(Predicate predicate) {
-    return while_if_not<FailOnNoSuccess, true>(predicate);
+    return while_if_not<Options | options::negate>(predicate);
 }
 
 /**
@@ -341,12 +343,11 @@ inline constexpr auto while_in() {
 /**
  * Parser that consumes all items between the two provided null-terminated sequences.
  *
- * @tparam Nested decides wheter or not to support nested matchings.
- * @tparam Include decides whether or not to include the succesful parse in
- *                 the result.
- *
+ * @tparam Options available options:
+ * 				     `options::nested`: enables nested matchings
+ * 				     `options::include`: include the parsed sequences in the result
  */
-template <bool Nested = false, bool Include = false, typename ItemType, size_t NStart, size_t NEnd>
+template <options Options = options::none, typename ItemType, size_t NStart, size_t NEnd>
 inline constexpr auto between_sequences(const ItemType (&start)[NStart], const ItemType (&end)[NEnd]) {
 
     // Use faster comparison when the sequence is only one item long
@@ -364,22 +365,22 @@ inline constexpr auto between_sequences(const ItemType (&start)[NStart], const I
         if constexpr (NEnd - 1 == 1) return compare_single; else return compare_seq;
     }();
 
-    return internal::between_general<NStart-1, NEnd-1, Nested, Include>(start, end, compar_start, compare_end);
+    return internal::between_general<NStart-1, NEnd-1, Options>(start, end, compar_start, compare_end);
 }
 
 /**
  * Parser that consumes all items between the provided items `start` and `end`.
  *
- * @tparam Nested decides wheter or not to support nested matchings.
- * @tparam Include decides whether or not to include the succesful parse in
- *                 the result.
+ * @tparam Options available options:
+ * 				     `options::nested`: enables nested matchings
+ * 				     `options::include`: include the parsed items in the result
  */
-template <bool Nested = false, bool Include = false, typename ItemType>
+template <options Options = options::none, typename ItemType>
 inline constexpr auto between_items(const ItemType start, const ItemType end) {
     constexpr auto compare_single = [](const auto iterator, auto, const auto& toCompare) {
         return *iterator == toCompare;
     };
-    return internal::between_general<1, 1, Nested, Include>(start, end, compare_single, compare_single);
+    return internal::between_general<1, 1, Options>(start, end, compare_single, compare_single);
 }
 
 /**
@@ -404,7 +405,6 @@ inline constexpr auto custom(Parser custom_parser) {
  *                        (InputIt position, InputIt End, State& s) -> std::pair<InputIt, std::optional<Result>>
  *                      where the first element in the pair is the new iterator position, and the second
  *                      the result, where and empty optional signals a failed parse.
- *
  */
 template <typename Parser>
 inline constexpr auto custom_with_state(Parser custom_parser) {
@@ -416,34 +416,6 @@ inline constexpr auto custom_with_state(Parser custom_parser) {
 // CONVENIENCE PARSERS
 
 /**
- * Parse a number. Template parameter indicates the type to be parsed. Uses std::from_chars.
- * This parser only works when using `const *char` as iterator.
- * Consider using `integer` or `floating` instead, as they are constexpr, and performance
- * should be comparable.
- */
-template <typename Number>
-inline constexpr auto number() {
-    return parser([](auto& s) {
-        auto [start, end] = [](auto& state) {
-            if constexpr (std::is_pointer_v<decltype(state.position)>) {
-                return std::pair(state.position, state.end);
-            } else {
-                return std::pair(&*state.position, &*state.end);
-            }
-        }(s);
-
-        Number result;
-        auto [ptr, ec] = std::from_chars(start, end, result);
-        if (ec == std::errc()) {
-            s.set_position(ptr);
-            return s.return_success(result);
-        } else {
-            return s.template return_fail<Number>();
-        }
-    });
-}
-
-/**
  * Parser for an integer.
  *
  * @tparam Integral specifies which type of integer to parse.
@@ -452,7 +424,7 @@ template <typename Integral = int, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
 
     auto res_parser = [](bool neg) {
-        auto p = fold<true, true>([](auto& r, const auto& c) {
+        auto p = fold<options::fail_on_no_parse>([](auto& r, const auto& c) {
             if constexpr (IncludeDoubleDivisor) {
                 r.second *= 10;
             }
@@ -476,10 +448,14 @@ inline constexpr auto integer() {
 
 /**
  * Parser for a floating number.
+ *
  * @tparam FloatType specifies which type of floating number to parse.
- * @tparam AllowScientific enable/disable support for scientific notation.
+ *
+ * @tparam Options available options:
+ * 				     `options::no_scientific`: disable support for scientific notation
  */
-template <typename FloatType = double, bool AllowScientific = true>
+
+template <typename FloatType = double, options Options = options::none>
 inline constexpr auto floating() {
     auto floating_part = integer() >>= [](auto&& n) {
         auto dec = item<'.'>() >> integer<unsigned int, true>();
@@ -489,45 +465,43 @@ inline constexpr auto floating() {
         }, dec) || mreturn_emplace<FloatType>(std::forward<decltype(n)>(n));
     };
 
-    if constexpr (AllowScientific) {
+    if constexpr (has_options(Options, options::no_scientific)) {
+        return floating_part;
+    } else {
         return floating_part >>= [](auto&& f) {
             auto exp = any_of<'e', 'E'>() >> integer();
             return lift([=](auto&& e) { return f * internal::pow_table<FloatType>::pow(e); }, exp)
                     || mreturn(std::forward<decltype(f)>(f));
         };
-    } else {
-        return floating_part;
     }
 }
 
 /**
- * Parser for a sequence of whitespaces
+ * Parser that trims whitespace (if any)
  *
- * @tparam FailOnNoSuccess set to `false` if you want this parser to succeed even if
- * nothing is parsed. Consider using `trim` for readability.
- *
- * @tparam Negate set to `true` to parse non-whitespace items. Consider
- * using `not_whitespace` for readability.
+ * @tparam Options available options:
+ * 				     `options::fail_on_no_parse`: fail if nothing is parsed
+ * 				     `options::negate`: trim non-whitespace instead
  */
-template <bool FailOnNoSuccess = true, bool Negate = false>
-inline constexpr auto whitespaces() {
-    return while_if<FailOnNoSuccess, Negate>([](const auto& c) {
+template <options Options = options::none>
+inline constexpr auto trim() {
+    return while_if<Options>([](const auto& c) {
         return c == ' ' || (c >= '\t' && c <= '\r');
     });
 }
 
 /**
- * Parser that trims whitespace (if any)
+ * Parser for a sequence of whitespaces
  */
-inline constexpr auto trim() {
-    return whitespaces<false, false>();
+inline constexpr auto whitespaces() {
+    return trim<options::fail_on_no_parse>();
 }
 
 /**
  * Parser for a sequence of non-whitespace items
  */
 inline constexpr auto not_whitespaces() {
-    return whitespaces<true, true>();
+    return trim<options::negate | options::fail_on_no_parse>();
 }
 
 }

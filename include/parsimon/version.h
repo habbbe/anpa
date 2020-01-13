@@ -7,7 +7,7 @@ namespace parsimon::version {
 
 /// Current version of parsimon as a std::string_view
 // MAJOR.MINOR.PATCH-PRE_RELEASE components are parsed from this during compile time
-constexpr std::string_view current = "0.1.0";
+constexpr std::string_view current = "0.2.0";
 
 struct version_components {
     unsigned int major;

@@ -22,8 +22,8 @@ TEST_CASE("json_null") {
 }
 
 TEST_CASE("json_bool") {
-    test_json_type<bool>("true", true);
-    test_json_type<bool>("false", false);
+    test_json_type<json_bool>("true", true);
+    test_json_type<json_bool>("false", false);
 }
 
 TEST_CASE("json_string") {
@@ -40,7 +40,7 @@ TEST_CASE("json_general") {
 
     REQUIRE(json.contains("first"));
 
-    auto& element1 = json.at("first");
+    auto& element1 = json["first"];
 
     REQUIRE(element1.is_a<json_array>());
 
@@ -60,13 +60,14 @@ TEST_CASE("json_general") {
     auto& object = element1[2];
     REQUIRE(object.size() == 1);
     REQUIRE(object.contains("ef"));
-    REQUIRE(object.at("ef").is_a<bool>());
-    REQUIRE(object.at("ef").get<bool>() == false);
+    REQUIRE(object["ef"].is_a<json_bool>());
+    REQUIRE(object["ef"].get<json_bool>() == false);
 
 
     REQUIRE(json.contains("second"));
-    REQUIRE(json.at("second").is_a<bool>());
-    REQUIRE(json.at("second").get<bool>() == true);
+    REQUIRE(json["second"].is_a<json_bool>());
+    REQUIRE(json["second"].get<json_bool>() == true);
+    std::cout << 3e0 << std::endl;
 }
 
 TEST_CASE("performance_json") {
