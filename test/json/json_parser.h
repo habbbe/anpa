@@ -15,7 +15,9 @@ constexpr auto eat(Parser p) {
 constexpr auto string_parser = []() {
     constexpr auto unicode = item<'u'>() >> times<4>(item_if([](const auto& f) {return std::isxdigit(f);}));
     constexpr auto escaped = item<'\\'>() >> (unicode || any_of<'"','\\','/','b','f','n','r','t'>());
-    constexpr auto notEnd = escaped || not_item<'"'>();
+    constexpr auto notEnd = escaped | item_if_not([](auto c) {
+        return c == '"' || static_cast<std::make_unsigned_t<decltype(c)>>(c) < 0x20;
+    });
     return lift_value<json_string>(item<'"'>() >> many(notEnd) << item<'"'>());
 }();
 

@@ -127,6 +127,19 @@ inline constexpr auto item_if(Pred pred) {
 }
 
 /**
+ * Parser for a single item not matching the provided predicate
+ *
+ * @param pred a predicate with the signature:
+ *               `bool(const auto& item)`
+ */
+template <typename Pred>
+inline constexpr auto item_if_not(Pred pred) {
+    return parser([=](auto& s) {
+        return internal::item(s, [=](const auto& p) {return !pred(p);});
+    });
+}
+
+/**
  * Parser for the sequence described by `[begin, end)`
  */
 template <typename InputIt>
@@ -419,8 +432,13 @@ inline constexpr auto custom_with_state(Parser custom_parser) {
  * Parser for an integer.
  *
  * @tparam Integral specifies which type of integer to parse.
+ *
+ * @tparam Options available options:
+ * 				     `options::no_negative`: do not parse negative values. This has no effect
+ *                                           if `Integral` is unsigned.
+ * 				     `options::leading_plus`: allow the integer to have a leading `+` sign.
  */
-template <typename Integral = int, bool IncludeDoubleDivisor = false>
+template <typename Integral = int, options Options = options::none, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
 
     auto res_parser = [](bool neg) {
@@ -439,8 +457,19 @@ inline constexpr auto integer() {
             }
         }, p);
     };
-    if constexpr (std::is_signed_v<Integral>) {
-        return succeed(item<'-'>()) >>= res_parser;
+
+    constexpr bool leading_plus = has_options(Options, options::leading_plus);
+    constexpr bool leading_minus = std::is_signed_v<Integral> && !has_options(Options, options::no_negative);
+    constexpr auto minus = item<'-'>() >> mreturn<true>();
+    constexpr auto plus  = succeed(item<'+'>()) >> mreturn<false>();
+
+    // We need try_parser here to not consume a token if input is "-" or "+"
+    if constexpr (leading_plus && leading_minus) {
+        return try_parser(minus || plus >>= res_parser);
+    } else if constexpr (!leading_plus && leading_minus) {
+        return try_parser(succeed(item<'-'>()) >>= res_parser);
+    } else if constexpr (leading_plus) {
+        return try_parser(plus >>= res_parser);
     } else {
         return res_parser(false);
     }
@@ -458,7 +487,7 @@ inline constexpr auto integer() {
 template <typename FloatType = double, options Options = options::none>
 inline constexpr auto floating() {
     auto floating_part = integer() >>= [](auto&& n) {
-        auto dec = item<'.'>() >> integer<unsigned int, true>();
+        auto dec = item<'.'>() >> integer<unsigned int, options::none, true>();
         return lift([=](auto&& p) {
             // ((0 <= n) - (n < 0)) returns -1 for n < 0 otherwise 1
             return n + ((0 <= n) - (n < 0)) * int(p.first) / FloatType(p.second);
@@ -469,7 +498,7 @@ inline constexpr auto floating() {
         return floating_part;
     } else {
         return floating_part >>= [](auto&& f) {
-            auto exp = any_of<'e', 'E'>() >> integer();
+            auto exp = any_of<'e', 'E'>() >> integer<int, options::leading_plus>();
             return lift([=](auto&& e) { return f * internal::pow_table<FloatType>::pow(e); }, exp)
                     || mreturn(std::forward<decltype(f)>(f));
         };

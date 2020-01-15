@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <variant>
 #include <optional>
+#include "parsimon/parse_error.h"
 
 namespace parsimon {
 
@@ -79,8 +80,6 @@ struct result {
     constexpr decltype(auto) error() const { return const_cast<result*>(this)->error(); }
     ///@}
 };
-
-using default_error_type = const char*;
 
 }
 

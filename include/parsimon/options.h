@@ -19,12 +19,14 @@ enum class options : uint64_t {
     fail_on_no_parse      = 1 << 3,
     negate                = 1 << 4,
     nested                = 1 << 5,
-    no_scientific         = 1 << 6,
-    optional              = 1 << 7,
-    failure_only          = 1 << 8,
-    no_trailing_separator = 1 << 9,
-    ordered               = 1 << 10,
-    replace               = 1 << 11,
+    no_negative           = 1 << 6,
+    leading_plus          = 1 << 7,
+    no_scientific         = 1 << 8,
+    optional              = 1 << 9,
+    failure_only          = 1 << 10,
+    no_trailing_separator = 1 << 11,
+    ordered               = 1 << 12,
+    replace               = 1 << 13,
 };
 
 /**

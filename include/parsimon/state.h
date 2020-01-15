@@ -3,6 +3,7 @@
 
 #include <iterator>
 #include "parsimon/result.h"
+#include "parsimon/parse_error.h"
 #include "parsimon/internal/algorithm.h"
 
 namespace parsimon {
@@ -23,7 +24,9 @@ struct parser_state_simple {
     constexpr static bool error_messages = Settings::error_messages;
     constexpr static bool has_user_state = false;
 
-    using error_type = std::conditional_t<error_messages, const char*, void>;
+    using default_error_type = parse_error<const char*, InputIt>;
+
+    using error_type = std::conditional_t<error_messages, default_error_type, void>;
 
     using default_result_type = decltype(settings::conversion_function(std::declval<InputIt>(), std::declval<InputIt>()));
 
@@ -52,7 +55,7 @@ struct parser_state_simple {
 
     // Convenience function for returning a succesful parse.
     template <typename Res, typename... Args>
-    constexpr static auto return_success_emplace(Args&&... args) {
+    constexpr auto return_success_emplace(Args&&... args) {
         using T = std::decay_t<Res>;
         if constexpr (error_messages) {
             return result<T, default_error_type>(std::in_place_index<1>, std::forward<Args>(args)...);
@@ -63,13 +66,13 @@ struct parser_state_simple {
 
     // Convenience function for returning a succesful parse.
     template <typename Res>
-    constexpr static auto return_success(Res&& res) {
+    constexpr auto return_success(Res&& res) {
         return return_success_emplace<Res>(std::forward<Res>(res));
     }
 
     // Convenience function for returning a failed parse with state and type of result.
     template <typename Res, typename Error>
-    constexpr static auto return_fail_error(Error&& error) {
+    constexpr auto return_fail_error(Error&& error) {
         using T = std::decay_t<Res>;
         if constexpr (error_messages) {
             return result<T, std::decay_t<Error>>(std::in_place_index<0>, std::forward<Error>(error));
@@ -79,10 +82,10 @@ struct parser_state_simple {
     }
 
     template <typename Error>
-    constexpr static auto return_fail_error_default(Error&& error) { return return_fail_error<default_result_type>(std::forward<Error>(error)); }
+    constexpr auto return_fail_error_default(Error&& error) { return return_fail_error<default_result_type>(std::forward<Error>(error)); }
 
     template <typename Res, typename Res2, typename Error>
-    constexpr static auto return_fail_change_result(const result<Res2, Error>& res) {
+    constexpr auto return_fail_change_result(const result<Res2, Error>& res) {
         using T = std::decay_t<Res>;
         if constexpr (error_messages) {
             return result<T, Error>(std::in_place_index<0>, res.error());
@@ -92,21 +95,21 @@ struct parser_state_simple {
     }
 
     template <typename Res, typename Error>
-    constexpr static auto return_fail_result_default(const result<Res, Error>& res) {
+    constexpr auto return_fail_result_default(const result<Res, Error>& res) {
         return return_fail_change_result<default_result_type>(res);
     }
 
     template <typename Res, typename Error>
-    constexpr static auto return_fail_result(const result<Res, Error>& res) {
+    constexpr auto return_fail_result(const result<Res, Error>& res) {
         return return_fail_change_result<Res>(res);
     }
 
     template <typename Res>
-    constexpr static auto return_fail() {
-        return return_fail_error<Res>("Parsing error");
+    constexpr auto return_fail(const char* message = "Parsing error") {
+        return return_fail_error<Res>(parse_error(message, position));
     }
 
-    constexpr static auto return_fail()  { return return_fail<default_result_type>(); }
+    constexpr auto return_fail()  { return return_fail<default_result_type>(); }
 };
 
 /**

@@ -48,7 +48,7 @@ $ cmake --build <BUILD_DIR> -j <NUM_OF_PARALLEL_JOBS> --target parsimon_tests te
 
 Try increasing the inlining limit for your compiler for better performance (your mileage may vary).
 
-As an example, using `-finline-limit=2000` in GCC 9.2.0 resulted in a ~14% performance increase for 
+As an example, using `-finline-limit=3000` in GCC 9.2.0 resulted in a ~14% performance increase for 
 the [JSON parser](test/json/json_parser.h) on my machine.
 
 ### TODO

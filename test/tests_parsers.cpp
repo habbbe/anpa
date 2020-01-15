@@ -295,6 +295,16 @@ TEST_CASE("integer") {
     static_assert(res4.second);
     static_assert(*res4.second == 42);
     static_assert(res4.first.position == str4.begin() + 2);
+
+    constexpr std::string_view str5("-");
+    constexpr auto res5 = integer<int>().parse(str5);
+    static_assert(!res5.second);
+    static_assert(res5.first.position == str5.begin());
+
+    constexpr std::string_view str6("+");
+    constexpr auto res6 = integer<int>().parse(str6);
+    static_assert(!res6.second);
+    static_assert(res6.first.position == str6.begin());
 }
 
 TEST_CASE("floating") {
@@ -313,6 +323,7 @@ TEST_CASE("floating") {
     floating_test_("123e0", 123);
     floating_test_("123e1", 1230);
     floating_test_("123e3", 123e3);
+    floating_test_("123e+3", 123e+3);
     floating_test_("-123e3", -123e3);
     floating_test_("123e-3", 123e-3);
     floating_test_("-123e-3", -123e-3);

@@ -77,7 +77,7 @@ inline constexpr auto change_error(Error&& error, Parser p) {
         if (auto result = apply(p, s)) {
             return result;
         } else {
-            return s.template return_fail_error<decltype(*result)>(error);
+            return s.template return_fail<decltype(*result)>(error);
         }
     });
 }
@@ -170,39 +170,54 @@ inline constexpr auto operator+(parser<P1> p1, parser<P2> p2) {
  * Combine two parsers so that the second will be tried before failing.
  * If the two parsers return different types the return value will instead be `empty_result`.
  */
-template <typename P1, typename P2>
+template <bool FailOnPartial = false, typename P1, typename P2>
 inline constexpr auto operator||(parser<P1> p1, parser<P2> p2) {
     return parser([=](auto& s) {
         using R1 = decltype(*apply(p1, s));
         using R2 = decltype(*apply(p2, s));
+
         auto original_position = s.position;
-        if constexpr (std::is_same_v<R1, R2>) {
-            if (auto result1 = apply(p1, s)) {
-                return result1;
+
+        constexpr bool is_same = std::is_same_v<R1, R2>;
+        auto return_success = [&s](auto&& result) {
+            if constexpr (is_same) {
+                return std::forward<decltype(result)>(result);
             } else {
-                s.set_position(original_position);
-                return apply(p2, s);
-            }
-        } else {
-            if (apply(p1, s)) {
                 return s.template return_success_emplace<empty_result>();
-            } else {
-                s.set_position(original_position);
-                auto result2 = apply(p2, s);
-                return result2 ? s.template return_success_emplace<empty_result>() :
-                                 s.template return_fail_change_result<empty_result>(result2);
             }
+        };
+
+        auto return_fail = [&s](auto&& result) {
+            if constexpr (is_same) {
+                return std::forward<decltype(result)>(result);
+            } else {
+                return s.template return_fail_change_result<empty_result>(result);
+            }
+        };
+
+        if (auto&& result1 = apply(p1, s)) {
+                return return_success(std::forward<decltype(result1)>(result1));
+        } else {
+            if constexpr (FailOnPartial) {
+                if (s.position != original_position) {
+                    return return_fail(std::forward<decltype(result1)>(result1));
+                }
+            }
+            s.set_position(original_position);
+            auto&& result2 = apply(p2, s);
+            return result2 ? return_success(std::forward<decltype(result2)>(result2))
+                           : return_fail(std::forward<decltype(result2)>(result2));
         }
     });
 }
 
 /**
- * Variadic version of `||` for easier typing.
+ * Similar to `||`, but it will fail immediately if `p1` fails the parse, but consumes
+ * 1 or more items.
  */
-template <typename... Parsers>
-inline constexpr auto first(Parsers... ps) {
-    types::assert_parsers_not_empty<Parsers...>();
-    return (ps || ...);
+template <typename P1, typename P2>
+inline constexpr auto operator|(parser<P1> p1, parser<P2> p2) {
+    return operator||<true>(p1, p2);
 }
 
 /**

@@ -21,7 +21,7 @@ TEST_CASE("change_error") {
     constexpr auto p = change_error("new error", fail());
     constexpr auto res = p.parse<with_error_messages>(std::string_view(""));
     static_assert(res.second.has_error_handling);
-    static_assert(res.second.error() == std::string_view("new error"));
+    static_assert(res.second.error().message == std::string_view("new error"));
 }
 
 TEST_CASE("not_empty") {
@@ -84,15 +84,14 @@ TEST_CASE("get_parsed") {
     static_assert(res2.first.position == str.end() - 2);
 }
 
-TEST_CASE("first") {
-    constexpr auto p1 = first(item('a'), item('b'));
-    constexpr auto p2 = item('a') || item('b');
+TEST_CASE("||") {
+    constexpr auto p = item('a') || item('b');
 
     constexpr std::string_view str1("ab");
     constexpr std::string_view str2("ba");
 
-    constexpr auto res1 = p1.parse(str1);
-    constexpr auto res2 = p1.parse(str2);
+    constexpr auto res1 = p.parse(str1);
+    constexpr auto res2 = p.parse(str2);
 
     static_assert(res1.second);
     static_assert(*res1.second == 'a');
@@ -101,17 +100,23 @@ TEST_CASE("first") {
     static_assert(res2.second);
     static_assert(*res2.second == 'b');
     static_assert(res2.first.position == str2.begin() + 1);
+}
 
-    constexpr auto res3 = p2.parse(str1);
-    constexpr auto res4 = p2.parse(str2);
+TEST_CASE("|") {
+    constexpr auto p = item('a') >> item('b') | any_item();
 
-    static_assert(res3.second);
-    static_assert(*res3.second == 'a');
-    static_assert(res3.first.position == str1.begin() + 1);
+    constexpr std::string_view str1("ab");
+    constexpr std::string_view str2("ac");
 
-    static_assert(res4.second);
-    static_assert(*res4.second == 'b');
-    static_assert(res4.first.position == str2.begin() + 1);
+    constexpr auto res1 = p.parse(str1);
+    constexpr auto res2 = p.parse(str2);
+
+    static_assert(res1.second);
+    static_assert(*res1.second == 'b');
+    static_assert(res1.first.position == str1.end());
+
+    static_assert(!res2.second);
+    static_assert(res2.first.position == str2.begin() + 1);
 }
 
 TEST_CASE("with_state constexpr") {
