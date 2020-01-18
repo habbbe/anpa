@@ -41,6 +41,18 @@ inline constexpr auto succeed(Parser p) {
     });
 }
 
+
+/**
+ * Transform a parser to a parser that succeeds when `p` fails, and fails when `p` succeeds.
+ * Result type is `empty_result`, as a concrete result can never be obtained.
+ */
+template <typename Parser>
+inline constexpr auto flip(Parser p) {
+    return parser([=](auto& s) {
+        return apply(p, s) ? s.template return_fail<empty_result>() : s.template return_success_emplace<empty_result>();
+    });
+}
+
 /**
  * Apply a parser `n` times and return the parsed result.
  *

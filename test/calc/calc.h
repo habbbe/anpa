@@ -12,6 +12,7 @@ constexpr auto const_pow(T a, T b) {
     return result;
 }
 
+// A parser for arithmetic expressions. It does not support any whitespace.
 constexpr auto expr = parsimon::recursive<int>([](auto p) {
     using namespace parsimon;
     constexpr auto ops = [](auto c) {
@@ -22,6 +23,7 @@ constexpr auto expr = parsimon::recursive<int>([](auto p) {
             case '*': return a * b;
             case '/': return a / b;
             case '^': return const_pow(a, b);
+            default: return 0; // This can never happen
             }
         };
     };

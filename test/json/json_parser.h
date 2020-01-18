@@ -21,7 +21,7 @@ constexpr auto string_parser = []() {
     return lift_value<json_string>(item<'"'>() >> many(notEnd) << item<'"'>());
 }();
 
-constexpr auto number_parser = floating<json_number>();
+constexpr auto number_parser = floating<json_number, options::no_leading_zero>();
 constexpr auto bool_parser = seq<'t','r','u','e'>() >> mreturn<true>() ||
                                  seq<'f','a','l','s','e'>() >> mreturn<false>();
 constexpr auto null_parser = seq<'n','u','l','l'>() >> mreturn_emplace<json_null>();

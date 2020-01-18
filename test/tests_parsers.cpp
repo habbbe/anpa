@@ -305,6 +305,21 @@ TEST_CASE("integer") {
     constexpr auto res6 = integer<int>().parse(str6);
     static_assert(!res6.second);
     static_assert(res6.first.position == str6.begin());
+
+    constexpr std::string_view str7("01");
+    constexpr auto res7 = integer<int>().parse(str7);
+    static_assert(res7.second);
+    static_assert(res7.first.position == str7.end());
+
+    constexpr std::string_view str8("01");
+    constexpr auto res8 = integer<int, options::no_leading_zero>().parse(str8);
+    static_assert(!res8.second);
+    static_assert(res8.first.position == str8.begin());
+
+    constexpr std::string_view str9("0");
+    constexpr auto res9 = integer<int, options::no_leading_zero>().parse(str9);
+    static_assert(res9.second);
+    static_assert(res9.first.position == str9.end());
 }
 
 TEST_CASE("floating") {

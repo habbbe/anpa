@@ -436,18 +436,32 @@ inline constexpr auto custom_with_state(Parser custom_parser) {
  * @tparam Options available options:
  * 				     `options::no_negative`: do not parse negative values. This has no effect
  *                                           if `Integral` is unsigned.
- * 				     `options::leading_plus`: allow the integer to have a leading `+` sign.
+ * 				     `options::leading_plus`: allow a leading `+` sign.
+ * 				     `options::no_leading_zero`: do not allow a leading zero (e,g. "01").
+ *
  */
 template <typename Integral = int, options Options = options::none, bool IncludeDoubleDivisor = false>
 inline constexpr auto integer() {
 
     auto res_parser = [](bool neg) {
-        auto p = fold<options::fail_on_no_parse>([](auto& r, const auto& c) {
+
+        auto is_digit = [](const auto&c) {return c >= '0' && c <= '9';};
+        using pair_result = std::pair<Integral, unsigned>;
+        auto int_parser = fold<options::fail_on_no_parse>([](auto& r, const auto& c) {
             if constexpr (IncludeDoubleDivisor) {
                 r.second *= 10;
             }
             r.first = r.first * 10 + c - '0';
-        }, std::pair<Integral, unsigned>(0, 1), {}, item_if([](const auto& c) {return c >= '0' && c <= '9';}));
+        }, pair_result(0, 1), {}, item_if(is_digit));
+        auto p = [int_parser, is_digit](){
+            if constexpr (has_options(Options, options::no_leading_zero)) {
+                auto zero_result = lift([](){return pair_result();});
+                return item<'0'>() >> flip(no_consume(item_if(is_digit))) >> zero_result
+                                      | int_parser;
+            } else {
+                return int_parser;
+            }
+        };
         return lift([=](auto&& res) {
             if (neg) res.first *= -1;
             if constexpr (IncludeDoubleDivisor) {
@@ -458,20 +472,25 @@ inline constexpr auto integer() {
         }, p);
     };
 
-    constexpr bool leading_plus = has_options(Options, options::leading_plus);
-    constexpr bool leading_minus = std::is_signed_v<Integral> && !has_options(Options, options::no_negative);
-    constexpr auto minus = item<'-'>() >> mreturn<true>();
-    constexpr auto plus  = succeed(item<'+'>()) >> mreturn<false>();
+    using leading_plus = std::bool_constant<has_options(Options, options::leading_plus)>;
+    using leading_minus = std::bool_constant<std::is_signed_v<Integral> && !has_options(Options, options::no_negative)>;
 
-    // We need try_parser here to not consume a token if input is "-" or "+"
-    if constexpr (leading_plus && leading_minus) {
-        return try_parser(minus || plus >>= res_parser);
-    } else if constexpr (!leading_plus && leading_minus) {
-        return try_parser(succeed(item<'-'>()) >>= res_parser);
-    } else if constexpr (leading_plus) {
-        return try_parser(plus >>= res_parser);
-    } else {
+    if constexpr (!leading_plus() && !leading_minus()) {
         return res_parser(false);
+    } else {
+        // We need try_parser here to not consume a token if input is "-" or "+"
+        return try_parser([](){
+            constexpr auto dash = item<'-'>();
+            constexpr auto minus = dash >> mreturn<true>();
+            constexpr auto plus  = succeed(item<'+'>()) >> mreturn<false>();
+            if constexpr (leading_plus() && leading_minus()) {
+                return minus || plus;
+            } else if constexpr (!leading_plus() && leading_minus()) {
+                return succeed(dash);
+            } else {
+                return plus;
+            }
+        }() >>= res_parser);
     }
 }
 
@@ -481,13 +500,21 @@ inline constexpr auto integer() {
  * @tparam FloatType specifies which type of floating number to parse.
  *
  * @tparam Options available options:
+ * 				     `options::no_negative`: do not parse negative values.
+ * 				     `options::leading_plus`: allow a leading `+` sign.
+ * 				     `options::no_leading_zero`: do not allow a leading zero (e,g. "01.5").
  * 				     `options::no_scientific`: disable support for scientific notation
+ * 				     `options::decimal_comma`: use decimal comma instead of period
  */
 
 template <typename FloatType = double, options Options = options::none>
 inline constexpr auto floating() {
-    auto floating_part = integer() >>= [](auto&& n) {
-        auto dec = item<'.'>() >> integer<unsigned int, options::none, true>();
+    auto floating_part = integer<int, Options>() >>= [](auto&& n) {
+        constexpr auto decimal_sign = [](){
+            if constexpr (has_options(Options, options::decimal_comma)) return ',';
+            else return '.';
+        }();
+        auto dec = item<decimal_sign>() >> integer<unsigned int, options::none, true>();
         return lift([=](auto&& p) {
             // ((0 <= n) - (n < 0)) returns -1 for n < 0 otherwise 1
             return n + ((0 <= n) - (n < 0)) * int(p.first) / FloatType(p.second);

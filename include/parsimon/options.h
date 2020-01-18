@@ -22,11 +22,13 @@ enum class options : uint64_t {
     no_negative           = 1 << 6,
     leading_plus          = 1 << 7,
     no_scientific         = 1 << 8,
-    optional              = 1 << 9,
-    failure_only          = 1 << 10,
-    no_trailing_separator = 1 << 11,
-    ordered               = 1 << 12,
-    replace               = 1 << 13,
+    no_leading_zero       = 1 << 9,
+    decimal_comma         = 1 << 10,
+    optional              = 1 << 11,
+    failure_only          = 1 << 12,
+    no_trailing_separator = 1 << 13,
+    ordered               = 1 << 14,
+    replace               = 1 << 15,
 };
 
 /**
