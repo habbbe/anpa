@@ -1,3 +1,4 @@
+#include <string_view>
 #include <catch2/catch.hpp>
 #include "parsimon/parsers.h"
 
@@ -10,6 +11,21 @@ TEST_CASE("success") {
 TEST_CASE("fail") {
     static_assert(!fail().parse("").second);
 }
+
+TEST_CASE("cond") {
+    using namespace std::literals;
+    constexpr auto number = integer() >>= [](auto i) {
+        return cond(i <= 100)  >> seq("small") ||
+               cond(i <= 1000) >> seq("big")   ||
+               seq("very big");
+    };
+    static_assert(number.parse("1small").second.get_value() == "small");
+    static_assert(number.parse("10small").second.get_value() == "small");
+    static_assert(number.parse("500big").second.get_value() == "big");
+    static_assert(number.parse("1001very big").second.get_value() == "very big");
+    static_assert(number.parse("100100very big").second.get_value() == "very big");
+}
+
 
 TEST_CASE("empty") {
     static_assert(empty().parse("").second);

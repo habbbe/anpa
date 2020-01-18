@@ -16,10 +16,8 @@ elements are `constexpr`.
 See the provided test parsers
 - [JSON parser](test/json/json_parser.h): JSON DOM parser. It's only ~30 LOC and gives a good overview on 
 how to use the library, including recursive parsers.
-
 - [Simple syntax parser](test/tests_perf.cpp): a parser for a simple example syntax inteded for an application
 launcher/information dashboard.
-
 - [Expression parser](test/calc/calc.h): a simple expression evaluator supporting basic arithmetic operations
 with correct precedence. This example showcases how to use `chain` to eliminate left recursion in expression
 grammars.
@@ -27,6 +25,7 @@ grammars.
 ### Dependencies
 
 For library: None
+
 For tests: Catch2
 
 ### Installing

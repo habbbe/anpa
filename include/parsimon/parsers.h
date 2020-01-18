@@ -33,6 +33,31 @@ inline constexpr auto fail() {
 }
 
 /**
+ * Create a parser that will succeed only when `condition` is `true`.
+ * This parser does not consume any input.
+ *
+ * Result of the parse is `empty_result`.
+ *
+ * This primitive can be used to create parsers that depend on the result of a previous parse.
+ *
+ * Example:
+ * @code
+ * constexpr auto zero_odd_even = integer() >>= [](auto i) {
+ *    return cond(i == 0)     >> zero_parser ||
+ *           cond(i % 2 == 0) >> even_parser ||
+ *           odd_parser
+ * };
+ * @endcode
+ *
+ * @param condition the condition.
+ */
+inline constexpr auto cond(bool condition) {
+    return parser([=](auto& s) {
+        return condition ? s.template return_success_emplace<empty_result>() : s.template return_fail<empty_result>();
+    });
+}
+
+/**
  * Parser for the empty sequence.
  */
 inline constexpr auto empty() {

@@ -41,7 +41,6 @@ inline constexpr auto succeed(Parser p) {
     });
 }
 
-
 /**
  * Transform a parser to a parser that succeeds when `p` fails, and fails when `p` succeeds.
  * Result type is `empty_result`, as a concrete result can never be obtained.
