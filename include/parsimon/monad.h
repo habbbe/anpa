@@ -41,9 +41,7 @@ inline constexpr auto operator<<(parser<P1> p1, parser<P2> p2) {
     return parser([=](auto& s) {
         auto result = apply(p1, s);
         if (result) {
-            if (auto result2 = apply(p2, s)) {
-                return result;
-            } else {
+            if (auto result2 = apply(p2, s); !result2) {
                 return s.template return_fail_change_result<decltype(*result)>(result2);
             }
         }
