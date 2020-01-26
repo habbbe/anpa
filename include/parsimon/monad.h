@@ -29,15 +29,12 @@ inline constexpr auto operator>=(parser<P> p, Value&& v) {
 
 /**
  * Combine two parsers, returning the result of the first one.
- *
- * This is an optimized implementation. Using
- * @code
- * p1 >>= [=](auto&& r) { return p2 >> parser<P1>::mreturn(std::forward<decltype(r)>(r)); }
- * @endcode
- * works, but doesn't optimize nearly as well.
  */
 template <typename P1, typename P2>
 inline constexpr auto operator<<(parser<P1> p1, parser<P2> p2) {
+#if defined(__clang__) || __GNUG__ >= 9
+    return lift([](auto&& r, auto&&) {return std::forward<decltype(r)>(r);}, p1, p2);
+#else
     return parser([=](auto& s) {
         auto result = apply(p1, s);
         if (result) {
@@ -47,6 +44,7 @@ inline constexpr auto operator<<(parser<P1> p1, parser<P2> p2) {
         }
         return result;
     });
+#endif
 }
 
 /**
