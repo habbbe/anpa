@@ -481,8 +481,8 @@ inline constexpr auto integer() {
         auto p = [int_parser, is_digit](){
             if constexpr (has_options(Options, options::no_leading_zero)) {
                 auto zero_result = lift([](){return pair_result();});
-                return item<'0'>() >> flip(no_consume(item_if(is_digit))) >> zero_result
-                                      | int_parser;
+                return try_parser(item<'0'>() >> no_consume(flip(item_if(is_digit))) >> zero_result
+                                      | int_parser);
             } else {
                 return int_parser;
             }
