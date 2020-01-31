@@ -59,7 +59,7 @@ inline constexpr auto operator>>=(parser<P> p, Fn f) {
  *
  * auto p1 = mreturn(std::make_unique<int>(4)); // Wrong
  *
- * auto p2 = lift([]() {return std::make_unique<int>(i);}); // OK
+ * auto p2 = lift([]() {return std::make_unique<int>(4);}); // OK
  *
  * auto p3 = integer() >>= [](int i) {
  *     mreturn(std::make_unique<int>(i));
@@ -74,7 +74,7 @@ inline constexpr auto operator>>=(parser<P> p, Fn f) {
 template <typename T>
 constexpr auto mreturn(T&& t) {
     types::assert_copyable_mreturn<T>();
-    return parser([t = std::forward<T>(t)](auto &s) {
+    return parser([t = std::forward<T>(t)](auto& s) {
         return s.return_success(t);
     });
 }
@@ -94,10 +94,10 @@ constexpr auto mreturn(T&& t) {
 template <typename T, typename... Args>
 constexpr auto mreturn_emplace(Args&&... args) {
     (types::assert_copyable_mreturn<Args>(), ...);
-    return parser([args = std::make_tuple(std::forward<Args>(args)...)](auto& s) mutable {
-        return std::apply([&s](auto&&... args){
-            return s.template return_success_emplace<T>(std::forward<decltype(args)>(args)...);
-        }, std::move(args));
+    return parser([args = std::make_tuple(std::forward<Args>(args)...)](auto& s) {
+        return std::apply([&s](auto... args){
+            return s.template return_success_emplace<T>(std::move(args)...);
+        }, args);
     });
 }
 
@@ -121,7 +121,6 @@ template <typename P>
 struct parser {
 
     // The meat of the parser. A function that takes a parser state and returns an optional result.
-    // This could also be a lazy value, i.e. a callable object that returns what is described above.
     P p;
 
     constexpr parser(P p) : p{p} {}
@@ -133,7 +132,7 @@ struct parser {
 
     template <typename InternalState>
     constexpr auto parse_internal(InternalState&& state) const {
-        return std::pair(std::forward<InternalState>(state), std::move(apply(p, state)));
+        return std::pair(std::forward<InternalState>(state), apply(p, state));
     }
 
     /**
