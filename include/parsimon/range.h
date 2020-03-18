@@ -50,6 +50,9 @@ public:
 
         return {&*begin_it, length()};
     }
+    constexpr operator std::basic_string<item_type>() const {
+        return static_cast<std::basic_string<item_type>>(*this);
+    }
 };
 
 }

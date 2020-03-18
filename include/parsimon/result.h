@@ -16,11 +16,21 @@ struct result {
     constexpr static auto has_error_handling = !std::is_void_v<ErrorType>;
     typename std::conditional_t<has_error_handling, std::variant<ErrorType, R>, std::optional<R>> res;
 
-    template <size_t N, typename... V>
+    template <size_t N, typename... V,
+              typename Type = std::conditional_t<N==0, ErrorType, R>,
+              typename std::enable_if_t<std::is_constructible_v<Type, V...>, int> = 0>
     constexpr result(std::in_place_index_t<N> p, V&&... v) : res{p, std::forward<V>(v)...} {}
 
-    template <typename... V>
+    template <size_t N, typename... V,
+              typename Type = std::conditional_t<N==0, ErrorType, R>,
+              typename std::enable_if_t<!std::is_constructible_v<Type, V...>, int> = 0>
+    constexpr result(std::in_place_index_t<N> p, V&&... v) : res{p, Type{std::forward<V>(v)...}} {}
+
+    template <typename... V, typename std::enable_if_t<std::is_constructible_v<R, V...>, int> = 0>
     constexpr result(std::in_place_t t, V&&... v) : res{t, std::forward<V>(v)...} {}
+
+    template <typename... V, typename std::enable_if_t<!std::is_constructible_v<R, V...>, int> = 0>
+    constexpr result(std::in_place_t t, V&&... v) : res{t, R{std::forward<V>(v)...}} {}
 
     constexpr result() : res{std::nullopt} {}
 
