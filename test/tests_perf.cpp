@@ -8,27 +8,14 @@
 #include "parsimon/parsimon.h"
 #include "time_measure.h"
 
-struct row {
-    std::string_view firstName;
-    std::string_view lastName;
-    template <typename StringType1, typename StringType2>
-    constexpr row(StringType1 firstName, StringType2 lastName) :
-        firstName{firstName},
-        lastName{lastName} {}
-};
-
 struct action {
     std::string_view name;
     std::string_view com;
-    template <typename S1, typename S2>
-    constexpr action(S1 name, S2 com) : name{name}, com{com} {}
 };
 
 struct info {
     std::string_view name;
     std::string_view com;
-    template <typename S1, typename S2>
-    constexpr info(S1 name, S2 com) : name{name}, com{com} {}
 };
 
 struct separator {};
@@ -36,8 +23,6 @@ struct space {};
 
 struct syntax_error {
     std::string_view description;
-    template <typename StringType>
-    constexpr syntax_error(StringType s) : description(s) {}
 };
 
 using entry = std::variant<
