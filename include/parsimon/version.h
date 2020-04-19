@@ -16,11 +16,15 @@ struct version_components {
     std::string_view pre_release;
 };
 
-constexpr auto version_parser = lift_value<version_components>(
-            integer<unsigned int>(),
-            item<'.'>() >> integer<unsigned int>(),
-            item<'.'>() >> integer<unsigned int>(),
+constexpr auto version_parser = []{
+    auto num = integer<unsigned int, options::no_leading_zero>();
+    auto next_num = item<'.'>() >> num;
+    return lift_value<version_components>(
+            num,
+            next_num,
+            next_num,
             item<'-'>() >> not_empty(rest()) || empty());
+}();
 
 
 constexpr auto components = [] {
