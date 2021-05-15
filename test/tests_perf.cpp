@@ -5,7 +5,7 @@
 #include <memory>
 #include <variant>
 #include <catch2/catch.hpp>
-#include "parsimon/parsimon.h"
+#include "anpa/anpa.h"
 #include "time_measure.h"
 
 struct action {
@@ -50,7 +50,7 @@ syntax_error
  */
 void test()
 {
-    using namespace parsimon;
+    using namespace anpa;
 
     constexpr auto add_to_state = [](auto& s, auto&& arg) {
         s.emplace_back(std::forward<decltype(arg)>(arg));

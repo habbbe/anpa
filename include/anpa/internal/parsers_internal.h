@@ -3,10 +3,10 @@
 
 #include <tuple>
 #include <limits>
-#include "parsimon/internal/algorithm.h"
-#include "parsimon/options.h"
+#include "anpa/internal/algorithm.h"
+#include "anpa/options.h"
 
-namespace parsimon::internal {
+namespace anpa::internal {
 
 /**
  * Parser for a single item

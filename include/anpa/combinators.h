@@ -6,12 +6,12 @@
 #include <map>
 #include <vector>
 #include <memory>
-#include "parsimon/core.h"
-#include "parsimon/monad.h"
-#include "parsimon/internal/combinators_internal.h"
-#include "parsimon/options.h"
+#include "anpa/core.h"
+#include "anpa/monad.h"
+#include "anpa/internal/combinators_internal.h"
+#include "anpa/options.h"
 
-namespace parsimon {
+namespace anpa {
 
 /**
  * Transform a parser to a parser that always succeeds.

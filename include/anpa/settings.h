@@ -4,9 +4,9 @@
 #include <type_traits>
 #include <iterator>
 #include <array>
-#include "parsimon/range.h"
+#include "anpa/range.h"
 
-namespace parsimon {
+namespace anpa {
 
 /// Conversion function that returns a `range`
 constexpr auto range_convert = [](auto begin, auto end) {

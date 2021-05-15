@@ -4,12 +4,12 @@
 #include <type_traits>
 #include <utility>
 #include <valgrind/callgrind.h>
-#include "parsimon/types.h"
-#include "parsimon/monad.h"
-#include "parsimon/options.h"
+#include "anpa/types.h"
+#include "anpa/monad.h"
+#include "anpa/options.h"
 
 
-namespace parsimon::internal {
+namespace anpa::internal {
 
 /**
  * General helper for evaluating a parser multiple times with an optional separator.

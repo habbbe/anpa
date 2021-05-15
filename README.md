@@ -1,4 +1,4 @@
-## parsimon 
+## anpa
 
 A C++17 header only generic monadic parser combinator library loosely based on Haskell's parsec. 
 
@@ -32,8 +32,8 @@ For tests: Catch2
 
 
 ```
-$ git clone https://github.com/habbbe/parsimon
-$ cd parsimon
+$ git clone https://github.com/habbbe/anpa
+$ cd anpa
 $ cmake -B <BUILD_DIR> -DCMAKE_INSTALL_PREFIX=<PREFIX>
 $ cmake --install build
 
@@ -42,7 +42,7 @@ $ cmake --install build
 If you want to build and run the tests instead, use
 ```
 $ cmake -B <BUILD_DIR> -DBUILD_TESTS=ON
-$ cmake --build <BUILD_DIR> -j <NUM_OF_PARALLEL_JOBS> --target parsimon_tests test
+$ cmake --build <BUILD_DIR> -j <NUM_OF_PARALLEL_JOBS> --target anpa_tests test
 
 ```
 

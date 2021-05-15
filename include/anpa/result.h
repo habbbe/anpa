@@ -4,9 +4,9 @@
 #include <type_traits>
 #include <variant>
 #include <optional>
-#include "parsimon/parse_error.h"
+#include "anpa/parse_error.h"
 
-namespace parsimon {
+namespace anpa {
 
 /**
  * A parser result. It can either be present or not present.

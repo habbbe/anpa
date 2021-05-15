@@ -1,11 +1,11 @@
 #ifndef PARSIMON_VERSION_H
 #define PARSIMON_VERSION_H
 
-#include "parsimon/parsers.h"
+#include "anpa/parsers.h"
 
-namespace parsimon::version {
+namespace anpa::version {
 
-/// Current version of parsimon as a std::string_view
+/// Current version of anpa as a std::string_view
 // MAJOR.MINOR.PATCH-PRE_RELEASE components are parsed from this during compile time
 constexpr std::string_view current = "0.5.0";
 

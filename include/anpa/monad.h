@@ -4,10 +4,10 @@
 #include <type_traits>
 #include <utility>
 #include <memory>
-#include "parsimon/internal/monad_internal.h"
-#include "parsimon/core.h"
+#include "anpa/internal/monad_internal.h"
+#include "anpa/core.h"
 
-namespace parsimon {
+namespace anpa {
 
 /**
  * Combine two monads, ignoring the result of the first one
@@ -53,7 +53,7 @@ inline constexpr auto operator<<(parser<P1> p1, parser<P2> p2) {
  * in the same context.
  * Example:
  * @code
- * parsimon::bind([](auto&& r1, auto&& r2, auto&& r3) {
+ * anpa::bind([](auto&& r1, auto&& r2, auto&& r3) {
  *     do_something_with(r1, r2, r3);
  *     return some_new_monad;
  * }, p1, p2, p3);
@@ -96,7 +96,7 @@ inline constexpr auto lift(Fn f, Parsers... ps) {
  * Create a value by passing the results of the parsers (evaluated left to right)
  * to its constructor, then put the object in the parser monad.
  *
- * This is a specialized version of parsimon::lift that avoids unnecessary copying/moving
+ * This is a specialized version of anpa::lift that avoids unnecessary copying/moving
  * by constructing the object in place.
  */
 template <typename T, typename... Parsers>

@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <iterator>
 
-namespace parsimon {
+namespace anpa {
 
 /**
  * Empty type used to denote empty-ish results.
@@ -21,7 +21,7 @@ struct no_arg {};
 
 }
 
-namespace parsimon::types {
+namespace anpa::types {
 
 template <typename T>
 constexpr bool has_arg = !std::is_same_v<std::decay_t<T>, no_arg>;
