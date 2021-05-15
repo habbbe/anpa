@@ -1,15 +1,15 @@
 #ifndef PARSIMON_PARSERS_H
 #define PARSIMON_PARSERS_H
 
-#include "parsimon/internal/algorithm.h"
-#include "parsimon/core.h"
-#include "parsimon/options.h"
-#include "parsimon/types.h"
-#include "parsimon/combinators.h"
-#include "parsimon/internal/parsers_internal.h"
-#include "parsimon/internal/pow10.h"
+#include "anpa/internal/algorithm.h"
+#include "anpa/core.h"
+#include "anpa/options.h"
+#include "anpa/types.h"
+#include "anpa/combinators.h"
+#include "anpa/internal/parsers_internal.h"
+#include "anpa/internal/pow10.h"
 
-namespace parsimon {
+namespace anpa {
 
 /**
  * Parser that always succeeds.
@@ -470,18 +470,17 @@ inline constexpr auto integer() {
 
     auto res_parser = [](bool neg) {
 
-        auto is_digit = [](const auto&c) {return c >= '0' && c <= '9';};
+        auto digit = item_if([](const auto&c) {return c >= '0' && c <= '9';});
         using pair_result = std::pair<Integral, unsigned>;
         auto int_parser = fold<options::fail_on_no_parse>([](auto& r, const auto& c) {
             if constexpr (IncludeDoubleDivisor) {
                 r.second *= 10;
             }
             r.first = r.first * 10 + c - '0';
-        }, pair_result(0, 1), {}, item_if(is_digit));
-        auto p = [int_parser, is_digit](){
+        }, pair_result(0, 1), {}, digit);
+        auto p = [int_parser, digit](){
             if constexpr (has_options(Options, options::no_leading_zero)) {
-                auto zero_result = lift([](){return pair_result();});
-                return try_parser(item<'0'>() >> no_consume(flip(item_if(is_digit))) >> zero_result
+                return try_parser(item<'0'>() >> no_consume(flip(digit)) >> lift_value<pair_result>()
                                       | int_parser);
             } else {
                 return int_parser;
@@ -531,7 +530,6 @@ inline constexpr auto integer() {
  * 				     `options::no_scientific`: disable support for scientific notation
  * 				     `options::decimal_comma`: use decimal comma instead of period
  */
-
 template <typename FloatType = double, options Options = options::none>
 inline constexpr auto floating() {
     auto floating_part = integer<int, Options>() >>= [](auto&& n) {

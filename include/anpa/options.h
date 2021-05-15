@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <iterator>
 
-namespace parsimon {
+namespace anpa {
 
 /**
  * Options that changes the behavior of a parser.

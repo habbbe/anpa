@@ -2,7 +2,7 @@
 #define CALC_H
 
 #include <sstream>
-#include "parsimon/parsimon.h"
+#include "anpa/anpa.h"
 
 
 template <typename T>
@@ -13,8 +13,8 @@ constexpr auto const_pow(T a, T b) {
 }
 
 // A parser for arithmetic expressions. It does not support any whitespace.
-constexpr auto expr = parsimon::recursive<int>([](auto p) {
-    using namespace parsimon;
+constexpr auto expr = anpa::recursive<int>([](auto p) {
+    using namespace anpa;
     constexpr auto ops = [](auto c) {
         return [c](auto a, auto b) {
             switch (c) {

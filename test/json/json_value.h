@@ -5,7 +5,7 @@
 #include <vector>
 #include <variant>
 #include <memory>
-#include "parsimon/types.h"
+#include "anpa/types.h"
 
 struct json_value;
 
@@ -14,7 +14,7 @@ using json_object = std::unordered_map<json_string, std::shared_ptr<json_value>>
 using json_array = std::vector<json_value>;
 using json_number = double;
 using json_bool = bool;
-using json_null = parsimon::empty_result;
+using json_null = anpa::empty_result;
 
 using json_value_variant = std::variant<
 json_null,
@@ -44,7 +44,7 @@ struct json_value {
     size_t size() const {
         return std::visit([](const auto& v) {
             using type = std::decay_t<decltype(v)>;
-            if constexpr (parsimon::types::is_one_of<type, json_array, json_object>) return std::size(v);
+            if constexpr (anpa::types::is_one_of<type, json_array, json_object>) return std::size(v);
             else return size_t(0);
         }, val);
     }

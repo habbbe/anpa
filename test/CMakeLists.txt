@@ -1,4 +1,4 @@
-project(parsimon_tests)
+project(anpa_tests)
 
 include_directories(
     json
@@ -17,9 +17,9 @@ set(SOURCES
     tests_calc.cpp
     )
 
-set(TEST_TARGET parsimon_tests)
+set(TEST_TARGET anpa_tests)
 add_executable(${TEST_TARGET} ${SOURCES})
-target_link_libraries(${TEST_TARGET} PRIVATE parsimon)
+target_link_libraries(${TEST_TARGET} PRIVATE anpa)
 
 add_test(
     NAME ${TEST_TARGET} 

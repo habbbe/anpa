@@ -3,12 +3,12 @@
 
 #include <algorithm>
 #include <iterator>
-#include "parsimon/types.h"
+#include "anpa/types.h"
 
 /**
  * constexpr variants of some algorithms
  */
-namespace parsimon::algorithm {
+namespace anpa::algorithm {
 
 /**
  * constexpr version of `std::equal` (1)

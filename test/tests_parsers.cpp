@@ -1,8 +1,8 @@
 #include <string_view>
 #include <catch2/catch.hpp>
-#include "parsimon/parsers.h"
+#include "anpa/parsers.h"
 
-using namespace parsimon;
+using namespace anpa;
 
 TEST_CASE("success") {
     static_assert(success().parse("").second);
@@ -45,6 +45,18 @@ TEST_CASE("item") {
 TEST_CASE("item_if") {
     constexpr std::string_view str("abc");
     constexpr auto p = item_if([](auto& c) {return c == 'a';});
+    constexpr auto res = p.parse(str);
+    static_assert(*res.second == 'a');
+    static_assert(res.first.position == str.begin() + 1);
+    constexpr std::string_view strFail("bbc");
+    constexpr auto resFail = p.parse(strFail);
+    static_assert(!resFail.second);
+    static_assert(resFail.first.position == strFail.begin());
+}
+
+TEST_CASE("item_if_not") {
+    constexpr std::string_view str("abc");
+    constexpr auto p = item_if_not([](auto& c) {return c == 'b';});
     constexpr auto res = p.parse(str);
     static_assert(*res.second == 'a');
     static_assert(res.first.position == str.begin() + 1);

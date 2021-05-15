@@ -2,9 +2,9 @@
 #define PARSIMON_INTERNAL_MONAD_INTERNAL_H
 
 #include <utility>
-#include "parsimon/core.h"
+#include "anpa/core.h"
 
-namespace parsimon::internal {
+namespace anpa::internal {
 
 /**
  * Currying of an arbitrary function

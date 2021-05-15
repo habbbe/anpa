@@ -2,11 +2,11 @@
 #define PARSIMON_STATE_H
 
 #include <iterator>
-#include "parsimon/result.h"
-#include "parsimon/parse_error.h"
-#include "parsimon/internal/algorithm.h"
+#include "anpa/result.h"
+#include "anpa/parse_error.h"
+#include "anpa/internal/algorithm.h"
 
-namespace parsimon {
+namespace anpa {
 
 /**
  * Class for the parser state.

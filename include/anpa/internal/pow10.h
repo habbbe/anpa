@@ -4,7 +4,7 @@
 #include <limits>
 #include <array>
 
-namespace parsimon::internal {
+namespace anpa::internal {
 
 template <typename Floating>
 struct pow_table {

@@ -2,9 +2,9 @@
 #define PARSIMON_RANGE_H
 
 #include <iterator>
-#include "parsimon/internal/algorithm.h"
+#include "anpa/internal/algorithm.h"
 
-namespace parsimon {
+namespace anpa {
 
 /**
  * A range described by a begin and end iterator.

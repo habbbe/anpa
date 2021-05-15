@@ -2,12 +2,12 @@
 #define PARSIMON_CORE_H
 
 #include <functional>
-#include "parsimon/result.h"
-#include "parsimon/state.h"
-#include "parsimon/settings.h"
-#include "parsimon/types.h"
+#include "anpa/result.h"
+#include "anpa/state.h"
+#include "anpa/settings.h"
+#include "anpa/types.h"
 
-namespace parsimon {
+namespace anpa {
 
 
 // Apply a parser to a state and return the result.
@@ -53,7 +53,7 @@ inline constexpr auto operator>>=(parser<P> p, Fn f) {
  * Do not use this function to lift non-copyable types, as this will make
  * the whole parser non-copyable, and things will break.
  *
- * If you want to lift a non-copyable value, instead use parsimon::lift
+ * If you want to lift a non-copyable value, instead use anpa::lift
  * Example:
  * @code
  *
@@ -85,10 +85,10 @@ constexpr auto mreturn(T&& t) {
  * Do not use this function if any of the arguments are non-copyable types, as this will make
  * the whole parser non-copyable, and things will break.
  *
- * If any of the arguments are non-copyable value, instead use parsimon::lift
- * @see parsimon::mreturn for an example
+ * If any of the arguments are non-copyable value, instead use anpa::lift
+ * @see anpa::mreturn for an example
  *
- * Or parsimon::lift_value, if the value should be constructed in-place with the parser
+ * Or anpa::lift_value, if the value should be constructed in-place with the parser
  * results forwarded to its constructor.
  */
 template <typename T, typename... Args>
@@ -138,7 +138,7 @@ struct parser {
     /**
      * Begin parsing a sequence described by `[begin, end)` with state
      *
-     * The result is a std::pair with the parsimon::parser_state as the first
+     * The result is a std::pair with the anpa::parser_state as the first
      * element and the result of the parse as the second.
      *
      * @tparam the parser settings to use (default: `default_parser_settings`)
@@ -153,7 +153,7 @@ struct parser {
     /**
      * Begin parsing a sequence described by `[std::begin(sequence), std::end(sequence))` with state
      *
-     * The result is a std::pair with the parsimon::parser_state as the first
+     * The result is a std::pair with the anpa::parser_state as the first
      * element and the result of the parse as the second.
      *
      * @tparam the parser settings to use (default: `default_parser_settings`)
@@ -169,7 +169,7 @@ struct parser {
     /**
      * Begin parsing a null terminated string literal with state
      *
-     * The result is a std::pair with the parsimon::parser_state as the first
+     * The result is a std::pair with the anpa::parser_state as the first
      * element and the result of the parse as the second.
      *
      * @tparam the parser settings to use (default: `default_parser_settings`)
@@ -185,7 +185,7 @@ struct parser {
     /**
      * Begin parsing the sequence described by [begin, end)
      *
-     * The result is a std::pair with parsimon::parser_state_simple as the first
+     * The result is a std::pair with anpa::parser_state_simple as the first
      * element and the result of the parse as the second.
      *
      * @tparam the parser settings to use (default: `default_parser_settings`)
@@ -198,7 +198,7 @@ struct parser {
     /**
      * Begin parsing a sequence described by `[std::begin(sequence), std::end(sequence))`
      *
-     * The result is a std::pair with parsimon::parser_state_simple as the first
+     * The result is a std::pair with anpa::parser_state_simple as the first
      * element and the result of the parse as the second.
      *
      * @tparam the parser settings to use (default: `default_parser_settings`)
@@ -211,7 +211,7 @@ struct parser {
     /**
      * Begin parsing a null terminated string literal
      *
-     * The result is a std::pair with parsimon::parser_state_simple as the first
+     * The result is a std::pair with anpa::parser_state_simple as the first
      * element and the result of the parse as the second.
      *
      * @tparam the parser settings to use (default: `default_parser_settings`)

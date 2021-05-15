@@ -2,9 +2,9 @@
 #define JSON_PARSER_H
 
 #include "json_value.h"
-#include "parsimon/parsimon.h"
+#include "anpa/anpa.h"
 
-using namespace parsimon;
+using namespace anpa;
 
 //Remove whitespace (if any) before evaluating `p`
 template <typename Parser>

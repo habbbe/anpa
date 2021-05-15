@@ -3,19 +3,19 @@
 #include <functional>
 #include <string>
 #include <catch2/catch.hpp>
-#include "parsimon/parsimon.h"
+#include "anpa/anpa.h"
 
 // Including this verifies the version string format
-#include "parsimon/version.h"
+#include "anpa/version.h"
 
-using namespace parsimon;
+using namespace anpa;
 
 TEST_CASE("succeed") {
     static_assert(succeed(fail()).parse("").second);
     static_assert(succeed(success()).parse("").second);
 }
 
-using with_error_messages = parsimon::parser_settings<true>;
+using with_error_messages = anpa::parser_settings<true>;
 
 TEST_CASE("change_error") {
     constexpr auto p = change_error("new error", fail());
