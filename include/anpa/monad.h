@@ -86,7 +86,7 @@ inline constexpr auto lift(Fn f, Parsers... ps) {
             f(std::forward<decltype(rs)>(rs)...);
             return s.template return_success_emplace<empty_result>();
         } else {
-            return s.template return_success(f(std::forward<decltype(rs)>(rs)...));
+            return s.return_success(f(std::forward<decltype(rs)>(rs)...));
         }
     };
     return internal::lift_prepare(fun, ps...);

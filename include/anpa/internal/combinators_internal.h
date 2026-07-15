@@ -113,7 +113,7 @@ inline constexpr auto get_parsed_recursive(State& s, InputIt original_position, 
             return get_parsed_recursive(s, original_position, ps...);
         }
     } else {
-        return s.template return_fail_result_default(result);
+        return s.return_fail_result_default(result);
     }
 }
 
