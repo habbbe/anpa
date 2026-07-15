@@ -1,5 +1,5 @@
-#ifndef PARSIMON_INTERNAL_ALGORITHM_H
-#define PARSIMON_INTERNAL_ALGORITHM_H
+#ifndef ANPA_INTERNAL_ALGORITHM_H
+#define ANPA_INTERNAL_ALGORITHM_H
 
 #include <algorithm>
 #include <iterator>
@@ -138,4 +138,4 @@ inline constexpr auto contains_elements(InputIt begin, InputIt end, size_t n) {
 
 }
 
-#endif // PARSIMON_INTERNAL_ALGORITHM_H
+#endif // ANPA_INTERNAL_ALGORITHM_H

@@ -1,5 +1,5 @@
-#ifndef PARSIMON_VERSION_H
-#define PARSIMON_VERSION_H
+#ifndef ANPA_VERSION_H
+#define ANPA_VERSION_H
 
 #include "anpa/parsers.h"
 
@@ -7,7 +7,7 @@ namespace anpa::version {
 
 /// Current version of anpa as a std::string_view
 // MAJOR.MINOR.PATCH-PRE_RELEASE components are parsed from this during compile time
-constexpr std::string_view current = "0.5.0";
+constexpr std::string_view current = "0.5.3";
 
 struct version_components {
     unsigned int major;
@@ -37,4 +37,4 @@ constexpr auto components = [] {
 
 
 
-#endif // PARSIMON_VERSION_H
+#endif // ANPA_VERSION_H

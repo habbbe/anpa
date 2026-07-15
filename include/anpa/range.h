@@ -1,5 +1,5 @@
-#ifndef PARSIMON_RANGE_H
-#define PARSIMON_RANGE_H
+#ifndef ANPA_RANGE_H
+#define ANPA_RANGE_H
 
 #include <iterator>
 #include "anpa/internal/algorithm.h"
@@ -57,4 +57,4 @@ public:
 
 }
 
-#endif // PARSIMON_RANGE_H
+#endif // ANPA_RANGE_H

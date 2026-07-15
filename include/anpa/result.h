@@ -1,5 +1,5 @@
-#ifndef PARSIMON_RESULT_H
-#define PARSIMON_RESULT_H
+#ifndef ANPA_RESULT_H
+#define ANPA_RESULT_H
 
 #include <type_traits>
 #include <variant>
@@ -93,4 +93,4 @@ struct result {
 
 }
 
-#endif // PARSIMON_RESULT_H
+#endif // ANPA_RESULT_H

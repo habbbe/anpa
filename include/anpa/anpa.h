@@ -1,5 +1,5 @@
-#ifndef PARSIMON_INCLUDE_H
-#define PARSIMON_INCLUDE_H
+#ifndef ANPA_INCLUDE_H
+#define ANPA_INCLUDE_H
 
 #include "anpa/monad.h"
 #include "anpa/result.h"
@@ -9,4 +9,4 @@
 #include "anpa/combinators.h"
 #include "anpa/parsers.h"
 
-#endif // TOKEN_PARSIMON_H
+#endif // ANPA_INCLUDE_H

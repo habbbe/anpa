@@ -1,5 +1,5 @@
-#ifndef PARSIMON_INTERNAL_MONAD_INTERNAL_H
-#define PARSIMON_INTERNAL_MONAD_INTERNAL_H
+#ifndef ANPA_INTERNAL_MONAD_INTERNAL_H
+#define ANPA_INTERNAL_MONAD_INTERNAL_H
 
 #include <utility>
 #include "anpa/core.h"
@@ -68,4 +68,4 @@ inline constexpr auto bind_internal(Fn f, Parser p, Parsers... ps) {
 
 }
 
-#endif // PARSIMON_INTERNAL_MONAD_INTERNAL_H
+#endif // ANPA_INTERNAL_MONAD_INTERNAL_H

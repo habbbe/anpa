@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(anpa VERSION 0.5.1)
+project(anpa VERSION 0.5.3)
 
 add_library(anpa INTERFACE)
 

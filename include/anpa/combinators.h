@@ -1,5 +1,5 @@
-#ifndef PARSIMON_COMBINATORS_H
-#define PARSIMON_COMBINATORS_H
+#ifndef ANPA_COMBINATORS_H
+#define ANPA_COMBINATORS_H
 
 #include <type_traits>
 #include <unordered_map>
@@ -801,4 +801,4 @@ constexpr auto recursive(Fn f) {
 
 }
 
-#endif // PARSIMON_COMBINATORS_H
+#endif // ANPA_COMBINATORS_H

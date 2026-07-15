@@ -1,5 +1,5 @@
-#ifndef PARSIMON_INTERNAL_POW10_H
-#define PARSIMON_INTERNAL_POW10_H
+#ifndef ANPA_INTERNAL_POW10_H
+#define ANPA_INTERNAL_POW10_H
 
 #include <limits>
 #include <array>
@@ -33,4 +33,4 @@ struct pow_table {
 };
 }
 
-#endif // PARSIMON_INTERNAL_POW10_H
+#endif // ANPA_INTERNAL_POW10_H

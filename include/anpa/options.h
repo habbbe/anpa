@@ -1,6 +1,7 @@
-#ifndef PARSIMON_OPTIONS_H
-#define PARSIMON_OPTIONS_H
+#ifndef ANPA_OPTIONS_H
+#define ANPA_OPTIONS_H
 
+#include <cstdint>
 #include <type_traits>
 #include <iterator>
 
@@ -51,4 +52,4 @@ constexpr inline bool has_options(options source, options flags) {
 
 
 
-#endif // PARSIMON_OPTIONS_H
+#endif // ANPA_OPTIONS_H

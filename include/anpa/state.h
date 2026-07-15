@@ -1,5 +1,5 @@
-#ifndef PARSIMON_STATE_H
-#define PARSIMON_STATE_H
+#ifndef ANPA_STATE_H
+#define ANPA_STATE_H
 
 #include <iterator>
 #include "anpa/result.h"
@@ -137,4 +137,4 @@ parser_state<InputIt, Settings, UserState>;
 
 }
 
-#endif // PARSIMON_STATE_H
+#endif // ANPA_STATE_H

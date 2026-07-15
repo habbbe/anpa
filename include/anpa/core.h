@@ -1,5 +1,5 @@
-#ifndef PARSIMON_CORE_H
-#define PARSIMON_CORE_H
+#ifndef ANPA_CORE_H
+#define ANPA_CORE_H
 
 #include <functional>
 #include "anpa/result.h"
@@ -238,4 +238,4 @@ struct parser {
 
 }
 
-#endif // PARSIMON_CORE_H
+#endif // ANPA_CORE_H

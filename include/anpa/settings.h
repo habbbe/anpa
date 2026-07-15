@@ -1,5 +1,5 @@
-#ifndef PARSIMON_SETTINGS_H
-#define PARSIMON_SETTINGS_H
+#ifndef ANPA_SETTINGS_H
+#define ANPA_SETTINGS_H
 
 #include <type_traits>
 #include <iterator>
@@ -36,4 +36,4 @@ using default_parser_settings = parser_settings<>;
 
 }
 
-#endif // PARSIMON_SETTINGS_H
+#endif // ANPA_SETTINGS_H

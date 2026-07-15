@@ -1,5 +1,5 @@
-#ifndef PARSIMON_PARSE_ERROR_H
-#define PARSIMON_PARSE_ERROR_H
+#ifndef ANPA_PARSE_ERROR_H
+#define ANPA_PARSE_ERROR_H
 
 namespace anpa {
 
@@ -14,4 +14,4 @@ struct parse_error {
 
 
 
-#endif // PARSIMON_PARSE_ERROR_H
+#endif // ANPA_PARSE_ERROR_H

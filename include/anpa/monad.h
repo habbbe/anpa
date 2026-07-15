@@ -1,5 +1,5 @@
-#ifndef PARSIMON_MONAD_H
-#define PARSIMON_MONAD_H
+#ifndef ANPA_MONAD_H
+#define ANPA_MONAD_H
 
 #include <type_traits>
 #include <utility>
@@ -109,4 +109,4 @@ inline constexpr auto lift_value(Parsers... ps) {
 }
 
 
-#endif // PARSIMON_MONAD_H
+#endif // ANPA_MONAD_H
